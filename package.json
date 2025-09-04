@@ -1,7 +1,7 @@
 {
   "name": "foodxp",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
@@ -12,7 +12,11 @@
     "expo": "~53.0.22",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
-    "react-native": "0.79.6"
+    "react-native": "0.79.6",
+    "expo-router": "~5.1.5",
+    "react-dom": "19.0.0",
+    "react-native-web": "^0.20.0",
+    "expo-camera": "~16.1.11"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

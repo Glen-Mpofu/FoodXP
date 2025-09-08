@@ -4,32 +4,22 @@ import { StyleSheet, Text, View, Button, TouchableOpacity } from 'react-native';
 import ThemedView from '../components/ThemedView';
 import ThemedText from '../components/ThemedText';
 import ThemedCard from '../components/ThemedCard';
-
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useCameraPermission } from 'react-native-vision-camera';
+import { Redirect, useRouter } from 'expo-router';
 
 const Dashboard = () => {
-    const [facing, setFacing] = useState('back');
+    const {hasPermission} = useCameraPermission();
+    const redirectToPermissions = !hasPermission
 
-    function toggleCameraFacing() {
-        setFacing(current => (current === 'back' ? 'front' : 'back'));
-    }
+    const device = useCameraDevice("front")
+    const router = useRouter();
 
-    return (
-        <ThemedView style={styles.container}>
-            <ThemedText>Dashboard</ThemedText>
+    <ThemedView>
+        <ThemedText>Camera</ThemedText>
+    </ThemedView>
 
-            <ThemedView>
-                <ThemedCard>
-
-                    <CameraView style={styles.camera} facing={facing} />
-
-                    <TouchableOpacity style={styles.flipButton} onPress={toggleCameraFacing}>
-                        <Text style={styles.flipText}>Flip Camera</Text>
-                    </TouchableOpacity>
-                </ThemedCard>
-            </ThemedView>
-        </ThemedView>
-    );
+    if(redirectToPermissions) return <Redirect href={"/permissions"} />;
+    if(!device) return <></>
 };
 
 export default Dashboard;
@@ -40,23 +30,5 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    message: {
-        textAlign: 'center',
-        marginBottom: 10,
-    },
-    camera: {
-        width: 300,
-        height: 400,
-        borderRadius: 10,
-    },
-    flipButton: {
-        marginTop: 10,
-        padding: 10,
-        backgroundColor: '#333',
-        borderRadius: 5,
-    },
-    flipText: {
-        color: '#fff',
-        textAlign: 'center',
-    },
+    
 });

@@ -11,6 +11,7 @@ export default ThemedTextInput
 
 const styles = StyleSheet.create({
     textInput: {
+        fontFamily: "RaleWay",
         fontSize: 20,
         width: 250,
         height: 30,

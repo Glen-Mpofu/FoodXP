@@ -4,7 +4,7 @@ import { Link } from 'expo-router'
 
 const ThemedLink = ({ style, ...props }) => {
     return (
-        <Link style={[styles.link, style]} {...props} />
+        <Link style={[styles.link, style]} {...props} asChild/>
     )
 }
 

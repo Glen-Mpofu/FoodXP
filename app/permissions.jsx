@@ -4,6 +4,8 @@ import { Camera, CameraPermissionStatus } from 'react-native-vision-camera'
 import * as ExpoMediaLibrary from "expo-media-library"
 import ThemedView from '../components/ThemedView'
 
+import { Ionicons } from "@expo/vector-icons"
+
 const PermissionsScreen = () => {
     const [CameraPermissionStatus, setCameraPermissionStatus] = 
         React.useActionState<CameraPermissionStatus>("not-determined");
@@ -13,6 +15,12 @@ const PermissionsScreen = () => {
   return (
     <ThemedView>
       <Text>FoodXP needs access to a few permissions in order to work properly</Text>
+
+      <View>
+        <Ionicons name = "lock-closed-outline" 
+            color = "orange"
+        />
+      </View>
     </ThemedView>
   )
 }

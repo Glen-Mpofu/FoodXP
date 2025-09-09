@@ -10,16 +10,16 @@
   },
   "dependencies": {
     "expo": "~53.0.22",
+    "expo-blur": "~14.1.5",
     "expo-camera": "~16.1.11",
+    "expo-cli": "^6.3.12",
+    "expo-media-library": "~17.1.7",
     "expo-router": "~5.1.5",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.6",
-    "react-native-vision-camera": "^4.7.2",
-    "react-native-web": "^0.20.0",
-    "expo-blur": "~14.1.5",
-    "expo-media-library": "~17.1.7"
+    "react-native-web": "^0.20.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

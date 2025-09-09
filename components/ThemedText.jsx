@@ -11,6 +11,6 @@ export default ThemedText
 
 const styles = StyleSheet.create({
     text: {
-        fontFamily: "Raleway"
+        fontFamily: "Raleway",
     }
 })

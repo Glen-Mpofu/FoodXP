@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, TouchableOpacity, View } from 'react-native'
+import { StyleSheet, useColorScheme, TouchableOpacity, View, Platform } from 'react-native'
 
 //themedui
 import ThemedView from '../components/ThemedView'
@@ -18,71 +18,113 @@ const index = () => {
     const theme = Colors[colorScheme] ?? Colors.light;
 
     return (
-        <ThemedView style = { styles.container }>
-            <View style = {{width: "70%"}}>
-                <ThemedText style = {styles.heading}>FoodXP</ThemedText>
-            </View>
+        //main view
+        <ThemedView style={styles.container}>
 
-            <ThemedView style = {styles.mainView}>
+            <ThemedView style={styles.mainView}>
+                {/* foodxp heading*/}
+                <ThemedText style={styles.heading}>FoodXP</ThemedText>
+
                 <ThemedText style={styles.wHeading} >Welcome Back!</ThemedText>
                 <ThemedText >Sign in to access your dashboard!</ThemedText>
 
-                    <View style = {styles.cView}>
-                        <ThemedText style={[{marginBottom: 0, alignSelf: "flex-start"} ]}>Email</ThemedText>
-                    </View>
-                    <ThemedTextInput value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
+                <View style={styles.inputView}>
+                    <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Email</ThemedText>
+                    <ThemedTextInput style={styles.input} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
 
-                    <View style = {styles.cView}>
-                        <ThemedText style={[{marginBottom: 0} ]}>Password</ThemedText>
-                    </View>
+                    <View style={styles.password}>
+                        <ThemedText style={[{ marginBottom: 0 }]}>Password</ThemedText>
+                        <ThemedTextInput style={styles.input} secureTextEntry={true} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
 
-                    <ThemedTextInput secureTextEntry={true} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
-
-                    <View style = {[{height: 10, width: 250, marginTop: 10}]}>
-                        <ThemedText style={styles.forgotPassword}>Forgot Password?</ThemedText>
                     </View>
 
-                <ThemedLink href="/dashboard">
-                    <ThemedButton>
-                        <ThemedText>Sign In</ThemedText>
-                    </ThemedButton>
-                </ThemedLink>
+                </View>
 
-                <ThemedLink href="/register" style={{ margin: 0 }}>
-                    <ThemedText>No Account? SignUp</ThemedText>
-                </ThemedLink>
-            </ThemedView>  
+                <ThemedView style={styles.links}>
+                    <ThemedText style={styles.forgotPassword}>Forgot Password?</ThemedText>
+                    <ThemedLink href="/dashboard" style={{ margin: 0 }}>
+                        <ThemedButton style={styles.button}>
+                            <ThemedText>Sign In</ThemedText>
+                        </ThemedButton>
+                    </ThemedLink>
+
+                    <ThemedLink href="/register" style={styles.registerLink}>
+                        <ThemedText>No Account? SignUp</ThemedText>
+                    </ThemedLink>
+
+                </ThemedView>
+            </ThemedView>
         </ThemedView>
     )
 }
 
 export default index
 
-const styles = StyleSheet.create({    
+const styles = StyleSheet.create({
     container: {
-        justifyContent: 'center',
+        alignItems: "center",
     },
-    mainView:{
-        width: "70%",
-        elevation: 50, 
-        borderRadius: 5,
-        justifyContent: 'center',
-        //boxShadow: "10px 10px 0px rgba(123, 48, 236, 0.5)"
+    mainView: {
+        width: "100%",
+        maxWidth: 450,
+        flex: 0.7,
+        borderStyle: 'dashed',
+        borderWidth: 1,
+        borderRadius: 50, // center children horizontally
+        padding: 30,
+        alignItems: "center",
     },
     wHeading: {
-        fontSize: 40,
-        fontWeight: 'bold'
+        fontSize: 28,
+        fontWeight: '600',
+        marginBottom: 5
     },
     heading: {
-        fontSize: 45,
+        fontSize: 40,
         fontWeight: 'bold',
         alignSelf: 'flex-start',
+        marginBottom: 10
     },
-    forgotPassword:{
+    subText: {
+        fontSize: 16,
+        color: '#555',
+        marginBottom: 20
+    },
+    forgotPassword: {
+        fontSize: 12,
+        color: '#FF7F50',
         alignSelf: 'flex-end',
-        marginBottom: 0, fontSize: 10
-    }, 
-    cView: {
-        height: 10, width: 250, marginTop: 20, marginBottom: 5, marginLeft: 10
+        marginTop: Platform.OS === "android" ? 0 : 70,
+        marginBottom: 15,
+        marginRight: Platform.OS === "android" ? 0 : 50
+    },
+    inputView: {
+        marginTop: 20,
+        marginBottom: Platform.OS === "android" ? 0 : 20,
+    },
+    input: {
+        width: '100%',
+        borderWidth: 1,
+        borderColor: '#DDD',
+        borderRadius: 10,
+        fontSize: 16,
+        backgroundColor: '#FAFAFA',
+    },
+    links: {
+        flex: 0,
+        alignContent: "center",
+        width: "100%",
+        alignItems: "stretch", // stretch children to full width
+        marginTop: 10,
+    },
+    registerLink: {
+        alignSelf: 'center',
+        marginTop: 5,
+    },
+    button: {
+        paddingVertical: 15,
+        borderRadius: 10,
+        marginBottom: 10
     }
+
 })

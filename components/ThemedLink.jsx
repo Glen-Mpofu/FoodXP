@@ -4,7 +4,7 @@ import { Link } from 'expo-router'
 
 const ThemedLink = ({ style, ...props }) => {
     return (
-        <Link style={[styles.link, style]} {...props} asChild/>
+        <Link style={[styles.link, style]} {...props} asChild />
     )
 }
 
@@ -14,6 +14,6 @@ const styles = StyleSheet.create({
     link: {
         borderBottomWidth: 1,
         borderBottom: "solid",
-        margin: 10
+        margin: 10,
     }
 })

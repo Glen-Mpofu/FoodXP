@@ -4,25 +4,24 @@ import { StyleSheet, Text, View, Button, TouchableOpacity } from 'react-native';
 import ThemedView from '../components/ThemedView';
 import ThemedText from '../components/ThemedText';
 import ThemedCard from '../components/ThemedCard';
-import { useCameraPermission } from 'react-native-vision-camera';
-import { Redirect, useRouter } from 'expo-router';
 
-const Dashboard = () => {
-    const {hasPermission} = useCameraPermission();
-    const redirectToPermissions = !hasPermission
 
-    const device = useCameraDevice("front")
-    const router = useRouter();
+const dashboard = () => {
 
-    <ThemedView>
-        <ThemedText>Camera</ThemedText>
-    </ThemedView>
+    return (
+        <ThemedView style={styles.container}>
+            <ThemedText>Dashboard</ThemedText>
 
-    if(redirectToPermissions) return <Redirect href={"/permissions"} />;
-    if(!device) return <></>
+            <ThemedView>
+                <ThemedCard>
+
+                </ThemedCard>
+            </ThemedView>
+        </ThemedView>
+    );
 };
 
-export default Dashboard;
+export default dashboard;
 
 const styles = StyleSheet.create({
     container: {
@@ -30,5 +29,5 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    
+
 });

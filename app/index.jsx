@@ -1,4 +1,5 @@
-import { StyleSheet, useColorScheme, TouchableOpacity, View, Platform } from 'react-native'
+import { StyleSheet, useColorScheme, Modal,TouchableOpacity, View, Platform, Pressable } from 'react-native'
+import { useState } from 'react'
 
 //themedui
 import ThemedView from '../components/ThemedView'
@@ -14,8 +15,19 @@ import { Colors } from '../constants/Colors'
 const index = () => {
     const [email, onEmailChange] = React.useState("");
     const [password, onPasswordChange] = React.useState("");
+    const [newPassword, onNewPasswordChange] = React.useState("");
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme] ?? Colors.light;
+
+    //modal
+    const [modalVisible, setModalVisible] = useState(false)
+    const openFogotPassWordModal =() => {
+        setModalVisible(true);
+    }
+
+    const closeForgotPasswordModal = () => {
+        setModalVisible(false);
+    }
 
     return (
         //main view
@@ -38,10 +50,15 @@ const index = () => {
 
                     </View>
 
+                    <TouchableOpacity onPress={openFogotPassWordModal} style = {{ width: "100%", alignSelf: 'flex-end'}}>
+                        <ThemedText style={styles.forgotPassword}>Forgot Password?</ThemedText>
+                    </TouchableOpacity>
+
                 </View>
 
                 <ThemedView style={styles.links}>
-                    <ThemedText style={styles.forgotPassword}>Forgot Password?</ThemedText>
+                    
+
                     <ThemedLink href="/dashboard" style={{ margin: 0 }}>
                         <ThemedButton style={styles.button}>
                             <ThemedText>Sign In</ThemedText>
@@ -53,7 +70,31 @@ const index = () => {
                     </ThemedLink>
 
                 </ThemedView>
-            </ThemedView>
+
+                <Modal
+                    transparent = {true}
+                    animationType='slide'
+                    visible={modalVisible}
+                    onRequestClose={closeForgotPasswordModal}
+                >
+                    <ThemedView style = {styles.modalOverlay}>
+                         <ThemedView style = {styles.modalContent}>
+                            <ThemedText>
+                                Password Change
+                            </ThemedText>
+
+                            <ThemedTextInput style={styles.input} value={password} onChangeText={onPasswordChange} placeholder="Enter your Old Password" />
+                            <ThemedTextInput style={styles.input} value={newPassword} onChangeText={onNewPasswordChange} placeholder="Enter your New Password" />
+
+                            <ThemedButton onPress={closeForgotPasswordModal}>
+                                <ThemedText>
+                                    Close
+                                </ThemedText>
+                            </ThemedButton>
+                        </ThemedView>
+                    </ThemedView>
+                </Modal>
+            </ThemedView>            
         </ThemedView>
     )
 }
@@ -67,7 +108,7 @@ const styles = StyleSheet.create({
     mainView: {
         width: "100%",
         maxWidth: 450,
-        flex: 0.7,
+        flex: Platform.OS === "android" ? 0.6 : 0.9,
         borderStyle: 'dashed',
         borderWidth: 1,
         borderRadius: 50, // center children horizontally
@@ -93,10 +134,8 @@ const styles = StyleSheet.create({
     forgotPassword: {
         fontSize: 12,
         color: '#FF7F50',
-        alignSelf: 'flex-end',
-        marginTop: Platform.OS === "android" ? 0 : 70,
-        marginBottom: 15,
-        marginRight: Platform.OS === "android" ? 0 : 50
+        marginBottom: Platform.OS ==='android' ? 5 : 30,
+        alignSelf: 'flex-end'
     },
     inputView: {
         marginTop: 20,
@@ -113,7 +152,6 @@ const styles = StyleSheet.create({
     links: {
         flex: 0,
         alignContent: "center",
-        width: "100%",
         alignItems: "stretch", // stretch children to full width
         marginTop: 10,
     },
@@ -124,7 +162,22 @@ const styles = StyleSheet.create({
     button: {
         paddingVertical: 15,
         borderRadius: 10,
-        marginBottom: 10
-    }
+        marginBottom: 10,
+    },
+    modalOverlay:{
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.6)", // dim background
+        justifyContent: "center", // center vertically
+        alignItems: "center", 
+    },
+    modalContent: {
+        backgroundColor: "white",
+        padding: 20,
+        borderRadius: 15,
+        width: "80%",     // responsive width
+        maxWidth: 400,    // optional limit for large screens
+        alignItems: "center",
+        flex: 0.6
+    },
 
 })

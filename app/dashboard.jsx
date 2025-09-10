@@ -10,7 +10,7 @@ const dashboard = () => {
 
     return (
         <ThemedView style={styles.container}>
-            <ThemedText>Dashboard</ThemedText>
+            <ThemedText>Your DashBoard</ThemedText>
 
             <ThemedView>
                 <ThemedCard>

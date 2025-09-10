@@ -20,11 +20,12 @@ const FoodXPLayout = () => {
                     fontSize: 40,
                     fontFamily: "Raleway"
                 },
+                
             }}
         >
-            <Stack.Screen name={"index"} options={{title: "Login", headerShown: false }}/>
+            <Stack.Screen name={"index"} options={{title: "Login", headerShown: false}}/>
             <Stack.Screen name={"register"} options={{title: "Register", headerShown: false }}/>
-            <Stack.Screen name={"dashboard"} options={{title: "Home", headerShown: true }}/>
+            <Stack.Screen name={"dashboard"} options={{headerShown: false}}/>
         </Stack>
     )
 }

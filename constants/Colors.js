@@ -6,14 +6,14 @@ export const Colors = {
     success: '#9CAFAA', 
 
     dark: {
-        text: '#e0e0e0',           
+        text: '#F7F4EA',           
         title: '#ffffff',          
-        background: '#8d9ba5ff',     
-        navBackground: '#8d9ba5ff',  
-        uiBackground: '#F7F4EA',
-        imageColor: '#9CAFAA',   
-        borderColor: '#F7F4EA', 
-        buttonColor: "#F7F4EA",   
+        background: '#A8BBA3',     
+        navBackground: '#9b867aff',  
+        uiBackground: '#ffffffff',
+        imageColor: '#c9d153ff',   
+        borderColor: '#9b867aff', 
+        buttonColor: "#9b867aff",   
     },
     light: {
         text: '#1e2631ff',          
@@ -23,7 +23,7 @@ export const Colors = {
         uiBackground: '#ffffffff',    
         imageColor: '#9CAFAA', 
         borderColor: '#1e2631ff',
-        buttonColor: "#8d9ba5ff"
+        buttonColor: "#9e795aff"
     }
 }
 

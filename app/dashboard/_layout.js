@@ -20,7 +20,7 @@ export default function DashboardLayout() {
           fontWeight: "bold",
         },
         headerStyle: {
-          backgroundColor: theme.background
+          backgroundColor: theme.navBackground
         },
         headerRight: () => (
           <TouchableOpacity

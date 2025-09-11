@@ -1,54 +1,50 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { Camera } from 'expo-camera';
-import * as MediaLibrary from 'expo-media-library';
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from "react";
+import { StyleSheet, Text, View, Button } from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
 
-const CameraScreen = () => {
-  const [hasCameraPermission, setHasCameraPermission] = useState(null);
-  const [hasMediaPermission, setHasMediaPermission] = useState(null);
-  const [type, setType] = useState('back');
-  const [flash, setFlash] = useState('off');
-  const cameraRef = useRef(null);
+export default function CameraScreen() {
+  const [facing, setFacing] = useState("back");
+  const [permission, requestPermission] = useCameraPermissions();
 
-  useEffect(() => {
-    (async () => {
-      const { status: cameraStatus } = await Camera.requestCameraPermissionsAsync();
-      setHasCameraPermission(cameraStatus === 'granted');
-
-      const { status: mediaStatus } = await MediaLibrary.requestPermissionsAsync();
-      setHasMediaPermission(mediaStatus === 'granted');
-    })();
-  }, []);
-
-  if (hasCameraPermission === null || hasMediaPermission === null) {
-    // Permissions are still loading
-    return <View><Text>Loading permissions...</Text></View>;
+  if (!permission) {
+    // Permission state is still loading
+    return <View />;
   }
 
-  if (!hasCameraPermission) {
-    return <View><Text>No access to camera</Text></View>;
+  if (!permission.granted) {
+    // Camera permission not granted yet
+    return (
+      <View style={styles.container}>
+        <Text style={{ textAlign: "center" }}>
+          We need your permission to show the camera
+        </Text>
+        <Button onPress={requestPermission} title="Grant permission" />
+      </View>
+    );
   }
 
-  if (!hasMediaPermission) {
-    return <View><Text>No access to media library</Text></View>;
+  function toggleCameraFacing() {
+    setFacing((prev) => (prev === "back" ? "front" : "back"));
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <Camera
-          style = {styles.camera}
-          type = {type}
-          ref = {cameraRef}
-      />
-
+    <View style={styles.container}>
+      <CameraView style={styles.camera} facing={facing}>
+        <View style={styles.buttonContainer}>
+          <Button title="Flip Camera" onPress={toggleCameraFacing} />
+        </View>
+      </CameraView>
     </View>
   );
-};
-
-export default CameraScreen;
+}
 
 const styles = StyleSheet.create({
-  camera: {
-
-  }
+  container: { flex: 1 },
+  camera: { flex: 1 },
+  buttonContainer: {
+    flex: 1,
+    backgroundColor: "transparent",
+    flexDirection: "row",
+    margin: 20,
+  },
 });

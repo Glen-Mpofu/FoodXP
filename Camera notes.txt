@@ -1,0 +1,5 @@
+Camera notes
+
+Dependencies
+* expo install expo-media-library
+* expo install expo-camera

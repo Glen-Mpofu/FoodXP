@@ -19,8 +19,14 @@ export default function DashboardLayout() {
           fontSize: 24,
           fontWeight: "bold",
         },
+        drawerActiveBackgroundColor: Colors.drawerActive,
+        drawerActiveTintColor: theme.uiBackground,
         headerStyle: {
-          backgroundColor: theme.navBackground
+          backgroundColor: theme.navBackground,
+          
+        },
+        drawerStyle: {
+          backgroundColor: theme.uiBackground,
         },
         headerRight: () => (
           <TouchableOpacity
@@ -31,7 +37,7 @@ export default function DashboardLayout() {
               name="camera-outline"
               size={30}
               accessibilityLabel="Add Fruit"
-              color="#8d9ba5ff"
+              color={theme.camera}
             />
           </TouchableOpacity>
         ),

@@ -4,26 +4,30 @@ export const Colors = {
     warning: '#8f0000ff',
     accent: '#161b22', 
     success: '#9CAFAA', 
+    drawerActive:  "#b46334ff",
+    drawerActiveTint:  "#fff8f4ff",
 
     dark: {
         text: '#F7F4EA',           
         title: '#ffffff',          
-        background: '#A8BBA3',     
+        background: '#bbb6b3ff',     
         navBackground: '#9b867aff',  
         uiBackground: '#ffffffff',
         imageColor: '#c9d153ff',   
-        borderColor: '#9b867aff', 
-        buttonColor: "#9b867aff",   
+        borderColor: '#ffffffff', 
+        buttonColor: "#9b867aff",
+        camera: "#F7F4EA"
     },
     light: {
-        text: '#1e2631ff',          
+        text: '#e0ddd0ff',          
         title: '#111827',          
         background: '#F7F4EA',     
-        navBackground: '#ffffff', 
+        navBackground: '#9e795aff', 
         uiBackground: '#ffffffff',    
         imageColor: '#9CAFAA', 
         borderColor: '#1e2631ff',
-        buttonColor: "#9e795aff"
+        buttonColor: "#9e795aff",
+        camera: "#1e2631ff"
     }
 }
 

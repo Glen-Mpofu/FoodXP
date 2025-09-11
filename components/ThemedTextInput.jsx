@@ -17,13 +17,13 @@ export default ThemedTextInput
 const styles = StyleSheet.create({
     textInput: {
         fontFamily: "RaleWay",
-        fontSize: 20,
-        width: "100%",
+        fontSize: 15,
+        width: 250,
         height: 50,
         borderWidth: 1,
         border: "solid",
         margin: 5,
         borderRadius: 10,
-        textAlign: "center"
+        textAlign: "center",
     }
 })

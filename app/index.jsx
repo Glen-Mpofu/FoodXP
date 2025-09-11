@@ -61,7 +61,7 @@ const index = () => {
 
                     <ThemedLink href="/dashboard" style={{ margin: 0 }}>
                         <ThemedButton style={styles.button}>
-                            <ThemedText style= {{color: "#8d9ba5ff"}}>Sign In</ThemedText>
+                            <ThemedText>Sign In</ThemedText>
                         </ThemedButton>
                     </ThemedLink>
 
@@ -88,7 +88,7 @@ const index = () => {
 
                             <ThemedButton onPress={closeForgotPasswordModal}>
                                 <ThemedText>
-                                    Close
+                                    Change
                                 </ThemedText>
                             </ThemedButton>
                         </ThemedView>

@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
 import { StyleSheet, Text, View, Button } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import ThemedButton from "../../components/ThemedButton"
+import ThemedView from "../../components/ThemedView"
+import ThemedText from "../../components/ThemedText"
 
 export default function CameraScreen() {
   const [facing, setFacing] = useState("back");
@@ -8,18 +11,20 @@ export default function CameraScreen() {
 
   if (!permission) {
     // Permission state is still loading
-    return <View />;
+    return <ThemedView />;
   }
 
   if (!permission.granted) {
     // Camera permission not granted yet
     return (
-      <View style={styles.container}>
-        <Text style={{ textAlign: "center" }}>
+      <ThemedView style={styles.container}>
+        <ThemedText style={{ textAlign: "center" }}>
           We need your permission to show the camera
-        </Text>
-        <Button onPress={requestPermission} title="Grant permission" />
-      </View>
+        </ThemedText>
+        <ThemedButton onPress={requestPermission} >
+          <ThemedText>Grant permission</ThemedText>
+        </ThemedButton>
+      </ThemedView>
     );
   }
 
@@ -28,23 +33,29 @@ export default function CameraScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ThemedView style={styles.container}>
       <CameraView style={styles.camera} facing={facing}>
-        <View style={styles.buttonContainer}>
-          <Button title="Flip Camera" onPress={toggleCameraFacing} />
-        </View>
+
+        <ThemedView style={styles.buttonContainer}>
+          <ThemedButton onPress={toggleCameraFacing}>
+            <ThemedText>Flip Camera</ThemedText>
+          </ThemedButton>
+        </ThemedView>
+        
       </CameraView>
-    </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, justifyContent: "", alignItems: "center" },
   camera: { flex: 1 },
   buttonContainer: {
     flex: 1,
     backgroundColor: "transparent",
-    flexDirection: "row",
+    flexDirection: "column",
     margin: 20,
+    alignItems: "center",
+    justifyContent: "center"
   },
 });

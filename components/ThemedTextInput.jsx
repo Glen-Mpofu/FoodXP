@@ -1,9 +1,14 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native'
 import React from 'react'
+import { useColorScheme } from 'react-native';
+import { Colors } from '../constants/Colors';
 
 const ThemedTextInput = ({ style, ...props }) => {
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme] ?? Colors.light
+
     return (
-        <TextInput style={[styles.textInput]} {...props} />
+        <TextInput style={[styles.textInput, {borderColor: theme.borderColor}]} {...props} />
     )
 }
 
@@ -13,7 +18,7 @@ const styles = StyleSheet.create({
     textInput: {
         fontFamily: "RaleWay",
         fontSize: 20,
-        width: 250,
+        width: "100%",
         height: 50,
         borderWidth: 1,
         border: "solid",

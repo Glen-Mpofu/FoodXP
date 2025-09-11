@@ -20,7 +20,7 @@ const Register = () => {
     const theme = Colors[colorScheme] ?? Colors.light;
 
     return (
-        <ThemedView style={styles.container}>
+        <ThemedView style={[styles.container, {backgroundColor: theme.background}]}>
             
             <ThemedView style={styles.mainView}>
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>

@@ -31,7 +31,7 @@ const index = () => {
 
     return (
         //main view
-        <ThemedView style={styles.container}>
+        <ThemedView style={[styles.container, {backgroundColor: theme.background}]}>
 
             <ThemedView style={styles.mainView}>
                 {/* foodxp heading*/}
@@ -51,7 +51,7 @@ const index = () => {
                     </View>
 
                     <TouchableOpacity onPress={openFogotPassWordModal} style = {{ width: "100%", alignSelf: 'flex-end'}}>
-                        <ThemedText style={styles.forgotPassword}>Forgot Password?</ThemedText>
+                        <ThemedText style={[styles.forgotPassword, {color: "#e4450bff", backgroundColor: "transparent"}]}>Forgot Password?</ThemedText>
                     </TouchableOpacity>
 
                 </View>
@@ -61,7 +61,7 @@ const index = () => {
 
                     <ThemedLink href="/dashboard" style={{ margin: 0 }}>
                         <ThemedButton style={styles.button}>
-                            <ThemedText>Sign In</ThemedText>
+                            <ThemedText style= {{color: "#8d9ba5ff"}}>Sign In</ThemedText>
                         </ThemedButton>
                     </ThemedLink>
 
@@ -78,7 +78,7 @@ const index = () => {
                     onRequestClose={closeForgotPasswordModal}
                 >
                     <ThemedView style = {styles.modalOverlay}>
-                         <ThemedView style = {styles.modalContent}>
+                         <ThemedView style = {[styles.modalContent,  {backgroundColor: theme.background}]}>
                             <ThemedText>
                                 Password Change
                             </ThemedText>
@@ -133,7 +133,6 @@ const styles = StyleSheet.create({
     },
     forgotPassword: {
         fontSize: 12,
-        color: '#FF7F50',
         marginBottom: Platform.OS ==='android' ? 5 : 30,
         alignSelf: 'flex-end'
     },
@@ -166,12 +165,11 @@ const styles = StyleSheet.create({
     },
     modalOverlay:{
         flex: 1,
-        backgroundColor: "rgba(0, 0, 0, 0.6)", // dim background
+        backgroundColor: "rgba(30, 38, 49, 0.6)", // dim background
         justifyContent: "center", // center vertically
         alignItems: "center", 
     },
     modalContent: {
-        backgroundColor: "white",
         padding: 20,
         borderRadius: 15,
         width: "80%",     // responsive width

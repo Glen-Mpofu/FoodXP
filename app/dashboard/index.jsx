@@ -10,7 +10,7 @@ export default function Dashboard() {
   const theme = Colors[colorScheme] ?? Colors.light
 
   return (
-    <ThemedView style={[styles.container, {backgroundColor: theme.uiBackground} ]}>
+    <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground }]}>
       <ThemedText>Your Dashboard</ThemedText>
     </ThemedView>
   );

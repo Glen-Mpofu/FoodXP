@@ -9,7 +9,7 @@ export default function DashboardLayout() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light
-  
+
   return (
     <Drawer
       screenOptions={{
@@ -23,7 +23,7 @@ export default function DashboardLayout() {
         drawerActiveTintColor: theme.uiBackground,
         headerStyle: {
           backgroundColor: theme.navBackground,
-          
+
         },
         drawerStyle: {
           backgroundColor: theme.uiBackground,
@@ -65,6 +65,7 @@ export default function DashboardLayout() {
           drawerLabel: "Camera",
           title: "Capture Food",
           drawerItemStyle: { display: "none" },
+          headerShown: false
         }}
       />
     </Drawer>

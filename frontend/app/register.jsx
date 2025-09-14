@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, TouchableOpacity, View, Platform } from 'react-native'
+import { StyleSheet, useColorScheme, TouchableOpacity, View, Platform, Alert } from 'react-native'
 
 //themedui
 import ThemedView from '../components/ThemedView'
@@ -34,7 +34,16 @@ const Register = () => {
             phone: userPhone
         };
         axios.post("http://192.168.101.174:5000/register", foodieData).
-            then(res => { console.log(res.data); router.push("/"); }).
+            then(res => {
+                console.log(res.data);
+                if (res.data.status == 'ok') {
+                    Alert.alert("Foodie Registered Sucessfully", res.data.data, [{ text: "Okay", onPress: () => router.push("/") }])
+                }
+                else {
+                    Alert.alert("fOODIE already has an Account", res.data.data)
+                };
+
+            }).
             catch((e) => { console.log(e) })
     }
 

@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Pressable } from 'react-native'
+import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert } from 'react-native'
 import { useState } from 'react'
 
 //themedui
@@ -27,14 +27,15 @@ const index = () => {
             email,
             password
         }
-        axios.post("http://192.168.101.174:5000/login", foodieData).
+        const baseURL = Platform.OS === "web" ? "http://localhost:5000/login" : "http://192.168.101.174:5000/login"
+        axios.post(baseURL, foodieData).
             then(res => {
                 console.log(res.data);
                 if (res.data.status === "ok") {
-                    router.push("/dashboard/");
+                    Alert.alert("Logged In", res.data.data, [{ text: "Okay", onPress: () => router.push("/dashboard/") }]);
                 }
                 else {
-                    alert(res.data.data)
+                    Alert.alert(res.data.data)
                 }
             }).
             catch(e => { console.log(e) })

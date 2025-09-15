@@ -2,6 +2,9 @@ const express = require("express"); //initialise express
 const app = express();
 const mongoose = require("mongoose");
 
+//getting the database uri
+require("dotenv").config();
+
 //password encryption
 const bcrypt = require("bcryptjs")
 
@@ -13,7 +16,7 @@ app.use(cors({
 
 app.use(express.json())
 
-const mongoUrl = "mongodb+srv://glenmpofu:tshepolovesrea0625@cluster0.biivelo.mongodb.net/FoodXP?retryWrites=true&w=majority&appName=Cluster0"
+const mongoUrl = process.env.MONGO_URL;
 
 //geting the schemas 
 require("./schemas/Foodie")

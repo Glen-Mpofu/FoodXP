@@ -33,14 +33,25 @@ const Register = () => {
             password: password,
             phone: userPhone
         };
-        axios.post("http://192.168.101.174:5000/register", foodieData).
+        axios.post("http://192.168.137.1:5000/register", foodieData).
             then(res => {
                 console.log(res.data);
                 if (res.data.status == 'ok') {
-                    Alert.alert("Foodie Registered Sucessfully", res.data.data, [{ text: "Okay", onPress: () => router.push("/") }])
+                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                        Alert.alert("Foodie Registered Sucessfully", res.data.data, [{ text: "Okay", onPress: () => router.push("/") }])
+                    }
+                    else{
+                        alert("Foodie Registered Sucessfully");
+                        router.push("/");
+                    }
                 }
                 else {
-                    Alert.alert("fOODIE already has an Account", res.data.data)
+                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                        Alert.alert("fOODIE already has an Account", res.data.data)
+                    }
+                    else{
+                        alert("fOODIE already has an Account")
+                    }
                 };
 
             }).
@@ -97,7 +108,7 @@ const styles = StyleSheet.create({
     mainView: {
         width: "100%",
         maxWidth: 450,
-        flex: Platform.OS === "android" ? 0.8 : 0.9,
+        flex: Platform.OS === "android" ? 0.8 : 1,
         borderStyle: 'dashed',
         borderWidth: 1,
         borderRadius: 50, // center children horizontally

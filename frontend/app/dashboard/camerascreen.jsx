@@ -29,6 +29,18 @@ export default function CameraScreen() {
   //only renders the camera when the camera screen is open
   const isFocused = useIsFocused();
 
+  //camera availability
+  const [cameraAvailable, setCameraAvailable] = useState(null);
+
+  useEffect(() => {
+    const checkCamera = async () => {
+      const available = await CameraView.isAvailableAsync();
+      setCameraAvailable(available);
+    };
+
+    checkCamera();
+  }, [])
+
   if (!permission) {
     // Permission state is still loading
     return <ThemedView />;
@@ -41,9 +53,22 @@ export default function CameraScreen() {
         <ThemedText style={{ textAlign: "center" }}>
           We need your permission to show the camera
         </ThemedText>
-        <ThemedButton onPress={requestPermission} >
-          <ThemedText>Grant permission</ThemedText>
-        </ThemedButton>
+        <ThemedView style={styles.buttonContainer}>
+          <ThemedButton style={styles.buttonIcons} onPress={requestPermission} >
+            <ThemedText>Grant permission</ThemedText>
+          </ThemedButton>
+        </ThemedView>
+      </ThemedView>
+    );
+  }
+
+  if(cameraAvailable === false){
+    return (
+      <ThemedView style={styles.container}>
+        <ThemedText style={{ textAlign: "center" }}>
+          We need your permission to show the camera
+        </ThemedText>
+            <ThemedText>No Camera Available</ThemedText>
       </ThemedView>
     );
   }
@@ -53,7 +78,7 @@ export default function CameraScreen() {
   }
 
   function toggleCameraTorch() {
-    setEnableTorch((prev) => (prev === false ? true : false))
+    setEnableTorch((prev) => !prev)
     setTorchIcon((prev) => (prev === "flash-off" ? "flash-outline" : "flash-off"))
   }
   async function captureImage() {
@@ -63,8 +88,8 @@ export default function CameraScreen() {
       setPhoto(photoData.uri)
 
       if (hasMediaLibraryPermission?.granted) {
-        await MediaLibrary.saveToLibraryAsync(photoData.uri);
-        await MediaLirary.createAlbumAsync("FoodXP Images", asset, false)
+        const asset = await MediaLibrary.createAssetAsync(photoData.uri);
+        await MediaLibrary.createAlbumAsync("FoodXP Images", asset, false)
       } else {
         requestMediaLibraryPermission();
       }
@@ -114,14 +139,18 @@ export default function CameraScreen() {
 
       )}
 
-
       {
         photo && (
           <ThemedView style={{ position: "absolute", bottom: 100, }}>
-            <ThemedText>Image Catured</ThemedText>
+            <ThemedText>Image Captured</ThemedText>
             <TouchableOpacity onPress={() => setPhoto(null)}>
-              <Image source={{ uri: photo }} style={styles.imagePreview} />
+              <Ionicons
+                name="close-outline"
+                size={10}
+                accessibilityLabel="Close"
+            />
             </TouchableOpacity>
+            <Image source={{ uri: photo }} style={styles.imagePreview} />
           </ThemedView>
         )
       }
@@ -140,7 +169,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flex: 1,
-    backgroundColor: "tr[ansparent",
+    backgroundColor: "transparent",
     flexDirection: "row",
     margin: 20,
     alignItems: "flex-end",

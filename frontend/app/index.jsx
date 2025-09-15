@@ -27,16 +27,29 @@ const index = () => {
             email,
             password
         }
-        const baseURL = Platform.OS === "web" ? "http://localhost:5000/login" : "http://192.168.101.174:5000/login"
+        const baseURL = Platform.OS === "web" ? "http://localhost:5000/login" : "http://192.168.137.1:5000/login"
         axios.post(baseURL, foodieData).
             then(res => {
                 console.log(res.data);
+                
                 if (res.data.status === "ok") {
-                    Alert.alert("Logged In", res.data.data, [{ text: "Okay", onPress: () => router.push("/dashboard/") }]);
+                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                        Alert.alert("Logged In", res.data.data, [{ text: "Okay", onPress: () => router.push("/dashboard/") }]);
+                    }
+                    else{
+                        alert("Logged In");
+                        router.push("/dashboard/");
+                    }
                 }
                 else {
-                    Alert.alert(res.data.data)
+                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                        Alert.alert(res.data.data)
+                    }
+                    else{
+                        alert(res.data.data);
+                    }
                 }
+                
             }).
             catch(e => { console.log(e) })
     }

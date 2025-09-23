@@ -33,23 +33,23 @@ const Register = () => {
             password: password,
             phone: userPhone
         };
-        axios.post("http://192.168.137.1:5000/register", foodieData).
+        axios.post("http://10.63.147.179:5000/register", foodieData).
             then(res => {
                 console.log(res.data);
                 if (res.data.status == 'ok') {
-                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                    if (Platform.OS === "android" || Platform.OS === "ios") {
                         Alert.alert("Foodie Registered Sucessfully", res.data.data, [{ text: "Okay", onPress: () => router.push("/") }])
                     }
-                    else{
+                    else {
                         alert("Foodie Registered Sucessfully");
                         router.push("/");
                     }
                 }
                 else {
-                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                    if (Platform.OS === "android" || Platform.OS === "ios") {
                         Alert.alert("fOODIE already has an Account", res.data.data)
                     }
-                    else{
+                    else {
                         alert("fOODIE already has an Account")
                     }
                 };

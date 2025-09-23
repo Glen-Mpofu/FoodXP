@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert } from 'react-native'
+import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert, Image } from 'react-native'
 import { useState } from 'react'
 
 //themedui
@@ -27,29 +27,29 @@ const index = () => {
             email,
             password
         }
-        const baseURL = Platform.OS === "web" ? "http://localhost:5000/login" : "http://192.168.137.1:5000/login"
+        const baseURL = Platform.OS === "web" ? "http://localhost:5000/login" : "http://10.63.147.179:5000/login"
         axios.post(baseURL, foodieData).
             then(res => {
                 console.log(res.data);
-                
+
                 if (res.data.status === "ok") {
-                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                    if (Platform.OS === "android" || Platform.OS === "ios") {
                         Alert.alert("Logged In", res.data.data, [{ text: "Okay", onPress: () => router.push("/dashboard/") }]);
                     }
-                    else{
+                    else {
                         alert("Logged In");
                         router.push("/dashboard/");
                     }
                 }
                 else {
-                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                    if (Platform.OS === "android" || Platform.OS === "ios") {
                         Alert.alert(res.data.data)
                     }
-                    else{
+                    else {
                         alert(res.data.data);
                     }
                 }
-                
+
             }).
             catch(e => { console.log(e) })
     }
@@ -209,5 +209,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         flex: 0.6
     },
+
 
 })

@@ -1,6 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { StyleSheet, Text, View, Button, Image, TouchableOpacity } from "react-native";
 
+//model information
+import * as tf from "@tensorflow/tfjs"
+import "@tensorflow/tfjs-react-native";
+import { bundleResourceIO, decodeJpeg } from "@tensorflow/tfjs-react-native";
+
 //camera
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library"
@@ -32,6 +37,25 @@ export default function CameraScreen() {
   //camera availability
   const [cameraAvailable, setCameraAvailable] = useState(null);
 
+  const [model, setModel] = useState(null);
+  const [isTfready, setIsTfReady] = useState(false);
+  useEffect(() => {
+    async function prepare() {
+      await tf.ready();
+      setIsTfReady(true);
+
+      // Load Teachable Machine model from assets
+      const model = await tf.loadGraphModel(
+        bundleResourceIO(
+          require("../../assets/my_model/model.json"),
+          "../../assets/my_model/weights.bin"
+        )
+      );
+      setModel(model);
+    }
+    prepare();
+  }, []);
+
   useEffect(() => {
     const checkCamera = async () => {
       const available = await CameraView.isAvailableAsync();
@@ -44,6 +68,31 @@ export default function CameraScreen() {
   if (!permission) {
     // Permission state is still loading
     return <ThemedView />;
+  }
+
+  //prediction
+  const [prediction, setPrediction] = useState(null);
+  async function classifyPhoto() {
+    if (!photo || !model) return;
+
+    // Convert image URI to tensor
+    const response = await fetch(photo);
+    const imageData = await response.arrayBuffer();
+    const imageTensor = decodeJpeg(new Uint8Array(imageData));
+
+    // Preprocess tensor: resize and normalize (Teachable Machine usually expects 224x224)
+    const resized = tf.image.resizeBilinear(imageTensor, [224, 224]);
+    const normalized = resized.div(255).expandDims(0); // [1, 224, 224, 3]
+
+    // Predict
+    const output = await model.predict(normalized);
+    const predictionsArray = output.dataSync(); // probabilities
+
+    // Map highest probability
+    const highestIndex = predictionsArray.indexOf(Math.max(...predictionsArray));
+    const predictedClass = `Class ${highestIndex}`; // replace with labels from metadata.json if needed
+
+    setPrediction({ className: predictedClass, confidence: predictionsArray[highestIndex] });
   }
 
   if (!permission.granted) {
@@ -62,13 +111,13 @@ export default function CameraScreen() {
     );
   }
 
-  if(cameraAvailable === false){
+  if (cameraAvailable === false) {
     return (
       <ThemedView style={styles.container}>
         <ThemedText style={{ textAlign: "center" }}>
           We need your permission to show the camera
         </ThemedText>
-            <ThemedText>No Camera Available</ThemedText>
+        <ThemedText>No Camera Available</ThemedText>
       </ThemedView>
     );
   }
@@ -138,7 +187,7 @@ export default function CameraScreen() {
         </CameraView>
 
       )}
-
+      {/* image preview */}
       {
         photo && (
           <ThemedView style={{ position: "absolute", bottom: 100, }}>
@@ -148,12 +197,20 @@ export default function CameraScreen() {
                 name="close-outline"
                 size={10}
                 accessibilityLabel="Close"
-            />
+              />
             </TouchableOpacity>
             <Image source={{ uri: photo }} style={styles.imagePreview} />
           </ThemedView>
         )
       }
+
+      {prediction && (
+        <View style={{ alignItems: "center", marginTop: 10 }}>
+          <Text>Prediction: {prediction.className}</Text>
+          <Text>Confidence: {(prediction.confidence * 100).toFixed(2)}%</Text>
+          <Button title="Confirm" onPress={() => saveToBackend(prediction)} />
+        </View>
+      )}
 
     </ThemedView >
   );

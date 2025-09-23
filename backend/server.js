@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 
 //getting the database uri
 require("dotenv").config();
+const mongoUrl = process.env.MONGO_URL;
 
 //password encryption
 const bcrypt = require("bcryptjs")
@@ -15,8 +16,6 @@ app.use(cors({
 }))
 
 app.use(express.json())
-
-const mongoUrl = process.env.MONGO_URL;
 
 //geting the schemas 
 require("./schemas/Foodie")

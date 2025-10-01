@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, TouchableOpacity, View, Platform, Alert } from 'react-native'
+import { StyleSheet, useColorScheme, TouchableOpacity, View, Platform, Alert, Image } from 'react-native'
 
 //themedui
 import ThemedView from '../components/ThemedView'
@@ -10,7 +10,6 @@ import ThemedButton from '../components/ThemedButton'
 //api access
 import axios from "axios"
 
-
 import React from 'react'
 import { Colors } from '../constants/Colors'
 import { router } from 'expo-router'
@@ -21,7 +20,7 @@ const Register = () => {
     const [email, onEmailChange] = React.useState("");
     const [password, onPasswordChange] = React.useState("");
     const [userName, onNameChange] = React.useState("");
-    const [userPhone, onPhoneChange] = React.useState("");
+    const [userConfirmPassword, onChangeConfirmPassword] = React.useState("");
 
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme] ?? Colors.light;
@@ -31,16 +30,33 @@ const Register = () => {
             email: email,
             name: userName,
             password: password,
-            phone: userPhone
         };
-        axios.post("http://192.168.101.174:5000/register", foodieData).
+        axios.post("http://192.168.137.1:5001/register", foodieData).
             then(res => {
-                console.log(res.data);
-                if (res.data.status == 'ok') {
-                    Alert.alert("Foodie Registered Sucessfully", res.data.data, [{ text: "Okay", onPress: () => router.push("/") }])
+                if (res.data.status === 'ok') {
+                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                        Alert.alert(res.data.data, [{ text: "Okay", onPress: () => router.push("/") }])
+                    }
+                    else{
+                        alert("Foodie Registered Sucessfully");
+                        router.push("/");
+                    }
                 }
-                else {
-                    Alert.alert("fOODIE already has an Account", res.data.data)
+                else if(res.data.status === 'foodie exists') {
+                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                        Alert.alert(res.data.data)
+                    }
+                    else{
+                        alert(res.data.data)
+                    }
+                }
+                else{
+                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                        Alert.alert(res.data.data)
+                    }
+                    else{
+                        alert(res.data.data)
+                    }
                 };
 
             }).
@@ -49,7 +65,8 @@ const Register = () => {
 
     return (
         <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
-
+            <Image style={styles.bgImage} source={require("../assets/foodxp/bg2.jpg")}/>
+            
             <ThemedView style={styles.mainView}>
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>
 
@@ -69,9 +86,9 @@ const Register = () => {
 
                     <ThemedTextInput style={styles.input} secureTextEntry={true} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
 
-                    <ThemedText style={[{ marginBottom: 0 }]}>Phone</ThemedText>
-
-                    <ThemedTextInput style={styles.input} value={userPhone} onChangeText={onPhoneChange} placeholder="Enter your Phone" />
+                    <ThemedText style={[{ marginBottom: 0 }]}>Confirm Password</ThemedText>
+                    
+                    <ThemedTextInput style={styles.input} secureTextEntry={true} value={userConfirmPassword} onChangeText={onChangeConfirmPassword} placeholder="Re enter your Password" />
                 </View>
                 <ThemedView style={styles.links}>
                     <ThemedButton style={styles.button} onPress={() => handleSubmit()}>
@@ -97,7 +114,7 @@ const styles = StyleSheet.create({
     mainView: {
         width: "100%",
         maxWidth: 450,
-        flex: Platform.OS === "android" ? 0.8 : 0.9,
+        flex: Platform.OS === "android" ? 0.8 : 1,
         borderStyle: 'dashed',
         borderWidth: 1,
         borderRadius: 50, // center children horizontally
@@ -144,4 +161,9 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         marginTop: 5,
     },
+    bgImage: {
+        ...StyleSheet.absoluteFillObject,
+        height: "100%",
+        width: "100%",
+    }
 })

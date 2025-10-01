@@ -4,29 +4,33 @@ export const Colors = {
     warning: '#8f0000ff',
     accent: '#161b22', 
     success: '#9CAFAA', 
-    drawerActive:  "#b46334ff",
+    drawerActive:  "#df824dff",
     drawerActiveTint:  "#fff8f4ff",
 
     dark: {
-        text: '#F7F4EA',           
-        title: '#ffffff',          
-        background: '#bbb6b3ff',     
-        navBackground: '#9b867aff',  
-        uiBackground: '#ffffffff',
-        imageColor: '#c9d153ff',   
-        borderColor: '#ffffffff', 
-        buttonColor: "#9b867aff",
-        camera: "#F7F4EA"
+        text: '#210435ff',         
+        title: '#111827',     
+        taPlaceholder: "#810d9bff",
+        forgotPassword: "#df824dff",     
+        background: '#F7F4EA',      
+        navBackground: '#9e795aff', 
+        uiBackground: '#ffffffff', 
+        imageColor: '#9CAFAA', 
+        borderColor: 'green',
+        buttonColor: "#ffffff",
+        camera: "#1e2631ff"
     },
     light: {
-        text: '#e0ddd0ff',          
-        title: '#111827',          
+        text: '#210435ff',          
+        title: '#000000ff', 
+        taPlaceholder: "#810d9bff",
+        forgotPassword: "#ffe600ff",         
         background: '#F7F4EA',     
         navBackground: '#9e795aff', 
         uiBackground: '#ffffffff',    
         imageColor: '#9CAFAA', 
-        borderColor: '#1e2631ff',
-        buttonColor: "#9e795aff",
+        borderColor: '#210435ff',
+        buttonColor: "#e5b2f0ff",
         camera: "#1e2631ff"
     }
 }

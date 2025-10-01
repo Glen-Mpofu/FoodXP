@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert } from 'react-native'
+import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert, Image } from 'react-native'
 import { useState } from 'react'
 
 //themedui
@@ -27,16 +27,29 @@ const index = () => {
             email,
             password
         }
-        const baseURL = Platform.OS === "web" ? "http://localhost:5000/login" : "http://192.168.101.174:5000/login"
+        const baseURL = Platform.OS === "web" ? "http://localhost:5001/login" : "http://192.168.137.1:5001/login"
         axios.post(baseURL, foodieData).
             then(res => {
                 console.log(res.data);
+                
                 if (res.data.status === "ok") {
-                    Alert.alert("Logged In", res.data.data, [{ text: "Okay", onPress: () => router.push("/dashboard/") }]);
+                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                        Alert.alert("Logged In", res.data.data, [{ text: "Okay", onPress: () => router.push("/dashboard/") }]);
+                    }
+                    else{
+                        alert(res.data.data);
+                        router.push("/dashboard/");
+                    }
                 }
                 else {
-                    Alert.alert(res.data.data)
+                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                        Alert.alert(res.data.data)
+                    }
+                    else{
+                        alert(res.data.data);
+                    }
                 }
+                
             }).
             catch(e => { console.log(e) })
     }
@@ -55,6 +68,7 @@ const index = () => {
         //main view
         <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
 
+            <Image style={styles.bgImage} source={require("../assets/foodxp/bg2.jpg")}/>
             <ThemedView style={styles.mainView}>
                 {/* foodxp heading*/}
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>
@@ -73,7 +87,7 @@ const index = () => {
                     </View>
 
                     <TouchableOpacity onPress={openFogotPassWordModal} style={{ width: "100%", alignSelf: 'flex-end' }}>
-                        <ThemedText style={[styles.forgotPassword, { color: "#e4450bff", backgroundColor: "transparent" }]}>Forgot Password?</ThemedText>
+                        <ThemedText style={[styles.forgotPassword, { color: theme.forgotPassword, backgroundColor: "transparent" }]}>Forgot Password?</ThemedText>
                     </TouchableOpacity>
 
                 </View>
@@ -114,6 +128,7 @@ const index = () => {
                     </ThemedView>
                 </Modal>
             </ThemedView>
+
         </ThemedView>
     )
 }
@@ -196,5 +211,9 @@ const styles = StyleSheet.create({
         alignItems: "center",
         flex: 0.6
     },
-
+    bgImage: {
+        ...StyleSheet.absoluteFillObject,
+        height: "100%",
+        width: "100%",
+    }
 })

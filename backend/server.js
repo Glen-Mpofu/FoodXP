@@ -1,6 +1,6 @@
+//our backend api
 const express = require("express"); //initialise express
 const app = express();
-const mongoose = require("mongoose");
 
 //password encryption
 const bcrypt = require("bcryptjs")
@@ -11,81 +11,70 @@ app.use(cors({
     origin: "*"
 }))
 
+const port = process.env.PORT ?? 5001
+
 app.use(express.json())
+app.listen(port, () => {
+    console.log(`Listening on Port ${port}`)
+})
 
-const mongoUrl = "mongodb+srv://glenmpofu:tshepolovesrea0625@cluster0.biivelo.mongodb.net/FoodXP?retryWrites=true&w=majority&appName=Cluster0"
+require("dotenv").config();
 
-//geting the schemas 
-require("./schemas/Foodie")
+const {Pool} = require("pg");
 
-//modeling the schemas into the database
-const Foodie = mongoose.model("Foodie")
+const database = process.env.DATABASE_URL
+const pool = new Pool({
+    connectionString: database
+})
 
-//connecting the database
-mongoose.connect(mongoUrl).then(() => {
+//test connection
+pool.query("Select version();").
+then((res) => {
     console.log("Database Connected")
-}).catch((e) => {
-    console.log(e)
-})
+    console.log("Version "+res.rows[0].version)
+}).catch((e) => console.log("Database Connection Error: " +e))
 
-//creating a get API
-app.get("/", (req, res) => {
-    res.send({ status: "Started" })
-})
+//table creation
+pool.query(`
+    CREATE TABLE IF NOT EXISTS FOODIE
+    (
+        EMAIL VARCHAR(100) PRIMARY KEY, 
+        NAME VARCHAR(50) NOT NULL, 
+        PASSWORD VARCHAR(100) NOT NULL
+    )    
+    `).then((res) => {
+        console.log("Foodie Table Ready")
 
-//assigning a pool
-app.listen(5000, () => {
-    console.log("Server Has Started at Port " + 5000)
-})
+    }).catch((e) => {
+        console.log("Error creating table"+e)
+    })
 
-//register API. async is passed to wait for data
-//req- comes from the app and response comes from the server
+    //register
 app.post("/register", async (req, res) => {
-    console.log("Request Body:", req.body);
-    const { email, name, password, phone } = req.body;
+    const {email, name, password} = req.body
+    console.log(email)
 
-    const cleanEmail = email.trim().toLowerCase();
+    //encrypting password
+    const encryptedPassword = await bcrypt.hash(password, 10)
 
-    const oldFoodie = await Foodie.findOne({ email: cleanEmail })
-
-    if (oldFoodie) {
-        return res.send({ status: "error", data: "Foodie Already Has an Account" });
+    //checking if the user isn't already in the db
+    const oldFoodie = pool.query("SELECT EMAIL FROM FOODIE WHERE EMAIL = $1", [email])
+    if((await oldFoodie).rowCount >= 1){
+        return res.send({status: "foodie exists", data: "Foodie Already Has an Account"});
     }
 
-    //creates a hash password encryption of 10 characters
-    const encryptPassword = await bcrypt.hash(password, 10)
+    pool.query(
+        `INSERT INTO FOODIE(EMAIL, NAME, PASSWORD)
+         VALUES($1, $2, $3);
+        `, [email, name, encryptedPassword]
+    ).then(() =>{
+        console.log("Foodie Account Created")
+    }).catch((e) => console.log("Error creating account: "+e))
 
-    try {
-        await Foodie.create({
-            email: cleanEmail,
-            name: name,
-            password: encryptPassword,
-            phone: phone
-        })
-        res.send({ status: "ok", data: "Foodie Created" })
-    } catch (error) {
-        console.log(error)
-    }
+    res.send({status: "ok", data: "Foodie Registered Successfully"})
 })
 
-//login post API
+//login
 app.post("/login", async (req, res) => {
-    console.log("Request Body", req.body)
-    const { email, password } = req.body
-
-    const findFoodie = await Foodie.findOne({ email: email })
-
-    if (!findFoodie) {
-        return res.send({ status: "error", data: "Foodie Not Found" })
-    }
-
-    const passMatch = await bcrypt.compare(password, findFoodie.password);
-
-    if (passMatch) {
-        res.send({ status: "ok", data: "Login Sucessful" })
-    }
-    else {
-        res.send({ status: "error", data: "Wrong Password" })
-    }
-
+    console.log(req.body)
 })

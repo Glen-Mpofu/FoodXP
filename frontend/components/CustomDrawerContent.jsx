@@ -19,6 +19,7 @@ export default function CustomDrawerContent(props) {
                     label="Logout"
                     onPress={() => {
                         // Clear auth/session here
+                        alert("Logged Out")
                         router.replace("/"); // redirect to login screen
                     }}
                     labelStyle={{ color: 'red', fontWeight: 'bold' }}

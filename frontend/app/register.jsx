@@ -29,32 +29,32 @@ const Register = () => {
         const foodieData = {
             email: email,
             name: userName,
-            password: password,
+            password: userConfirmPassword,
         };
-        axios.post("http://192.168.137.1:5001/register", foodieData).
+        axios.post("http://192.168.101.219:5001/register", foodieData).
             then(res => {
                 if (res.data.status === 'ok') {
-                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                    if (Platform.OS === "android" || Platform.OS === "ios") {
                         Alert.alert(res.data.data, [{ text: "Okay", onPress: () => router.push("/") }])
                     }
-                    else{
+                    else {
                         alert("Foodie Registered Sucessfully");
                         router.push("/");
                     }
                 }
-                else if(res.data.status === 'foodie exists') {
-                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                else if (res.data.status === 'foodie exists') {
+                    if (Platform.OS === "android" || Platform.OS === "ios") {
                         Alert.alert(res.data.data)
                     }
-                    else{
+                    else {
                         alert(res.data.data)
                     }
                 }
-                else{
-                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                else {
+                    if (Platform.OS === "android" || Platform.OS === "ios") {
                         Alert.alert(res.data.data)
                     }
-                    else{
+                    else {
                         alert(res.data.data)
                     }
                 };
@@ -65,8 +65,8 @@ const Register = () => {
 
     return (
         <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
-            <Image style={styles.bgImage} source={require("../assets/foodxp/bg2.jpg")}/>
-            
+            <Image style={styles.bgImage} source={require("../assets/foodxp/bg2.jpg")} />
+
             <ThemedView style={styles.mainView}>
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>
 
@@ -87,7 +87,7 @@ const Register = () => {
                     <ThemedTextInput style={styles.input} secureTextEntry={true} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
 
                     <ThemedText style={[{ marginBottom: 0 }]}>Confirm Password</ThemedText>
-                    
+
                     <ThemedTextInput style={styles.input} secureTextEntry={true} value={userConfirmPassword} onChangeText={onChangeConfirmPassword} placeholder="Re enter your Password" />
                 </View>
                 <ThemedView style={styles.links}>

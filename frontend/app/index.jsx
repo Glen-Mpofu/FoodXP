@@ -27,29 +27,37 @@ const index = () => {
             email,
             password
         }
-        const baseURL = Platform.OS === "web" ? "http://localhost:5001/login" : "http://192.168.137.1:5001/login"
+        const baseURL = Platform.OS === "web" ? "http://localhost:5001/login" : "http://192.168.101.219:5001/login"
         axios.post(baseURL, foodieData).
             then(res => {
                 console.log(res.data);
-                
+
                 if (res.data.status === "ok") {
-                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                    if (Platform.OS === "android" || Platform.OS === "ios") {
                         Alert.alert("Logged In", res.data.data, [{ text: "Okay", onPress: () => router.push("/dashboard/") }]);
                     }
-                    else{
+                    else {
                         alert(res.data.data);
                         router.push("/dashboard/");
                     }
                 }
-                else {
-                    if(Platform.OS === "android" || Platform.OS === "ios"){
+                else if (res.data.status === "no account") {
+                    if (Platform.OS === "android" || Platform.OS === "ios") {
                         Alert.alert(res.data.data)
                     }
-                    else{
+                    else {
                         alert(res.data.data);
                     }
                 }
-                
+                else if (res.data.status === "wrong password") {
+                    if (Platform.OS === "android" || Platform.OS === "ios") {
+                        Alert.alert(res.data.data)
+                    }
+                    else {
+                        alert(res.data.data);
+                    }
+                }
+
             }).
             catch(e => { console.log(e) })
     }
@@ -68,7 +76,7 @@ const index = () => {
         //main view
         <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
 
-            <Image style={styles.bgImage} source={require("../assets/foodxp/bg2.jpg")}/>
+            <Image style={styles.bgImage} source={require("../assets/foodxp/bg2.jpg")} />
             <ThemedView style={styles.mainView}>
                 {/* foodxp heading*/}
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>

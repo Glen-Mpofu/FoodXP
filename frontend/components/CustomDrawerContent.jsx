@@ -1,8 +1,9 @@
 import { DrawerContentScrollView, DrawerItemList, DrawerItem } from '@react-navigation/drawer';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import axios from "axios"
-
+import { Toast } from 'toastify-react-native';
+import { Ionicons } from '@expo/vector-icons';
 export default function CustomDrawerContent(props) {
     const router = useRouter();
 
@@ -10,23 +11,24 @@ export default function CustomDrawerContent(props) {
         // Clear auth/session here
         // redirect to login screen
 
-        await axios.post("http://192.168.101.219:5001/logout", {}, { withCredentials: true }).
+        await axios.post("http://192.168.137.1:5001/logout", { withCredentials: true }).
             then((res) => {
                 if (res.data.status === "ok") {
-                    if (Platform.OS === "android" || Platform.OS === "ios") {
-                        Alert.alert("Logged Out", res.data.data, [{ text: "Logging Out", onPress: () => router.replace("/") }]);
-                    }
-                    else {
-                        alert(res.data.data);
-                        router.replace("/");
-                    }
+                    Toast.show({
+                        type: "success",
+                        text1: res.data.data,
+                        useModal: false
+                    })
+                    router.replace("/");                    
                 }
             }).catch((e) => {
                 console.log(e)
-                alert("Something went Wrong")
+                Toast.show({
+                    type: "success",
+                    text1: e,
+                    useModal: false
+                })
             })
-
-
     }
 
     return (
@@ -38,14 +40,12 @@ export default function CustomDrawerContent(props) {
                 <DrawerItemList {...props} />
             </View>
 
-            <View style={{ marginBottom: 20 }}>
-                <DrawerItem
-                    label="Logout"
-                    onPress={() => {
-                        handleLogout();
-                    }}
-                    labelStyle={{ color: 'red', fontWeight: 'bold' }}
-                />
+            <View style={{ marginBottom: 20,flexDirection: "row", alignContent: "center", width: "100%" }}>
+                <View style={{position: "absolute", alignSelf: "flex-end", alignItems: "center", right: 10}}>
+                    <Pressable onPress={()=> handleLogout()}>
+                        <Ionicons name="log-out" color={"red"} size={30} style={{}}/>
+                    </Pressable>
+                </View>
             </View>
         </DrawerContentScrollView>
     );

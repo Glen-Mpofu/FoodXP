@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert, Image } from 'react-native'
+import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert, ImageBackground , Pressable } from 'react-native'
 import { useState } from 'react'
 
 //themedui
@@ -13,49 +13,69 @@ import { Colors } from '../constants/Colors'
 
 import axios from "axios"
 import { router } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons';
+
+//toast
+import { Toast } from 'toastify-react-native'
 
 //login page
 const index = () => {
     const [email, onEmailChange] = React.useState("");
     const [password, onPasswordChange] = React.useState("");
+    const [showPassword, onShowPasswordChange] = React.useState(true);
+
     const [newPassword, onNewPasswordChange] = React.useState("");
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme] ?? Colors.light;
 
     function handleSubmit() {
+        if(!email.endsWith("@gmail.com")){
+            Toast.show({
+                type: "error",
+                text1: "Please enter a valid email",
+                useModal: false
+            })
+            return;
+        }else if(password.trim() === ""){
+            Toast.show({
+                type: "error",
+                text1: "Please enter a password",
+                useModal: false
+            })
+            return;
+        }
+        
         const foodieData = {
             email,
             password
         }
-        const baseURL = Platform.OS === "web" ? "http://localhost:5001/login" : "http://192.168.101.219:5001/login"
+        const baseURL = Platform.OS === "web" ? "http://localhost:5001/login" : "http://192.168.137.1:5001/login"
         axios.post(baseURL, foodieData).
             then(res => {
                 console.log(res.data);
 
                 if (res.data.status === "ok") {
-                    if (Platform.OS === "android" || Platform.OS === "ios") {
-                        Alert.alert("Logged In", res.data.data, [{ text: "Okay", onPress: () => router.push("/dashboard/") }]);
-                    }
-                    else {
-                        alert(res.data.data);
-                        router.push("/dashboard/");
-                    }
+                    //Alert.alert("Logged In", res.data.data, [{ text: "Okay", onPress: () => router.push("/dashboard/") }]);
+                    Toast.show({
+                        type: "success",
+                        text1: res.data.data,
+                        useModal: false
+                    });
+                    router.push("/dashboard/");                    
                 }
                 else if (res.data.status === "no account") {
-                    if (Platform.OS === "android" || Platform.OS === "ios") {
-                        Alert.alert(res.data.data)
-                    }
-                    else {
-                        alert(res.data.data);
-                    }
+                    Toast.show({
+                        type: "error",
+                        text1: res.data.data,
+                        useModal: false
+                    })                    
                 }
                 else if (res.data.status === "wrong password") {
-                    if (Platform.OS === "android" || Platform.OS === "ios") {
-                        Alert.alert(res.data.data)
-                    }
-                    else {
-                        alert(res.data.data);
-                    }
+                    Toast.show({
+                        type: "error",
+                        text1: res.data.data,
+                        useModal: false
+                    })
                 }
 
             }).
@@ -76,7 +96,7 @@ const index = () => {
         //main view
         <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
 
-            <Image style={styles.bgImage} source={require("../assets/foodxp/bg2.jpg")} />
+            <ImageBackground style={styles.bgImage} source={require("../assets/foodxp/bg2.jpg")} resizeMode='cover'/>
             <ThemedView style={styles.mainView}>
                 {/* foodxp heading*/}
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>
@@ -88,10 +108,12 @@ const index = () => {
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Email</ThemedText>
                     <ThemedTextInput style={styles.input} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
 
-                    <View style={styles.password}>
-                        <ThemedText style={[{ marginBottom: 0 }]}>Password</ThemedText>
-                        <ThemedTextInput style={styles.input} secureTextEntry={true} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
-
+                    <ThemedText style={[{ marginBottom: 0 }]}>Password</ThemedText>
+                    <View style={styles.passwordContainer}>                        
+                        <ThemedTextInput style={[{width: "80%"}, styles.input]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
+                        <Pressable onPress={()=>onShowPasswordChange(!showPassword)}>
+                            <Ionicons name={ showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"}/>
+                        </Pressable>
                     </View>
 
                     <TouchableOpacity onPress={openFogotPassWordModal} style={{ width: "100%", alignSelf: 'flex-end' }}>
@@ -125,7 +147,9 @@ const index = () => {
                             </ThemedText>
 
                             <ThemedTextInput style={styles.input} value={password} onChangeText={onPasswordChange} placeholder="Enter your Old Password" />
+                            
                             <ThemedTextInput style={styles.input} value={newPassword} onChangeText={onNewPasswordChange} placeholder="Enter your New Password" />
+                            <Ionicons name={ showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"}/>
 
                             <ThemedButton onPress={closeForgotPasswordModal}>
                                 <ThemedText>
@@ -185,10 +209,8 @@ const styles = StyleSheet.create({
     input: {
         width: '100%',
         borderWidth: 1,
-        borderColor: '#DDD',
         borderRadius: 10,
         fontSize: 16,
-        backgroundColor: '#FAFAFA',
     },
     links: {
         flex: 0,
@@ -221,7 +243,16 @@ const styles = StyleSheet.create({
     },
     bgImage: {
         ...StyleSheet.absoluteFillObject,
-        height: "100%",
-        width: "100%",
+        resizeMode: "cover"        
+    },
+    icon:{
+        alignSelf:"center",
+    },
+    passwordContainer:{
+        height: 70,
+        width: "100%", 
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center"
     }
 })

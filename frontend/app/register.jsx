@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, TouchableOpacity, View, Platform, Alert, Image } from 'react-native'
+import { StyleSheet, useColorScheme, TouchableOpacity, View, Platform, Alert, Image, Pressable } from 'react-native'
 
 //themedui
 import ThemedView from '../components/ThemedView'
@@ -14,49 +14,84 @@ import React from 'react'
 import { Colors } from '../constants/Colors'
 import { router } from 'expo-router'
 
+import { Toast } from 'toastify-react-native'
+
+import { Ionicons } from '@expo/vector-icons';
 
 //login page
 const Register = () => {
     const [email, onEmailChange] = React.useState("");
-    const [password, onPasswordChange] = React.useState("");
     const [userName, onNameChange] = React.useState("");
-    const [userConfirmPassword, onChangeConfirmPassword] = React.useState("");
+        //password
+        const [password, onPasswordChange] = React.useState("");
+        const [showPassword, onShowPasswordChange] = React.useState(true);
+
+        //confirm pasword
+        const [userConfirmPassword, onChangeConfirmPassword] = React.useState("");
+        const [showConfirmPassword, onConfirmShowPasswordChange] = React.useState(true);
 
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme] ?? Colors.light;
 
     function handleSubmit() {
+        //valid email check
+        const emailCheck = email.endsWith("@gmail.com");
+        if(!emailCheck){
+            Toast.show({
+                type: "error",
+                text1: "Wrong Email Format"
+            })
+            return;
+        }
+
+        //Name
+        if(userName.trim() === ""){
+            Toast.show({
+                type: "error",
+                text1: "Please enter a Name",
+                useModal: false
+            })
+            return;
+        }
+
+        //password match check
+        if(password != userConfirmPassword){
+            Toast.show({
+                type: "error",
+                text1: "Passwords don't match",
+                useModal: false
+            })
+            return;
+        }
+
         const foodieData = {
             email: email,
             name: userName,
             password: userConfirmPassword,
         };
-        axios.post("http://192.168.101.219:5001/register", foodieData).
+        axios.post("http://192.168.137.1:5001/register", foodieData).
             then(res => {
-                if (res.data.status === 'ok') {
-                    if (Platform.OS === "android" || Platform.OS === "ios") {
-                        Alert.alert(res.data.data, [{ text: "Okay", onPress: () => router.push("/") }])
-                    }
-                    else {
-                        alert("Foodie Registered Sucessfully");
-                        router.push("/");
-                    }
+                if (res.data.status === 'ok') {                  
+                    Toast.show({
+                        type: "success",
+                        text1: res.data.data,
+                        useModal: false
+                    })
+                    router.push("/");
                 }
                 else if (res.data.status === 'foodie exists') {
-                    if (Platform.OS === "android" || Platform.OS === "ios") {
-                        Alert.alert(res.data.data)
-                    }
-                    else {
-                        alert(res.data.data)
-                    }
+                    Toast.show({
+                        type: "error",
+                        text1: res.data.data,
+                        useModal: false
+                    })
                 }
                 else {
-                    if (Platform.OS === "android" || Platform.OS === "ios") {
-                        Alert.alert(res.data.data)
-                    }
-                    else {
-                        alert(res.data.data)
-                    }
+                    Toast.show({
+                        type: "error",
+                        text1: res.data.data,
+                        useModal: false
+                    })    
                 };
 
             }).
@@ -71,24 +106,34 @@ const Register = () => {
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>
 
                 <ThemedText style={styles.wHeading} >Sign Up</ThemedText>
-                <ThemedText >Sign up to access your Everything FoodXP!</ThemedText>
-
+                <ThemedText>Sign up to access Everything FoodXP!</ThemedText>
+                
                 <View style={styles.inputView}>
+                    {/* EMAIL */}
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Email</ThemedText>
-
                     <ThemedTextInput style={styles.input} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
 
+                    {/* NAME */}
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Name</ThemedText>
-
                     <ThemedTextInput style={styles.input} value={userName} onChangeText={onNameChange} placeholder="Enter your Name" />
 
-                    <ThemedText style={[{ marginBottom: 0 }]}>Password</ThemedText>
+                    {/* PASSWORD */}
+                    <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Password</ThemedText>
+                    <View style={styles.passwordContainer}>
+                        <ThemedTextInput style={[{width: "80%"}, styles.input]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
+                        <Pressable onPress={()=>onShowPasswordChange(!showPassword)}>
+                            <Ionicons name={ showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"}/>    
+                        </Pressable>
+                    </View>
 
-                    <ThemedTextInput style={styles.input} secureTextEntry={true} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
-
-                    <ThemedText style={[{ marginBottom: 0 }]}>Confirm Password</ThemedText>
-
-                    <ThemedTextInput style={styles.input} secureTextEntry={true} value={userConfirmPassword} onChangeText={onChangeConfirmPassword} placeholder="Re enter your Password" />
+                    {/* CONFIRM PASSWORD */}
+                    <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Confirm Password</ThemedText>
+                    <View style={styles.passwordContainer}>
+                        <ThemedTextInput style={[{width: "80%"},styles.input]} secureTextEntry={showConfirmPassword} value={userConfirmPassword} onChangeText={onChangeConfirmPassword} placeholder="Confirm Password" />
+                        <Pressable onPress={()=>onConfirmShowPasswordChange(!showConfirmPassword)}>
+                            <Ionicons name={ showConfirmPassword ? "eye" : "eye-off"} size={30} style={styles.icon}color={"purple"}/>    
+                        </Pressable>
+                    </View>
                 </View>
                 <ThemedView style={styles.links}>
                     <ThemedButton style={styles.button} onPress={() => handleSubmit()}>
@@ -96,7 +141,7 @@ const Register = () => {
                     </ThemedButton>
 
                     <ThemedLink href="/" style={styles.registerLink}>
-                        <ThemedText>Already Have an Account? Sign In</ThemedText>
+                        <ThemedText style={{marginBottom: 30}}>Already Have an Account? Sign In</ThemedText>
                     </ThemedLink>
                 </ThemedView>
 
@@ -131,11 +176,12 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         alignSelf: 'flex-start',
         marginBottom: 10,
-        marginTop: Platform.OS === "android" ? 20 : 0
+        marginTop: Platform.OS === "android" ? 20 : 0,
     },
     inputView: {
-        marginTop: 20,
+        marginTop: 10,
         marginBottom: Platform.OS === "android" ? 0 : 20,
+        alignItems: "center"
     },
     button: {
         borderRadius: 10,
@@ -143,18 +189,14 @@ const styles = StyleSheet.create({
         marginTop: Platform.OS === "android" ? 5 : 50
     },
     input: {
-        width: '100%',
-        borderWidth: 1,
-        borderColor: '#DDD',
-        borderRadius: 10,
         fontSize: 16,
-        backgroundColor: '#FAFAFA',
+        backgroundColor: 'transparent',
     },
     links: {
         flex: 0,
         alignContent: "center",
         alignItems: "center",
-        marginTop: 10,
+        marginTop: 20,
         width: '100%',
     },
     registerLink: {
@@ -165,5 +207,15 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         height: "100%",
         width: "100%",
+    },
+    icon:{
+        alignSelf:"center",
+    },
+    passwordContainer:{
+        height: 70,
+        width: "100%", 
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center"
     }
 })

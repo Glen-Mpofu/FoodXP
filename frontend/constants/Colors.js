@@ -4,7 +4,7 @@ export const Colors = {
     warning: '#8f0000ff',
     accent: '#161b22', 
     success: '#9CAFAA', 
-    drawerActive:  "#df824dff",
+    drawerActive:  "#9CAFAA",
     drawerActiveTint:  "#fff8f4ff",
 
     dark: {
@@ -13,7 +13,7 @@ export const Colors = {
         taPlaceholder: "#810d9bff",
         forgotPassword: "#df824dff",     
         background: '#F7F4EA',      
-        navBackground: '#9e795aff', 
+        navBackground: '#9CAFAA', 
         uiBackground: '#ffffffff', 
         imageColor: '#9CAFAA', 
         borderColor: 'green',

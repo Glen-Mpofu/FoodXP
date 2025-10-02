@@ -20,6 +20,7 @@
     "mongoose": "^8.18.1",
     "mongose": "^0.0.2-security",
     "nodemon": "^3.1.10",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
+    "toastify-react-native": "^7.2.3"
   }
 }

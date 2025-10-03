@@ -2,6 +2,11 @@
 const express = require("express");
 const session = require("express-session") // npm install express-session
 
+// for running the python file
+const { spawn, execFile } = require("child_process");
+
+const path = require('path');
+const fs = require('fs');
 //initialise express
 const app = express();
 
@@ -23,12 +28,12 @@ app.use(session({
         secure: false,
         maxAge: 1000 * 60 * 60 * 24 // 1 day. the session stays alive for 1 day
     }
-
 }));
 
 const port = process.env.PORT ?? 5001
 
-app.use(express.json())
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.listen(port, () => {
     console.log(`Listening on Port ${port}`)
 })
@@ -124,10 +129,49 @@ app.post("/login", async (req, res) => {
 })
 
 //logout 
-app.post("/logout", (req, res) => {
+app.post("/logout", async (req, res) => {
     req.session.destroy(err => {
         if (err) return res.status(500).send({ status: "error", data: "Logout failed" });
         res.clearCookie("connect.sid");
         return res.send({ status: "ok", data: "Logged out successfully" });
     })
 })
+
+//saving the food
+const classifyModelFile = path.join(__dirname, "model", "pantry_frigde_model.py") 
+
+app.post("/savefood", async (req, res) => {
+  try {
+    const { photo } = req.body;
+    if (!photo) return res.status(400).json({ error: "No image provided" });
+
+    // Remove the prefix
+    const base64Data = photo.replace(/^data:image\/\w+;base64,/, "");
+
+    const tempPath = path.join(__dirname, "temp_image.jpg");
+    fs.writeFileSync(tempPath, base64Data, "base64");
+
+    execFile("python", [classifyModelFile, tempPath], (err, stdout, stderr) => {
+      // Always delete temp file
+      fs.unlinkSync(tempPath);
+
+      if (err) {
+        console.error("Python error:", err);
+        return res.status(500).json({ error: err.message });
+      }
+
+      try {
+        const result = JSON.parse(stdout);
+        console.log("Python result:", result);
+        res.json(result);
+      } catch (parseErr) {
+        console.error("Failed to parse Python output:", stdout, parseErr);
+        res.status(500).json({ error: "Failed to parse Python output" });
+      }
+    });
+
+  } catch (error) {
+    console.error("Server error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});

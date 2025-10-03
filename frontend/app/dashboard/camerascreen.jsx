@@ -17,6 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import { useIsFocused } from "@react-navigation/native";
 import { Toast } from "toastify-react-native";
+import axios from "axios"
 
 export default function CameraScreen() {
   const [facing, setFacing] = useState("back");
@@ -88,6 +89,10 @@ export default function CameraScreen() {
             />
             </TouchableOpacity>
             <Image source={{ uri: photo }} style={styles.imagePreview} />
+
+            <ThemedButton style={{backgroundColor: "transparent", width: 150, height:50, margin: 5}} onPress={()=> saveFood()}>
+              <ThemedText>Add to FoodBox</ThemedText>
+            </ThemedButton>
           </ThemedView>
         )
       }
@@ -150,6 +155,16 @@ export default function CameraScreen() {
     }
   }
 
+  async function saveFood() {
+    
+    axios.post("http://192.168.137.1:5001/savefood", {photo}).
+    then((res) => {
+
+    }).catch((e)=>{
+      console.log(e)
+    })
+
+  }
   return (
     <ThemedView style={styles.container}>
       {isFocused && (

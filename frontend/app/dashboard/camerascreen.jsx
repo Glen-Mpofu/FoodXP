@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { StyleSheet, Text, View, Button, Image, TouchableOpacity } from "react-native";
+import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform } from "react-native";
 
 //camera
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library"
+
+import * as ImagePicker from "expo-image-picker"
 
 //themed components 
 import ThemedButton from "../../components/ThemedButton"
@@ -14,6 +16,7 @@ import ThemedText from "../../components/ThemedText"
 import { Ionicons } from "@expo/vector-icons";
 
 import { useIsFocused } from "@react-navigation/native";
+import { Toast } from "toastify-react-native";
 
 export default function CameraScreen() {
   const [facing, setFacing] = useState("back");
@@ -40,6 +43,57 @@ export default function CameraScreen() {
 
     checkCamera();
   }, [])
+
+  const uploadImage = async () => {
+    try {
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1
+      });
+
+      setPhoto(result.assets[0].uri)
+    
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  
+  //if the app is in web, allow for uploading
+  /*
+    npx expo install expo-image-picker
+  */
+  if(Platform.OS === "web"){
+    return(
+      <ThemedView style={{justifyContent: "", alignItems: "center"}}> 
+        <ThemedText>Upload Image</ThemedText>
+        <TouchableOpacity onPress={() => 
+          uploadImage()
+        }>
+          <Ionicons name="cloud-upload" size={30}/>
+        </TouchableOpacity>
+
+        {
+        photo && (
+          <ThemedView style={{ position: "absolute", bottom: 100, }}>
+            <ThemedText>Image Captured</ThemedText>
+            <TouchableOpacity onPress={() => setPhoto(null)}>
+              <Ionicons
+                name="close-outline"
+                size={20}
+                accessibilityLabel="Close"
+            />
+            </TouchableOpacity>
+            <Image source={{ uri: photo }} style={styles.imagePreview} />
+          </ThemedView>
+        )
+      }
+      </ThemedView>
+    )
+  }
 
   if (!permission) {
     // Permission state is still loading
@@ -146,7 +200,7 @@ export default function CameraScreen() {
             <TouchableOpacity onPress={() => setPhoto(null)}>
               <Ionicons
                 name="close-outline"
-                size={10}
+                size={20}
                 accessibilityLabel="Close"
             />
             </TouchableOpacity>
@@ -179,8 +233,8 @@ const styles = StyleSheet.create({
     background: "transparent",
   },
   imagePreview: {
-    width: 100,
-    height: 100,
+    width: 300,
+    height: 300,
     borderRadius: 10
   }
 });

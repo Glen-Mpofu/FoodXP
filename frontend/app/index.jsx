@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert, ImageBackground , Pressable } from 'react-native'
+import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert, ImageBackground , Pressable, Image } from 'react-native'
 import { useState } from 'react'
 
 //themedui
@@ -92,11 +92,23 @@ const index = () => {
         setModalVisible(false);
     }
 
+    const isWeb = Platform.OS === "web"
+
     return (
         //main view
         <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
+            {Platform.OS !== 'web' && (
+                <ImageBackground
+                    style={styles.bgImage}
+                    source={require("../assets/foodxp/bg2.jpg")}
+                    resizeMode="cover"
+                />
+                )}
 
-            <ImageBackground style={styles.bgImage} source={require("../assets/foodxp/bg2.jpg")} resizeMode='cover'/>
+            <Image 
+                style={[styles.bgImage, {width: "100%", height: "100%"}]}
+                source = {require("../assets/foodxp/bg2.jpg")}
+            />
             <ThemedView style={styles.mainView}>
                 {/* foodxp heading*/}
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>

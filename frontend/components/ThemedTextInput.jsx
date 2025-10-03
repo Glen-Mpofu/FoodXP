@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native'
+import { Platform, StyleSheet, Text, TextInput, View } from 'react-native'
 import React from 'react'
 import { useColorScheme } from 'react-native';
 import { Colors } from '../constants/Colors';
@@ -17,14 +17,15 @@ export default ThemedTextInput
 const styles = StyleSheet.create({
     textInput: {
         fontFamily: "RaleWay",
-        fontSize: 15,
+        fontSize: 16,
         width: 250,
-        height: 50,
-        borderWidth: 1,
+        height: Platform.OS === "web" ? 50 : 55,
+        borderWidth: 3,
         border: "solid",
         margin: 5,
         borderRadius: 10,
-        padding: 25,
+        padding: Platform.OS === "web" ? 25 : 15,
+        marginEnd: Platform.OS === "web" ? 20 : 10,
         backgroundColor: "transparent"
     }
 })

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { Platform, StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 
 import { useColorScheme } from 'react-native';
@@ -18,5 +18,6 @@ export default ThemedText
 const styles = StyleSheet.create({
     text: {
         fontFamily: "Raleway",
+        fontWeight: Platform.OS != "web" ? "800" : "regular"
     }
 })

@@ -157,7 +157,7 @@ app.post("/savefood", async (req, res) => {
 
       if (err) {
         console.error("Python error:", err);
-        return res.status(500).json({ error: err.message });
+        return res.send({ status: "error", data: err.message });
       }
 
       try {
@@ -166,12 +166,12 @@ app.post("/savefood", async (req, res) => {
         res.json(result);
       } catch (parseErr) {
         console.error("Failed to parse Python output:", stdout, parseErr);
-        res.status(500).json({ error: "Failed to parse Python output" });
+        return res.send({ status: "error", data: parseErr });
       }
     });
 
   } catch (error) {
     console.error("Server error:", error);
-    res.status(500).json({ error: error.message });
+    return res.send({ status: "error", data: err.message });
   }
 });

@@ -18,6 +18,9 @@ import { Ionicons } from '@expo/vector-icons';
 //toast
 import { Toast } from 'toastify-react-native'
 
+// gradient
+import { LinearGradient } from 'expo-linear-gradient'
+
 //login page
 const index = () => {
     const [email, onEmailChange] = React.useState("");
@@ -55,7 +58,6 @@ const index = () => {
                 console.log(res.data);
 
                 if (res.data.status === "ok") {
-                    //Alert.alert("Logged In", res.data.data, [{ text: "Okay", onPress: () => router.push("/dashboard/") }]);
                     Toast.show({
                         type: "success",
                         text1: res.data.data,
@@ -92,23 +94,38 @@ const index = () => {
         setModalVisible(false);
     }
 
-    const isWeb = Platform.OS === "web"
-
     return (
         //main view
         <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
+            {/* Background with gradient */}
             {Platform.OS !== 'web' && (
                 <ImageBackground
                     style={styles.bgImage}
-                    source={require("../assets/foodxp/bg2.jpg")}
+                    source={require("../assets/foodxp/bg4.jpg")}
                     resizeMode="cover"
-                />
-                )}
+                >
+                    <LinearGradient
+                        colors={['rgba(151, 120, 120, 0.7)', theme.background]} 
+                        style={StyleSheet.absoluteFillObject}
+                        locations={[0.2, 1]}
+                    />
+                </ImageBackground>
+            )}
 
-            <Image 
-                style={[styles.bgImage, {width: "100%", height: "100%"}]}
-                source = {require("../assets/foodxp/bg2.jpg")}
-            />
+            {Platform.OS === 'web' && (
+                <>
+                    <Image 
+                        style={[styles.bgImage, {width: "100%", height: "100%"}]}
+                        source={require("../assets/foodxp/bg2.jpg")}
+                    />
+                    <LinearGradient
+                        colors={['rgba(0,0,0,0)', theme.background]}
+                        style={StyleSheet.absoluteFillObject}
+                        locations={[0.5, 1]}
+                    />
+                </>
+            )}
+
             <ThemedView style={styles.mainView}>
                 {/* foodxp heading*/}
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>
@@ -121,8 +138,9 @@ const index = () => {
                     <ThemedTextInput style={styles.input} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
 
                     <ThemedText style={[{ marginBottom: 0 }]}>Password</ThemedText>
+                    
                     <View style={styles.passwordContainer}>                        
-                        <ThemedTextInput style={[{width: "80%"}, styles.input]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
+                        <ThemedTextInput style={[styles.input, {width: "85%"}]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
                         <Pressable onPress={()=>onShowPasswordChange(!showPassword)}>
                             <Ionicons name={ showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"}/>
                         </Pressable>
@@ -182,14 +200,12 @@ export default index
 const styles = StyleSheet.create({
     container: {
         alignItems: "center",
+        flex: 1,
     },
     mainView: {
         width: "100%",
         maxWidth: 450,
         flex: Platform.OS === "android" ? 0.6 : 0.9,
-        borderStyle: 'dashed',
-        borderWidth: 1,
-        borderRadius: 50, // center children horizontally
         padding: 30,
         alignItems: "center",
     },
@@ -204,11 +220,6 @@ const styles = StyleSheet.create({
         alignSelf: 'flex-start',
         marginBottom: 10
     },
-    subText: {
-        fontSize: 16,
-        color: '#555',
-        marginBottom: 20
-    },
     forgotPassword: {
         fontSize: 12,
         marginBottom: Platform.OS === 'android' ? 5 : 30,
@@ -217,17 +228,15 @@ const styles = StyleSheet.create({
     inputView: {
         marginTop: 20,
         marginBottom: Platform.OS === "android" ? 0 : 20,
+        width: "100%"
     },
     input: {
         width: '100%',
-        borderWidth: 1,
-        borderRadius: 10,
-        fontSize: 16,
     },
     links: {
         flex: 0,
         alignContent: "center",
-        alignItems: "stretch", // stretch children to full width
+        alignItems: "stretch",
         marginTop: 10,
     },
     registerLink: {
@@ -241,21 +250,21 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: "rgba(30, 38, 49, 0.6)", // dim background
-        justifyContent: "center", // center vertically
+        backgroundColor: "rgba(30, 38, 49, 0.6)",
+        justifyContent: "center",
         alignItems: "center",
     },
     modalContent: {
         padding: 20,
         borderRadius: 15,
-        width: "80%",     // responsive width
-        maxWidth: 400,    // optional limit for large screens
+        width: "80%",
+        maxWidth: 400,
         alignItems: "center",
         flex: 0.6
     },
     bgImage: {
         ...StyleSheet.absoluteFillObject,
-        resizeMode: "cover"        
+        resizeMode: "cover"
     },
     icon:{
         alignSelf:"center",

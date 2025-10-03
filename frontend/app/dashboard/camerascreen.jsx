@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform } from "react-native";
+import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform, ImageBackground } from "react-native";
 
 //camera
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { Toast } from "toastify-react-native";
 import axios from "axios"
+import { router } from "expo-router";
 
 export default function CameraScreen() {
   const [facing, setFacing] = useState("back");
@@ -35,6 +36,8 @@ export default function CameraScreen() {
 
   //camera availability
   const [cameraAvailable, setCameraAvailable] = useState(null);
+
+  const [prediction, setPrediction] = useState(null)
 
   useEffect(() => {
     const checkCamera = async () => {
@@ -54,7 +57,7 @@ export default function CameraScreen() {
         aspect: [1, 1],
         quality: 1
       });
-
+      setPrediction(null)
       setPhoto(result.assets[0].uri)
     
     } catch (error) {
@@ -69,14 +72,35 @@ export default function CameraScreen() {
   */
   if(Platform.OS === "web"){
     return(
-      <ThemedView style={{justifyContent: "", alignItems: "center"}}> 
-        <ThemedText>Upload Image</ThemedText>
-        <TouchableOpacity onPress={() => 
-          uploadImage()
-        }>
-          <Ionicons name="cloud-upload" size={30}/>
-        </TouchableOpacity>
+      <ThemedView style={[{justifyContent: "", alignItems: "center", flex: 1, width: "100%", height: "100%"}]}>
+        {Platform.OS !== 'web' && (
+            <ImageBackground
+                style={styles.bgImage}
+                source={require("../../assets/foodxp/bg4.jpg")}
+                resizeMode="cover"
+            />
+            )}
 
+            <Image 
+                style={[styles.bgImage, {width: "100%", height: "100%"}]}
+                source = {require("../../assets/foodxp/bg4.jpg")}
+            /> 
+        <View style ={{flexDirection: "row", margin: 50}}>
+          <TouchableOpacity onPress={() => 
+            router.push("/dashboard/")
+          }>
+            <Ionicons
+              name="home-outline"
+              size={30}
+              accessibilityLabel="Close"
+            />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => 
+            uploadImage()
+          }>
+            <Ionicons name="cloud-upload" size={30} style={{padding: 10}}/>
+          </TouchableOpacity>
+        </View>
         {
         photo && (
           <ThemedView style={{ position: "absolute", bottom: 100, }}>
@@ -86,16 +110,26 @@ export default function CameraScreen() {
                 name="close-outline"
                 size={20}
                 accessibilityLabel="Close"
-            />
+              />
             </TouchableOpacity>
             <Image source={{ uri: photo }} style={styles.imagePreview} />
 
-            <ThemedButton style={{backgroundColor: "transparent", width: 150, height:50, margin: 5}} onPress={()=> saveFood()}>
-              <ThemedText>Add to FoodBox</ThemedText>
-            </ThemedButton>
+            <View style={{flexDirection: "row", width: "100%"}}>
+              <ThemedButton style={{backgroundColor: "transparent", width: 150, height:50, margin: 5, marginLeft: 0 }} onPress={()=> saveFood()}>
+                <ThemedText>Add to FoodBox</ThemedText>
+              </ThemedButton>
+
+              { prediction && (                
+                <ThemedButton style={{backgroundColor: "transparent", width: 150, height:50, margin: 5, marginLeft: 0 }} onPress={()=> router.push(`/dashboard/${prediction}`)}>
+                  <ThemedText>View in {prediction.toUpperCase()}</ThemedText>
+                </ThemedButton>  
+              )}              
+
+            </View>
           </ThemedView>
         )
       }
+      
       </ThemedView>
     )
   }
@@ -159,9 +193,19 @@ export default function CameraScreen() {
     
     axios.post("http://192.168.137.1:5001/savefood", {photo}).
     then((res) => {
-
+      const {Prediction, Confidence } = res.data;
+      setPrediction(Prediction)
+        Toast.show({
+          type: "success", 
+          text1: `${Prediction} item added`,
+        })
+        
     }).catch((e)=>{
       console.log(e)
+        Toast.show({
+          type: "error", 
+          text1: e
+        })
     })
 
   }
@@ -251,5 +295,9 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 10
-  }
+  },
+    bgImage: {
+        ...StyleSheet.absoluteFillObject,
+        resizeMode: "cover"        
+    },
 });

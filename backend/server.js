@@ -16,18 +16,20 @@ const bcrypt = require("bcrypt")
 //enabling cross origin resource sharing for the app to run on my browser too
 const cors = require("cors");
 app.use(cors({
-    origin: "*"
+    origin: ["http://localhost:8082", "http://192.168.137.1:8082"],
+    credentials: true
 }))
 
 //configure session
 app.use(session({
-    secret: "supersecretkey",
+    secret: "foodxpsession1",
     remove: false,
     saveUninitialized: false,
     cookie: {
         secure: false,
         maxAge: 1000 * 60 * 60 * 24 // 1 day. the session stays alive for 1 day
-    }
+    },
+    rolling: true
 }));
 
 const port = process.env.PORT ?? 5001
@@ -175,3 +177,23 @@ app.post("/savefood", async (req, res) => {
     return res.send({ status: "error", data: err.message });
   }
 });
+
+app.get("/session", async (req, res) => {
+    console.log(req.session.user);
+    if(req.session.user){
+        //searching the database for the logged in user
+        const email = req.session.user.email
+        pool.query(`
+            SELECT * FROM FOODIE WHERE EMAIL = $1
+
+            `, [email]).then((result) => {
+                res.send({status: "ok", data: result.rows[0]})
+                console.log("Foodie",result.rows[0])
+            })
+
+            
+        
+    }else{
+        res.send({status: "error", data: req.session.user})
+    }
+})

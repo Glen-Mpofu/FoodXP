@@ -53,7 +53,7 @@ const index = () => {
             password
         }
         const baseURL = Platform.OS === "web" ? "http://localhost:5001/login" : "http://192.168.137.1:5001/login"
-        axios.post(baseURL, foodieData).
+        axios.post(baseURL, foodieData, {withCredentials: true}).
             then(res => {
                 console.log(res.data);
 
@@ -78,6 +78,12 @@ const index = () => {
                         text1: res.data.data,
                         useModal: false
                     })
+                }else{
+                    Toast.show({
+                        type: "error",
+                        text1: res.data.data,
+                        useModal: false
+                    })
                 }
 
             }).
@@ -97,35 +103,7 @@ const index = () => {
     return (
         //main view
         <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
-            {/* Background with gradient */}
-            {Platform.OS !== 'web' && (
-                <ImageBackground
-                    style={styles.bgImage}
-                    source={require("../assets/foodxp/bg4.jpg")}
-                    resizeMode="cover"
-                >
-                    <LinearGradient
-                        colors={['rgba(151, 120, 120, 0.7)', theme.background]} 
-                        style={StyleSheet.absoluteFillObject}
-                        locations={[0.2, 1]}
-                    />
-                </ImageBackground>
-            )}
-
-            {Platform.OS === 'web' && (
-                <>
-                    <Image 
-                        style={[styles.bgImage, {width: "100%", height: "100%"}]}
-                        source={require("../assets/foodxp/bg2.jpg")}
-                    />
-                    <LinearGradient
-                        colors={['rgba(0,0,0,0)', theme.background]}
-                        style={StyleSheet.absoluteFillObject}
-                        locations={[0.5, 1]}
-                    />
-                </>
-            )}
-
+            
             <ThemedView style={styles.mainView}>
                 {/* foodxp heading*/}
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>

@@ -7,7 +7,8 @@ import ToastManager from "toastify-react-native"
 
 const FoodXPLayout = () => {
     const [loaded] = useFonts({
-        Raleway: require("../assets/fonts/Raleway-VariableFont_wght.ttf")
+        Raleway: require("../assets/fonts/Raleway-VariableFont_wght.ttf"),
+        AlanSans: require("../assets/fonts/AlanSans-VariableFont_wght.ttf")
     });
 
     if (!loaded) {
@@ -16,15 +17,21 @@ const FoodXPLayout = () => {
 
     const toastConfig ={
         success: (props) => (
-        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10}}>
+        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: 500}}>
           <Text style={{ fontFamily: "Raleway", color: 'green', fontWeight: 'bold' }}>{props.text1}</Text>
           {props.text2 && <Text style={{ color: 'green' }}>{props.text2}</Text>}
         </View>        
       ),
       error: (props) => (
-        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10 }}>
-          <Text style={{ fontFamily: "Raleway", color: '#af0606ff', fontWeight: 'bold' }}>{props.text1}</Text>
-          {props.text2 && <Text style={{ color: '#af0606f' }}>{props.text2}</Text>}
+        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: 500 }}>
+          <Text style={{ fontFamily: "Raleway", color: 'red', fontWeight: 'bold' }}>{props.text1}</Text>
+          {props.text2 && <Text style={{ color: 'red' }}>{props.text2}</Text>}
+        </View> 
+      ),
+      info: (props) => (
+        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: 500 }}>
+          <Text style={{ fontFamily: "Raleway", color: 'blue', fontWeight: 'bold' }}>{props.text1}</Text>
+          {props.text2 && <Text style={{ color: 'blue' }}>{props.text2}</Text>}
         </View> 
       )
     }
@@ -37,7 +44,7 @@ const FoodXPLayout = () => {
                     headerTintColor: "#8d9ba5ff",
                     headerTitleStyle: {
                         fontSize: 40,
-                        fontFamily: "Raleway"
+                        fontFamily: "AlanSans"
                     },
 
                 }}

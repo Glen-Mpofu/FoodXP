@@ -4,7 +4,8 @@ import { useRouter } from 'expo-router';
 import axios from "axios"
 import { Toast } from 'toastify-react-native';
 import { Ionicons } from '@expo/vector-icons';
-export default function CustomDrawerContent(props) {
+
+export default function LogoutDrawer(props) {
     const router = useRouter();
 
     async function handleLogout() {

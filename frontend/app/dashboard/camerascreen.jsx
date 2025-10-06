@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform, ImageBackground } from "react-native";
+import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform, ImageBackground, Alert } from "react-native";
 
 //camera
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -41,8 +41,49 @@ export default function CameraScreen() {
 
   useEffect(() => {
     const checkCamera = async () => {
-      const available = await CameraView.isAvailableAsync();
-      setCameraAvailable(available);
+      try {
+        const available = await CameraView.isAvailableAsync();
+
+        if(!available){
+          setCameraAvailable(false);
+          Toast.show({
+            type: "error",
+            text1: "Camera hardware not detected",
+            useModal: false
+          })
+          return;
+        }
+
+        const {status} = await requestPermission();
+
+        if(status != "granted"){
+          setCameraAvailable(false);
+          Toast.show({
+            type: "info",
+            text1: "Permission Denied to Access Camera",
+            useModal: false
+          })
+          return;
+        }
+
+        const devices = await CameraView.getAvailableCameraTypesAsync();
+        if(!devices || devices.length === 0){
+          setCameraAvailable(false)
+          
+          Toast.show({
+            type: "error",
+            text1: "No physical cameras detected",
+            useModal: false
+          })
+          return;
+        }
+
+        setCameraAvailable(true)
+      } catch (error) {
+        console.log("Camera check failed", error)
+        setCameraAvailable(false)
+      }
+
     };
 
     checkCamera();
@@ -70,21 +111,9 @@ export default function CameraScreen() {
   /*
     npx expo install expo-image-picker
   */
-  if(Platform.OS === "web"){
+  if(cameraAvailable == false){
     return(
       <ThemedView style={[{justifyContent: "", alignItems: "center", flex: 1, width: "100%", height: "100%"}]}>
-        {Platform.OS !== 'web' && (
-            <ImageBackground
-                style={styles.bgImage}
-                source={require("../../assets/foodxp/bg4.jpg")}
-                resizeMode="cover"
-            />
-            )}
-
-            <Image 
-                style={[styles.bgImage, {width: "100%", height: "100%"}]}
-                source = {require("../../assets/foodxp/bg4.jpg")}
-            /> 
         <View style ={{flexDirection: "row", margin: 50}}>
           <TouchableOpacity onPress={() => 
             router.push("/dashboard/")
@@ -151,17 +180,6 @@ export default function CameraScreen() {
             <ThemedText>Grant permission</ThemedText>
           </ThemedButton>
         </ThemedView>
-      </ThemedView>
-    );
-  }
-
-  if(cameraAvailable === false){
-    return (
-      <ThemedView style={styles.container}>
-        <ThemedText style={{ textAlign: "center" }}>
-          We need your permission to show the camera
-        </ThemedText>
-            <ThemedText>No Camera Available</ThemedText>
       </ThemedView>
     );
   }

@@ -9,7 +9,7 @@ export const Colors = {
 
     dark: {
         text: '#210435ff',         
-        title: '#111827',     
+        title: '#ffffffff',     
         taPlaceholder: "#810d9bff",
         forgotPassword: "#df824dff",     
         background: '#F7F4EA',      

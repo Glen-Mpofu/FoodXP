@@ -70,7 +70,10 @@ const Register = () => {
             name: userName,
             password: userConfirmPassword,
         };
-        axios.post("http://192.168.137.1:5001/register", foodieData).
+
+        const baseUrl = Platform.OS === "web" ? "http://localhost:5001/register" : "http://192.168.137.1:5001/register"
+
+        axios.post(baseUrl, foodieData, {withCredentials: true}).
             then(res => {
                 if (res.data.status === 'ok') {                  
                     Toast.show({
@@ -101,33 +104,6 @@ const Register = () => {
 
     return (
         <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
-            {Platform.OS !== 'web' && (
-                <ImageBackground
-                    style={styles.bgImage}
-                    source={require("../assets/foodxp/bg4.jpg")}
-                    resizeMode="cover"
-                >
-                <LinearGradient
-                    colors={['rgba(151, 120, 120, 0.7)', theme.background]} 
-                    style={StyleSheet.absoluteFillObject}
-                    locations={[0.5, 1]}
-                />
-                </ImageBackground>
-            )}
-
-            {Platform.OS === 'web' && (
-                <>
-                    <Image 
-                        style={[styles.bgImage, {width: "100%", height: "100%"}]}
-                        source={require("../assets/foodxp/bg2.jpg")}
-                    />
-                    <LinearGradient
-                        colors={['rgba(0,0,0,0)', theme.background]}
-                        style={StyleSheet.absoluteFillObject}
-                        locations={[0.5, 1]}
-                    />
-                </>
-            )}
             <ThemedView style={styles.mainView}>
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>
 
@@ -239,6 +215,8 @@ const styles = StyleSheet.create({
         width: "100%", 
         flexDirection: "row",
         alignItems: "center",
-        justifyContent: "center"
+        justifyContent: "center",
+        margin: 0,
+        padding: 0
     }
 })

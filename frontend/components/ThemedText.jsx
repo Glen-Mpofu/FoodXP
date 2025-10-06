@@ -17,7 +17,7 @@ export default ThemedText
 
 const styles = StyleSheet.create({
     text: {
-        fontFamily: "Raleway",
+        fontFamily: "AlanSans",
         fontWeight: Platform.OS != "web" ? "800" : "regular"
     }
 })

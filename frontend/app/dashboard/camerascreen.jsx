@@ -114,6 +114,7 @@ export default function CameraScreen() {
   if(cameraAvailable == false){
     return(
       <ThemedView style={[{justifyContent: "", alignItems: "center", flex: 1, width: "100%", height: "100%"}]}>
+        <ThemedText style={styles.heading}>Upload Food</ThemedText>
         <View style ={{flexDirection: "row", margin: 50}}>
           <TouchableOpacity onPress={() => 
             router.push("/dashboard/")
@@ -317,5 +318,10 @@ const styles = StyleSheet.create({
     bgImage: {
         ...StyleSheet.absoluteFillObject,
         resizeMode: "cover"        
+    },
+    heading: {
+        fontSize: 30,
+        fontWeight: 'bold',
+        marginTop: 10
     },
 });

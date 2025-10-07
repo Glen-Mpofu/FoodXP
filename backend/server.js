@@ -43,6 +43,8 @@ app.listen(port, () => {
 require("dotenv").config();
 
 const { Pool } = require("pg");
+const { stat } = require("fs/promises");
+const { data } = require("@tensorflow/tfjs");
 
 const database = process.env.DATABASE_URL
 const pool = new Pool({
@@ -166,6 +168,8 @@ app.post("/savefood", async (req, res) => {
         const result = JSON.parse(stdout);
         console.log("Python result:", result);
         res.json(result);
+        //adding to respective table either pantry or fridge
+
       } catch (parseErr) {
         console.error("Failed to parse Python output:", stdout, parseErr);
         return res.send({ status: "error", data: parseErr });
@@ -178,22 +182,91 @@ app.post("/savefood", async (req, res) => {
   }
 });
 
+// session getter
 app.get("/session", async (req, res) => {
     console.log(req.session.user);
     if(req.session.user){
         //searching the database for the logged in user
         const email = req.session.user.email
+        
         pool.query(`
             SELECT * FROM FOODIE WHERE EMAIL = $1
-
             `, [email]).then((result) => {
-                res.send({status: "ok", data: result.rows[0]})
+                const foodie = {
+                   email: result.rows[0].email,
+                   name: result.rows[0].name,
+                   password: result.rows[0].password,
+                }
+                console.log(foodie)
+                res.send({status: "ok", data: foodie})
                 console.log("Foodie",result.rows[0])
-            })
-
-            
+            })            
         
     }else{
         res.send({status: "error", data: req.session.user})
     }
+})
+
+//name changing
+app.post("/namechange", async (req, res) => {
+    console.log(req.body)
+    //change name logic
+    const email = req.body.email
+    const name = req.body.name
+
+    pool.query(`
+        UPDATE FOODIE SET NAME = $1 WHERE EMAIL = $2 
+        `, [name, email]
+    ).then((result)=> {
+        if(result.rowCount >= 1){
+            res.send({status: "ok", data: "Name changed successfully"})
+        }else{
+            res.send({status: "error", data: "Name changes rejected"})
+        }
+        console.log(result)
+    }).catch(err => {
+        console.log(err)
+    })
+
+})
+
+//password updating
+app.post("/passwordchange", async (req, res) => {
+    console.log(req.body)
+    const email = req.body.email
+    const password = req.body.password
+
+    const encryptedPassword = await bcrypt.hash(password, 10)
+
+    await pool.query(`
+        UPDATE FOODIE SET PASSWORD = $1 WHERE EMAIL = $2
+        `, [encryptedPassword, email]
+    ).then((result) => {
+        if(result.rowCount >= 1){
+            res.send({status: "ok", data: "Password Changed Successfully"})
+        }else{
+            res.send({status: "error", data: "Password Changed Rejected"})
+        }
+    }).catch(err => {
+        console.log(err)
+    })
+})
+
+//account deletion
+app.post("/deleteaccount", async (req, res) => {
+    console.log(req.body)
+    const email = req.body.email
+
+    await pool.query(`
+        DELETE FROM FOODIE WHERE EMAIL = $1
+        `, [email]
+    ).then((result) => {
+        if(result.rowCount >= 1){
+            res.send({status: "ok", data: "Account Deleted Successfully"})
+        }else{
+            res.send({status: "error", data: "Account Delete Rejected"})
+        }
+    }).catch(err => {
+        console.log(err)
+    })
 })

@@ -6,18 +6,18 @@ import ThemedText from '../../components/ThemedText';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../constants/Colors';
 
-const recipes = () => {
+const Recipes = () => {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light
 
   return (
     <ThemedView style={[styles.container,  {backgroundColor: theme.uiBackground} ]}>
-      <ThemedText>Your Dashboard</ThemedText>
+      <ThemedText>My Recipes</ThemedText>
     </ThemedView>
   );
 }
 
-export default recipes
+export default Recipes
 
 const styles = StyleSheet.create({
   container: {

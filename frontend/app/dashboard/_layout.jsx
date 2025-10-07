@@ -21,12 +21,15 @@ export default function DashboardLayout() {
         headerTitleStyle: {
           fontSize: 24,
           fontWeight: "bold",
+          fontFamily: "AlanSans"
         },
         drawerActiveBackgroundColor: Colors.drawerActive,
         drawerActiveTintColor: theme.uiBackground,
         headerStyle: {
           backgroundColor: theme.navBackground,
-
+        },
+        drawerLabelStyle: {
+          fontFamily: "AlanSans"
         },
         drawerStyle: {
           backgroundColor: theme.uiBackground,

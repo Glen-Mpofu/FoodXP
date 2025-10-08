@@ -305,7 +305,7 @@ app.get("/loadshedding/:areaId", async (req, res) => {
         headers: { token: process.env.ESKOM_API_KEY },
       }
     );
-    console.log(response.data.schedule.days)
+    console.log(response.data.schedule.days[2].stages[3])
     res.json(response.data);
   } catch (error) {
     console.error(error.response?.data || error.message);

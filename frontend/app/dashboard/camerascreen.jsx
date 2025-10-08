@@ -39,8 +39,24 @@ export default function CameraScreen() {
   const [prediction, setPrediction] = useState(null)
   let response = useState(null)
 
-  async function saveFood() {
-    
+  async function saveFood(uri, classification) {
+    try{
+      const folderUri = FileSystem.documentDirectory + "foodImages/" + classification + "/"
+      await FileSystem.makeDirectoryAsync(folderUri, {intermediates: true})
+
+      const fileName = Date.now() + ".jpg"
+      const dest = folderUri + fileName
+
+      await FileSystem.copyAsync({
+        from: uri,
+        to: dest
+      })
+
+      return dest;
+    }
+    catch(error){
+      console.log(error)
+    }
   }
   
   async function classifyfood() {
@@ -89,6 +105,7 @@ export default function CameraScreen() {
           type: "success",
           text1: `${Prediction} item added`,
         });
+        saveFood(photo, Prediction)
       } else {
         Toast.show({
           type: "error",

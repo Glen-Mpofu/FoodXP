@@ -1,7 +1,7 @@
 //our backend api
 const express = require("express");
 const session = require("express-session") // npm install express-session
-
+const axios = require("axios")
 // for running the python file
 const { spawn, execFile } = require("child_process");
 
@@ -151,7 +151,8 @@ app.post("/classifyfood", async (req, res) => {
 
     // Remove the prefix
     const base64Data = photo.replace(/^data:image\/\w+;base64,/, "");
-    console.log("Base64 length:", base64Data.length)
+    console.log("Base64 length:", base64Data.length);
+
     const tempPath = path.join(__dirname, "temp_image.jpg");
     fs.writeFileSync(tempPath, base64Data, "base64");
 
@@ -269,3 +270,45 @@ app.post("/deleteaccount", async (req, res) => {
         console.log(err)
     })
 })
+
+// ✅ Endpoint to search for area by name
+app.get("/loadshedding/area", async (req, res) => {
+  try {
+    const response = await axios.get(
+      `https://developer.sepush.co.za/business/2.0/areas_search?text=polokwane`,
+      {
+        headers: { token: process.env.ESKOM_API_KEY },
+      }
+    );
+
+    const areas = response.data.areas; // ⚠️ important: the array is under .areas
+    if (!areas || areas.length === 0) {
+      return res.status(404).json({ error: "Area not found" });
+    }
+
+    const area = areas[0]; // take the first match
+    res.json({ areaId: area.id, name: area.name });
+    console.log("Area search result:", area);
+  } catch (error) {
+    console.error(error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to search area" });
+  }
+});
+
+// ✅ Endpoint to get load shedding stages by areaId
+app.get("/loadshedding/:areaId", async (req, res) => {
+  try {
+    const { areaId } = req.params;
+    const response = await axios.get(
+      `https://developer.sepush.co.za/business/2.0/area?id=${areaId}`,
+      {
+        headers: { token: process.env.ESKOM_API_KEY },
+      }
+    );
+    console.log(response.data.schedule.days)
+    res.json(response.data);
+  } catch (error) {
+    console.error(error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to fetch load shedding info" });
+  }
+});

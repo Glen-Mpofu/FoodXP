@@ -9,10 +9,12 @@ import * as MediaLibrary from "expo-media-library"
 import * as ImagePicker from "expo-image-picker"
 import ThemedButton from '../../components/ThemedButton';
 import { Toast } from 'toastify-react-native';
+import * as FileSystem from "expo-file-system";
 
 const UploadFood = () => {
     const [photo, setPhoto] = useState(null)
     const [prediction, setPrediction] = useState(null)
+    let response = React.useState(null)
 
     const uploadImage = async () => {
         try {
@@ -32,26 +34,67 @@ const UploadFood = () => {
     }
 
   async function classifyfood() {
-    const baseUrl = Platform.OS === "web" ? "http://localhost:5001/classifyfood" : "http://192.168.137.1:5001/classifyfood"
+    try {
+      const baseUrl =
+        Platform.OS === "web"
+          ? "http://localhost:5001/classifyfood"
+          : "http://192.168.137.1:5001/classifyfood";
 
-    axios.post(baseUrl, {photo}, {withCredentials: true}).
-    then((res) => {
-      const {Prediction, Confidence } = res.data;
-      setPrediction(Prediction)
+      if (!photo) {
         Toast.show({
-          type: "success", 
+          type: "error",
+          text1: "No photo selected",
+        });
+        return;
+      }
+            
+      if(Platform.OS === "web"){
+        response = await axios.post(
+          baseUrl,
+          { photo: photo },
+          { withCredentials: true }
+        );
+      }else{
+        // ✅ Convert file URI to Base64
+        const base64Image = await FileSystem.readAsStringAsync(photo, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+
+        const photoData = `data:image/jpeg;base64,${base64Image}`;
+
+        response = await axios.post(
+          baseUrl,
+          { photo: photoData },
+          { withCredentials: true }
+        );
+      }      
+
+      console.log("Server response:", response.data);
+
+      const { Prediction, Confidence } = response.data;
+
+      if (Prediction) {
+        setPrediction(Prediction);
+        Toast.show({
+          type: "success",
           text1: `${Prediction} item added`,
-        })
-        
-    }).catch((e)=>{
-      console.log(e)
+        });
+      } else {
         Toast.show({
-          type: "error", 
-          text1: e
-        })
-    })
-
+          type: "error",
+          text1: "Prediction failed",
+        });
+      }
+    } catch (e) {
+      console.error("Classification error:", e);
+      Toast.show({
+        type: "error",
+        text1: "Classification failed",
+        text2: e.message || "An error occurred",
+      });
+    }
   }
+
   return (
     <ThemedView style={[{justifyContent: "", alignItems: "center", flex: 1, width: "100%", height: "100%", marginTop: 50}]}>
         <ThemedText style={styles.heading}>Upload Food</ThemedText>

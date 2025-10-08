@@ -37,6 +37,7 @@ export default function CameraScreen() {
   //camera availability
   const [cameraAvailable, setCameraAvailable] = useState(null);
   const [prediction, setPrediction] = useState(null)
+  let response = useState(null)
 
   async function saveFood() {
     
@@ -56,19 +57,27 @@ export default function CameraScreen() {
         });
         return;
       }
+            
+      if(Platform.OS === "web"){
+        response = await axios.post(
+          baseUrl,
+          { photo: photo },
+          { withCredentials: true }
+        );
+      }else{
+        // ✅ Convert file URI to Base64
+        const base64Image = await FileSystem.readAsStringAsync(photo, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
 
-      // ✅ Convert file URI to Base64
-      const base64Image = await FileSystem.readAsStringAsync(photo, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+        const photoData = `data:image/jpeg;base64,${base64Image}`;
 
-      const photoData = `data:image/jpeg;base64,${base64Image}`;
-
-      const response = await axios.post(
-        baseUrl,
-        { photo: photoData },
-        { withCredentials: true }
-      );
+        response = await axios.post(
+          baseUrl,
+          { photo: photoData },
+          { withCredentials: true }
+        );
+      }      
 
       console.log("Server response:", response.data);
 

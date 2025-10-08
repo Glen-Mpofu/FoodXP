@@ -144,14 +144,14 @@ app.post("/logout", async (req, res) => {
 //saving the food
 const classifyModelFile = path.join(__dirname, "model", "pantry_frigde_model.py") 
 
-app.post("/savefood", async (req, res) => {
+app.post("/classifyfood", async (req, res) => {
   try {
     const { photo } = req.body;
     if (!photo) return res.status(400).json({ error: "No image provided" });
 
     // Remove the prefix
     const base64Data = photo.replace(/^data:image\/\w+;base64,/, "");
-
+    console.log("Base64 length:", base64Data.length)
     const tempPath = path.join(__dirname, "temp_image.jpg");
     fs.writeFileSync(tempPath, base64Data, "base64");
 
@@ -168,8 +168,7 @@ app.post("/savefood", async (req, res) => {
         const result = JSON.parse(stdout);
         console.log("Python result:", result);
         res.json(result);
-        //adding to respective table either pantry or fridge
-
+        
       } catch (parseErr) {
         console.error("Failed to parse Python output:", stdout, parseErr);
         return res.send({ status: "error", data: parseErr });

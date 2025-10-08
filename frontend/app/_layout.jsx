@@ -1,11 +1,14 @@
 import { StyleSheet, View, Text } from 'react-native'
 import { Stack } from 'expo-router'
 import { useFonts } from "expo-font"
+import { Dimensions } from 'react-native'
 
 //toast
 import ToastManager from "toastify-react-native"
 
 const FoodXPLayout = () => {
+    const {height, width} = Dimensions.get("window")
+    const toastPlacement = height - 100
     const [loaded] = useFonts({
         Raleway: require("../assets/fonts/Raleway-VariableFont_wght.ttf"),
         AlanSans: require("../assets/fonts/AlanSans-VariableFont_wght.ttf")
@@ -17,19 +20,19 @@ const FoodXPLayout = () => {
 
     const toastConfig ={
         success: (props) => (
-        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: 500}}>
+        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: toastPlacement}}>
           <Text style={{ fontFamily: "Raleway", color: 'green', fontWeight: 'bold' }}>{props.text1}</Text>
           {props.text2 && <Text style={{ color: 'green' }}>{props.text2}</Text>}
         </View>        
       ),
       error: (props) => (
-        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: 500 }}>
+        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: toastPlacement }}>
           <Text style={{ fontFamily: "Raleway", color: 'red', fontWeight: 'bold' }}>{props.text1}</Text>
           {props.text2 && <Text style={{ color: 'red' }}>{props.text2}</Text>}
         </View> 
       ),
       info: (props) => (
-        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: 500 }}>
+        <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: toastPlacement }}>
           <Text style={{ fontFamily: "Raleway", color: 'blue', fontWeight: 'bold' }}>{props.text1}</Text>
           {props.text2 && <Text style={{ color: 'blue' }}>{props.text2}</Text>}
         </View> 

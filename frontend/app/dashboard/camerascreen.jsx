@@ -6,7 +6,7 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library"
 
 import * as ImagePicker from "expo-image-picker"
-
+import * as FileSystem from "expo-file-system";
 //themed components 
 import ThemedButton from "../../components/ThemedButton"
 import ThemedView from "../../components/ThemedView"
@@ -36,26 +36,71 @@ export default function CameraScreen() {
 
   //camera availability
   const [cameraAvailable, setCameraAvailable] = useState(null);
-
   const [prediction, setPrediction] = useState(null)
 
+  async function saveFood() {
+    
+  }
+  
+  async function classifyfood() {
+    try {
+      const baseUrl =
+        Platform.OS === "web"
+          ? "http://localhost:5001/classifyfood"
+          : "http://192.168.137.1:5001/classifyfood";
+
+      if (!photo) {
+        Toast.show({
+          type: "error",
+          text1: "No photo selected",
+        });
+        return;
+      }
+
+      // ✅ Convert file URI to Base64
+      const base64Image = await FileSystem.readAsStringAsync(photo, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      const photoData = `data:image/jpeg;base64,${base64Image}`;
+
+      const response = await axios.post(
+        baseUrl,
+        { photo: photoData },
+        { withCredentials: true }
+      );
+
+      console.log("Server response:", response.data);
+
+      const { Prediction, Confidence } = response.data;
+
+      if (Prediction) {
+        setPrediction(Prediction);
+        Toast.show({
+          type: "success",
+          text1: `${Prediction} item added`,
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Prediction failed",
+        });
+      }
+    } catch (e) {
+      console.error("Classification error:", e);
+      Toast.show({
+        type: "error",
+        text1: "Classification failed",
+        text2: e.message || "An error occurred",
+      });
+    }
+  }
+
+  
   useEffect(() => {
     const checkCamera = async () => {
       try {
-        const available = await CameraView.isAvailableAsync();
-
-        if(!available){
-          setCameraAvailable(false);
-          Toast.show({
-            type: "error",
-            text1: "Camera hardware not detected",
-            useModal: false
-          })
-          return;
-        }
-
         const {status} = await requestPermission();
-
         if(status != "granted"){
           setCameraAvailable(false);
           Toast.show({
@@ -64,102 +109,31 @@ export default function CameraScreen() {
             useModal: false
           })
           return;
-        }
-
-        const devices = await CameraView.getAvailableCameraTypesAsync();
-        if(!devices || devices.length === 0){
-          setCameraAvailable(false)
-          
-          Toast.show({
-            type: "error",
-            text1: "No physical cameras detected",
-            useModal: false
-          })
-          return;
-        }
+        } 
 
         setCameraAvailable(true)
       } catch (error) {
         console.log("Camera check failed", error)
         setCameraAvailable(false)
       }
-
     };
 
     checkCamera();
   }, [])
-
-  const uploadImage = async () => {
-    try {
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
-      let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1
-      });
-      setPrediction(null)
-      setPhoto(result.assets[0].uri)
-    
-    } catch (error) {
-      console.log(error)
-    }
-  }
-
   
   //if the app is in web, allow for uploading
   /*
     npx expo install expo-image-picker
   */
-  if(cameraAvailable == false){
+  if(cameraAvailable == false || !permission){
     return(
-      <ThemedView style={[{justifyContent: "", alignItems: "center", flex: 1, width: "100%", height: "100%"}]}>
-        <ThemedText style={styles.heading}>Upload Food</ThemedText>
-        <View style ={{flexDirection: "row", margin: 50}}>
-          <TouchableOpacity onPress={() => 
-            router.push("/dashboard/")
-          }>
-            <Ionicons
-              name="home-outline"
-              size={30}
-              accessibilityLabel="Close"
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => 
-            uploadImage()
-          }>
-            <Ionicons name="cloud-upload" size={30} style={{padding: 10}}/>
-          </TouchableOpacity>
-        </View>
-        {
-        photo && (
-          <ThemedView style={{ position: "absolute", bottom: 100, }}>
-            <ThemedText>Image Captured</ThemedText>
-            <TouchableOpacity onPress={() => setPhoto(null)}>
-              <Ionicons
-                name="close-outline"
-                size={20}
-                accessibilityLabel="Close"
-              />
-            </TouchableOpacity>
-            <Image source={{ uri: photo }} style={styles.imagePreview} />
-
-            <View style={{flexDirection: "row", width: "100%"}}>
-              <ThemedButton style={{backgroundColor: "transparent", width: 150, height:50, margin: 5, marginLeft: 0 }} onPress={()=> saveFood()}>
-                <ThemedText>Add to FoodBox</ThemedText>
-              </ThemedButton>
-
-              { prediction && (                
-                <ThemedButton style={{backgroundColor: "transparent", width: 150, height:50, margin: 5, marginLeft: 0 }} onPress={()=> router.push(`/dashboard/${prediction}`)}>
-                  <ThemedText>View in {prediction.toUpperCase()}</ThemedText>
-                </ThemedButton>  
-              )}              
-
-            </View>
-          </ThemedView>
-        )
-      }
-      
+      <ThemedView style={{alignItems: "center"}}>
+        <ThemedText>No Camera Available. Upload Images</ThemedText>
+        <TouchableOpacity onPress={() => {
+          router.replace("/dashboard/uploadscreen")
+        }}>  
+          <Ionicons name="cloud-upload" size={30}/>
+        </TouchableOpacity>
       </ThemedView>
     )
   }
@@ -208,26 +182,11 @@ export default function CameraScreen() {
     }
   }
 
+  //function for saving the food image in the db
   async function saveFood() {
     
-    axios.post("http://192.168.137.1:5001/savefood", {photo}).
-    then((res) => {
-      const {Prediction, Confidence } = res.data;
-      setPrediction(Prediction)
-        Toast.show({
-          type: "success", 
-          text1: `${Prediction} item added`,
-        })
-        
-    }).catch((e)=>{
-      console.log(e)
-        Toast.show({
-          type: "error", 
-          text1: e
-        })
-    })
-
   }
+
   return (
     <ThemedView style={styles.container}>
       {isFocused && (
@@ -264,16 +223,12 @@ export default function CameraScreen() {
                 accessibilityLabel="Torch"
               />
             </ThemedButton>
-
           </ThemedView>
-
         </CameraView>
-
       )}
-
       {
         photo && (
-          <ThemedView style={{ position: "absolute", bottom: 100, }}>
+          <ThemedView style={{ alignItems: "center", justifyContent: "" }}>
             <ThemedText>Image Captured</ThemedText>
             <TouchableOpacity onPress={() => setPhoto(null)}>
               <Ionicons
@@ -283,6 +238,18 @@ export default function CameraScreen() {
             />
             </TouchableOpacity>
             <Image source={{ uri: photo }} style={styles.imagePreview} />
+
+            <View style={{flexDirection: "row", width: "100%"}}>
+              <ThemedButton style={{backgroundColor: "transparent", width: 150, height:50, margin: 5, marginLeft: 0 }} onPress={()=> classifyfood()}>
+                <ThemedText>Add to FoodBox</ThemedText>
+              </ThemedButton>
+
+              { prediction && (                
+                <ThemedButton style={{backgroundColor: "transparent", width: 150, height:50, margin: 5, marginLeft: 0 }} onPress={()=> router.push(`/dashboard/${prediction}`)}>
+                  <ThemedText>View in {prediction.toUpperCase()}</ThemedText>
+                </ThemedButton>  
+              )}              
+            </View>
           </ThemedView>
         )
       }
@@ -292,12 +259,12 @@ export default function CameraScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, width: "100%", backgroundColor: "black" },
+  container: { flex: 1, width: "100%", paddingTop: 50 },
   camera: {
     flex: 1,
     width: "100%",
     height: "100%",
-    borderRadius: 50
+    borderRadius: 50,
   },
   buttonContainer: {
     flex: 1,
@@ -311,17 +278,23 @@ const styles = StyleSheet.create({
     background: "transparent",
   },
   imagePreview: {
-    width: 300,
-    height: 300,
+    width: 200,
+    height: 200,
     borderRadius: 10
   },
     bgImage: {
-        ...StyleSheet.absoluteFillObject,
-        resizeMode: "cover"        
+      ...StyleSheet.absoluteFillObject,
+      resizeMode: "cover"        
     },
     heading: {
-        fontSize: 30,
-        fontWeight: 'bold',
-        marginTop: 10
+      fontSize: 30,
+      fontWeight: 'bold',
+      marginTop: 10
     },
+    uploadContainer: {
+      width: 500,
+      flex: 1,
+      alignItems: "center",
+      justifyContent: ""
+    }
 });

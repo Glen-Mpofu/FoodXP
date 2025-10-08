@@ -35,17 +35,30 @@ export default function DashboardLayout() {
           backgroundColor: theme.uiBackground,
         },
         headerRight: () => (
-          <TouchableOpacity
-            onPress={() => router.push("/dashboard/camerascreen")}
-            style={{ marginRight: 15 }}
-          >
-            <Ionicons
-              name="camera-outline"
-              size={30}
-              accessibilityLabel="Add Fruit"
-              color={theme.camera}
-            />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              onPress={() => router.push("/dashboard/camerascreen")}
+              style={{ marginRight: 15 }}
+            >
+              <Ionicons
+                name="camera-outline"
+                size={30}
+                accessibilityLabel="Add Fruit"
+                color={theme.camera}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/dashboard/uploadscreen")}
+              style={{ marginRight: 15 }}
+            >
+              <Ionicons
+                name="cloud-upload-outline"
+                size={30}
+                accessibilityLabel="Add Fruit"
+                color={theme.camera}
+              />
+            </TouchableOpacity>
+            </>
         ),
       }}
     >
@@ -86,6 +99,15 @@ export default function DashboardLayout() {
         options={{
           drawerLabel: "Camera",
           title: "Capture Food",
+          drawerItemStyle: { display: "none" },
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="uploadscreen"
+        options={{
+          drawerLabel: "Upload",
+          title: "Upload Food",
           drawerItemStyle: { display: "none" },
           headerShown: false,
         }}

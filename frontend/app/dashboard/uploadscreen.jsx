@@ -1,4 +1,4 @@
-import { Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useState } from 'react'
 import ThemedView from '../../components/ThemedView'
 import ThemedText from '../../components/ThemedText'
@@ -38,7 +38,7 @@ const UploadFood = () => {
       })
       if (!result.canceled) {
         setPhoto(result.assets[0].uri)
-        await classifyFood();
+        await classifyFood(result.assets[0].uri);
       }
       
     } catch (error) {
@@ -56,14 +56,30 @@ const UploadFood = () => {
     if (!date && prediction === "pantry") {
       return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false  })
     }
-
-    // Here you can send data to your backend
+    let foodData = null
+    if(prediction === "pantry"){
+      foodData = {
+        name: name, 
+        quantity: quantity, 
+        date: date,
+        photo: photo,
+      };
+    }else if(prediction === "fridge"){
+      foodData = {
+        name: name, 
+        quantity: quantity, 
+        photo: photo,
+      };
+    }
     console.log({ name, quantity, date, photo, prediction })
-    Toast.show({ type: "success", text1: "Food saved successfully" })
+    Toast.show({ type: "success", text1: "Food saved successfully", useModal: false, })
+
+    const baseURL = Platform.OS === "web" ? `http://localhost:5001/save${prediction}food` : `http://192.168.137.1:5001/save${prediction}food`
+    axios.post(baseURL, {foodData}, {withCredentials: true})
   }
 
-  const classifyFood = async () => {
-    if (!photo) {
+  const classifyFood = async (photoUri) => {
+    if (!photoUri) {
       return Toast.show({ type: "error", text1: "No photo selected" })
     }
 
@@ -73,9 +89,9 @@ const UploadFood = () => {
           ? "http://localhost:5001/classifyfood"
           : "http://192.168.137.1:5001/classifyfood"
 
-      let photoData = photo
+      let photoData = photoUri
       if (Platform.OS !== "web") {
-        const base64Image = await FileSystem.readAsStringAsync(photo, { encoding: FileSystem.EncodingType.Base64 })
+        const base64Image = await FileSystem.readAsStringAsync(photoUri, { encoding: FileSystem.EncodingType.Base64 })
         photoData = `data:image/jpeg;base64,${base64Image}`
       }
 
@@ -108,20 +124,22 @@ const UploadFood = () => {
         </TouchableOpacity>
       </View>
 
-      <ThemedView style={styles.uploadContainer}>
-        {photo && (
-          <ScrollView>
-            <ThemedView style={{ alignItems: "flex-start" }}>
-              <ThemedText>Image Captured</ThemedText>
-              <TouchableOpacity onPress={() => setPhoto(null)}>
-                <Ionicons name="close-outline" size={20} />
-              </TouchableOpacity>
-              <Image source={{ uri: photo }} style={styles.imagePreview} />
+      {photo && (
+        <Modal
+          visible={true}
+          style={styles.modal}
+          transparent={true}
+        >
+          <ThemedView style={styles.uploadContainer}>
+            <ThemedText>Image Captured</ThemedText>
+            
+            <Image source={{ uri: photo }} style={styles.imagePreview} />
 
-              <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
-              <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} keyboardType = "numeric"/>
+            <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
+            <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} keyboardType = "numeric"/>
 
-                {/* Date picker */}
+            {prediction === "pantry" && (
+              <React.Fragment>
                 {Platform.OS === "web" ? (
                   <input
                     type="date"
@@ -145,17 +163,26 @@ const UploadFood = () => {
                   </>
                 )}
                 <ThemedText>Expiration Date: {date.toLocaleDateString()}</ThemedText>
+              </React.Fragment>
+            )}
+  
+            <View style={{flexDirection: "row", padding: 10,}}>
+              <TouchableOpacity onPress={() => setPhoto(null)} 
+                style={{margin: 5, marginRight: 15}}
+                >
+                <Ionicons name="close-outline" size={50} />
+              </TouchableOpacity>
 
-
-              <View style={{ flexDirection: "row", width: "100%" }}>
-                <ThemedButton style={{ width: 150, margin: 5 }} onPress={saveFood}>
-                  <ThemedText>Save Food</ThemedText>
-                </ThemedButton>
-              </View>
-            </ThemedView>
-          </ScrollView>
-        )}
-      </ThemedView>
+              <TouchableOpacity onPress={() => saveFood()}
+                style={{margin: 5, marginLeft: 15}}
+                >
+                <Ionicons name="checkmark" size={50} />
+              </TouchableOpacity>
+            </View>
+          </ThemedView>
+          
+        </Modal>
+      )}
     </ThemedView>
   )
 }
@@ -174,10 +201,16 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   uploadContainer: {
-    width: 1000,
+    width: "100%",
     flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    marginTop: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 90
+  },
+  modal: {
+    flex: 1,
+    width: "100%"
   },
   imagePreview: {
     width: 300,

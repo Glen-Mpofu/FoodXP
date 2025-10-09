@@ -5,6 +5,10 @@ const axios = require("axios")
 // for running the python file
 const { spawn, execFile } = require("child_process");
 
+const { Pool } = require("pg");
+const { stat } = require("fs/promises");
+const { data } = require("@tensorflow/tfjs");
+
 const path = require('path');
 const fs = require('fs');
 //initialise express
@@ -13,6 +17,14 @@ const app = express();
 //password encryption
 const bcrypt = require("bcrypt")
 
+// upload directory 
+const uploadDir = path.join(__dirname, "uploads")
+
+if(!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir)
+    console.log("Uploads folder created at: ", uploadDir)
+}
+
 //enabling cross origin resource sharing for the app to run on my browser too
 const cors = require("cors");
 app.use(cors({
@@ -20,6 +32,9 @@ app.use(cors({
     credentials: true
 }))
 
+/*
+    APP USE
+*/
 //configure session
 app.use(session({
     secret: "foodxpsession1",
@@ -36,21 +51,24 @@ const port = process.env.PORT ?? 5001
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
+
+// ------------------------------
+
 app.listen(port, () => {
     console.log(`Listening on Port ${port}`)
 })
 
 require("dotenv").config();
 
-const { Pool } = require("pg");
-const { stat } = require("fs/promises");
-const { data } = require("@tensorflow/tfjs");
 
 const database = process.env.DATABASE_URL
 const pool = new Pool({
     connectionString: database
 })
 
+/* 
+    SCHEMA CREATION QUERIES
+*/
 //test connection
 pool.query("Select version();").
     then((res) => {
@@ -58,11 +76,12 @@ pool.query("Select version();").
         console.log("Version " + res.rows[0].version)
     }).catch((e) => console.log("Database Connection Error: " + e))
 
-//table creation
+//FOODIE table creation
 pool.query(`
     CREATE TABLE IF NOT EXISTS FOODIE
-    (
-        EMAIL VARCHAR(100) PRIMARY KEY, 
+    ( 
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        EMAIL VARCHAR(100) UNIQUE, 
         NAME VARCHAR(50) NOT NULL, 
         PASSWORD VARCHAR(100) NOT NULL
     )    
@@ -72,6 +91,36 @@ pool.query(`
 }).catch((e) => {
     console.log("Error creating table" + e)
 })
+
+//PANTRY AND FRIDGE TABLE CREATION
+pool.query(`
+    CREATE TABLE IF NOT EXISTS PANTRY_FOOD
+    (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(20) NOT NULL,
+        quantity DOUBLE PRECISION DEFAULT 1,
+        expiry_date DATE,
+        foodie_id UUID REFERENCES FOODIE(id)
+    );
+`).then((res) => {
+    console.log("Pantry_Food Table Ready")
+}).catch(error => {
+    console.error("Something went wrong when creating Pantry_Food table", error)
+});
+pool.query(`
+    CREATE TABLE IF NOT EXISTS FRIDGE_FOOD
+    (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        name VARCHAR(20) NOT NULL,
+        quantity DOUBLE PRECISION DEFAULT 1,
+        isFresh BOOLEAN, 
+        foodie_id UUID REFERENCES FOODIE(id)
+    );
+`).then((res) => {
+    console.log("Fridge_Food Table Ready")
+}).catch(error => {
+    console.error("Something went wrong when creating Pantry_Food table", error)
+});
 
 //register
 app.post("/register", async (req, res) => {
@@ -312,3 +361,38 @@ app.get("/loadshedding/:areaId", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch load shedding info" });
   }
 });
+
+app.post("/savepantryfood", async (req, res) => {
+    try {
+        console.log(req.body)
+        const pantryFood = {
+            name: req.body.name,
+            quantity: req.body.quantity,
+            date: req.body.date,
+            photo: req.body.photo,
+        }
+
+        if(!pantryFood.photo) res.send({status: "error", data: "no photo provided"});
+
+        //file name
+        const filename = `food_${Date.now()}.jpg`;
+        const filePath = path.join(uploadDir, filename)
+
+        const base64Data = pantryFood.photo.replace(/^data:image\/\w+;base64,/, "");
+        console.log("Base64 length:", base64Data.length);
+        
+        fs.writeFileSync(filePath, base64Data, "base64")
+        console.log("Image saved to: ", filePath)
+
+        //here save pantry food infor to the db
+
+        res.send({status: "ok", data: "Food save successfully"})
+    } catch (error) {
+        console.error("Something went wrong", error)
+    }    
+
+})
+
+app.post("/savepantryfood", async (req, res) => {
+    console.log(req.body)
+})

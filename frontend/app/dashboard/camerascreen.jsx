@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform, ImageBackground, Alert, ScrollView, Modal, Dimensions } from "react-native";
 
 //camera
@@ -49,6 +49,11 @@ export default function CameraScreen() {
   
   // modal for the food data input
   const [modalVisible, setModalVisible] = useState()
+
+  const onChangeDate = (event, selectedDate) => {
+    setShow(Platform.OS === 'ios') // keep picker open on iOS
+    if (selectedDate) setDate(selectedDate)
+  }
 
   const openModal = () => {
     setModalVisible(true)
@@ -332,7 +337,7 @@ const styles = StyleSheet.create({
       flex: 1,
       justifyContent: "center",
       alignItems: "center",
-      backgroundColor: "rgba(199, 191, 206, 0.9)",
+      backgroundColor: "rgba(255, 255, 255, 0.9)",
       borderRadius: 90
     },
     modal: {

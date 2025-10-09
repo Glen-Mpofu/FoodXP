@@ -38,8 +38,9 @@ const UploadFood = () => {
       })
       if (!result.canceled) {
         setPhoto(result.assets[0].uri)
-        setPrediction(null)
+        await classifyFood();
       }
+      
     } catch (error) {
       console.log(error)
     }
@@ -47,13 +48,13 @@ const UploadFood = () => {
 
   const saveFood = async () => {
     if (!name.trim()) {
-      return Toast.show({ type: "error", text1: "Please enter the food's name" })
+      return Toast.show({ type: "error", text1: "Please enter the food's name", useModal: false })
     }
     if (!quantity.trim()) {
-      return Toast.show({ type: "error", text1: "Please enter the food's quantity" })
+      return Toast.show({ type: "error", text1: "Please enter the food's quantity", useModal: false  })
     }
-    if (!date) {
-      return Toast.show({ type: "error", text1: "Please select expiration date" })
+    if (!date && prediction === "pantry") {
+      return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false  })
     }
 
     // Here you can send data to your backend
@@ -118,9 +119,8 @@ const UploadFood = () => {
               <Image source={{ uri: photo }} style={styles.imagePreview} />
 
               <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
-              <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} />
+              <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} keyboardType = "numeric"/>
 
-              
                 {/* Date picker */}
                 {Platform.OS === "web" ? (
                   <input
@@ -146,10 +146,8 @@ const UploadFood = () => {
                 )}
                 <ThemedText>Expiration Date: {date.toLocaleDateString()}</ThemedText>
 
+
               <View style={{ flexDirection: "row", width: "100%" }}>
-                <ThemedButton style={{ width: 150, margin: 5 }} onPress={classifyFood}>
-                  <ThemedText>Classify & Add</ThemedText>
-                </ThemedButton>
                 <ThemedButton style={{ width: 150, margin: 5 }} onPress={saveFood}>
                   <ThemedText>Save Food</ThemedText>
                 </ThemedButton>

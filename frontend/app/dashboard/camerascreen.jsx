@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform, ImageBackground, Alert } from "react-native";
+import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform, ImageBackground, Alert, ScrollView, Modal, Dimensions } from "react-native";
 
 //camera
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library"
-
+import DateTimePicker  from '@react-native-community/datetimepicker';
 import * as ImagePicker from "expo-image-picker"
 import * as FileSystem from "expo-file-system";
 //themed components 
@@ -19,6 +19,7 @@ import { useIsFocused } from "@react-navigation/native";
 import { Toast } from "toastify-react-native";
 import axios from "axios"
 import { router } from "expo-router";
+import ThemedTextInput from "../../components/ThemedTextInput";
 
 export default function CameraScreen() {
   const [facing, setFacing] = useState("back");
@@ -34,95 +35,29 @@ export default function CameraScreen() {
   //only renders the camera when the camera screen is open
   const isFocused = useIsFocused();
 
+  const {height, width} = Dimensions.get("window")
+
   //camera availability
   const [cameraAvailable, setCameraAvailable] = useState(null);
   const [prediction, setPrediction] = useState(null)
   let response = useState(null)
-
-  async function saveFood(uri, classification) {
-    try{
-      const folderUri = FileSystem.documentDirectory + "foodImages/" + classification + "/"
-      await FileSystem.makeDirectoryAsync(folderUri, {intermediates: true})
-
-      const fileName = Date.now() + ".jpg"
-      const dest = folderUri + fileName
-
-      await FileSystem.copyAsync({
-        from: uri,
-        to: dest
-      })
-
-      return dest;
-    }
-    catch(error){
-      console.log(error)
-    }
-  }
   
-  async function classifyfood() {
-    try {
-      const baseUrl =
-        Platform.OS === "web"
-          ? "http://localhost:5001/classifyfood"
-          : "http://192.168.137.1:5001/classifyfood";
+  const [name, onNameChange] = useState("")
+  const [quantity, onQuantityChange] = useState("")
+  const [date, setDate] = useState(new Date())
+  const [show, setShow] = useState(false)
+  
+  // modal for the food data input
+  const [modalVisible, setModalVisible] = useState()
 
-      if (!photo) {
-        Toast.show({
-          type: "error",
-          text1: "No photo selected",
-        });
-        return;
-      }
-            
-      if(Platform.OS === "web"){
-        response = await axios.post(
-          baseUrl,
-          { photo: photo },
-          { withCredentials: true }
-        );
-      }else{
-        // ✅ Convert file URI to Base64
-        const base64Image = await FileSystem.readAsStringAsync(photo, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        const photoData = `data:image/jpeg;base64,${base64Image}`;
-
-        response = await axios.post(
-          baseUrl,
-          { photo: photoData },
-          { withCredentials: true }
-        );
-      }      
-
-      console.log("Server response:", response.data);
-
-      const { Prediction, Confidence } = response.data;
-
-      if (Prediction) {
-        setPrediction(Prediction);
-        Toast.show({
-          type: "success",
-          text1: `${Prediction} item added`,
-        });
-        saveFood(photo, Prediction)
-      } else {
-        Toast.show({
-          type: "error",
-          text1: "Prediction failed",
-        });
-      }
-    } catch (e) {
-      console.error("Classification error:", e);
-      Toast.show({
-        type: "error",
-        text1: "Classification failed",
-        text2: e.message || "An error occurred",
-      });
-    }
+  const openModal = () => {
+    setModalVisible(true)
   }
 
-  
+  const closeModal = () => {
+    setModalVisible(false)
+  }
+
   useEffect(() => {
     const checkCamera = async () => {
       try {
@@ -195,9 +130,11 @@ export default function CameraScreen() {
   }
   async function captureImage() {
     if (cameraRef.current) {
-      const options = { quality: 0.8, base64: true, skipProcessing: true }
+      const options = { quality: 0.8, base64: true, skipProcessing: true, androidCaptureSound: false, }
       const photoData = await cameraRef.current.takePictureAsync(options);
       setPhoto(photoData.uri)
+      
+      await classifyFood(photoData.uri);
 
       if (hasMediaLibraryPermission?.granted) {
         const asset = await MediaLibrary.createAssetAsync(photoData.uri);
@@ -209,21 +146,65 @@ export default function CameraScreen() {
   }
 
   //function for saving the food image in the db
-  async function saveFood() {
-    
+  const saveFood = async () => {
+    if (!name.trim()) {
+      return Toast.show({ type: "error", text1: "Please enter the food's name", useModal: false })
+    }
+    if (!quantity.trim()) {
+      return Toast.show({ type: "error", text1: "Please enter the food's quantity", useModal: false  })
+    }
+    if (!date && prediction === "pantry") {
+      return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false  })
+    }
+
+    // Here you can send data to your backend
+    console.log({ name, quantity, date, photo, prediction })
+    Toast.show({ type: "success", text1: "Food saved successfully" })
+  }
+
+  const classifyFood = async (photoUri) => {
+    if (!photoUri) {
+      return Toast.show({ type: "error", text1: "No photo selected" })
+    }
+
+    try {
+      const baseUrl =
+        Platform.OS === "web"
+          ? "http://localhost:5001/classifyfood"
+          : "http://192.168.137.1:5001/classifyfood"
+
+      let photoData = photoUri
+      if (Platform.OS !== "web") {
+        const base64Image = await FileSystem.readAsStringAsync(photoUri, { encoding: FileSystem.EncodingType.Base64 })
+        photoData = `data:image/jpeg;base64,${base64Image}`
+      }
+
+      const response = await axios.post(baseUrl, { photo: photoData })
+      const { Prediction } = response.data
+
+      if (Prediction) {
+        setPrediction(Prediction)
+        Toast.show({ type: "success", text1: `${Prediction} item added` })
+      } else {
+        Toast.show({ type: "error", text1: "Prediction failed" })
+      }
+    } catch (error) {
+      console.error("Classification error:", error)
+      Toast.show({ type: "error", text1: "Classification failed" })
+    }
   }
 
   return (
     <ThemedView style={styles.container}>
       {isFocused && (
         <CameraView
-          style={styles.camera} facing={facing}
+          style={[styles.camera, {width: width, height: height}]} facing={facing}
           enableTorch={enableTorch}
           videoQuality="2160p"
           zoom={0}
           ref={cameraRef}
+          mute={true}
         >
-
           <ThemedView style={styles.buttonContainer}>
 
             <ThemedButton onPress={toggleCameraFacing} style={{ background: "transparent", width: 50 }}>
@@ -252,45 +233,74 @@ export default function CameraScreen() {
           </ThemedView>
         </CameraView>
       )}
-      {
-        photo && (
-          <ThemedView style={{ alignItems: "center", justifyContent: "" }}>
+        {photo && (
+        <Modal
+          visible={true}
+          style={styles.modal}
+          transparent={true}
+        >
+          <ThemedView style={styles.uploadContainer}>
             <ThemedText>Image Captured</ThemedText>
-            <TouchableOpacity onPress={() => setPhoto(null)}>
-              <Ionicons
-                name="close-outline"
-                size={20}
-                accessibilityLabel="Close"
-            />
-            </TouchableOpacity>
+            
             <Image source={{ uri: photo }} style={styles.imagePreview} />
 
-            <View style={{flexDirection: "row", width: "100%"}}>
-              <ThemedButton style={{backgroundColor: "transparent", width: 150, height:50, margin: 5, marginLeft: 0 }} onPress={()=> classifyfood()}>
-                <ThemedText>Add to FoodBox</ThemedText>
-              </ThemedButton>
+            <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
+            <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} keyboardType = "numeric"/>
 
-              { prediction && (                
-                <ThemedButton style={{backgroundColor: "transparent", width: 150, height:50, margin: 5, marginLeft: 0 }} onPress={()=> router.push(`/dashboard/${prediction}`)}>
-                  <ThemedText>View in {prediction.toUpperCase()}</ThemedText>
-                </ThemedButton>  
-              )}              
+            {prediction === "pantry" && (
+              <React.Fragment>
+                {Platform.OS === "web" ? (
+                  <input
+                    type="date"
+                    value={date.toISOString().split("T")[0]}
+                    onChange={(e) => setDate(new Date(e.target.value))}
+                    style={{ marginVertical: 10, padding: 8, fontSize: 16 }}
+                  />
+                ) : (
+                  <>
+                    <ThemedButton onPress={() => setShow(true)} style={{ marginVertical: 10 }}>
+                      <ThemedText>Select Expiration Date</ThemedText>
+                    </ThemedButton>
+                    {show && (
+                      <DateTimePicker
+                        value={date}
+                        mode="date"
+                        display="default"
+                        onChange={onChangeDate}
+                      />
+                    )}
+                  </>
+                )}
+                <ThemedText>Expiration Date: {date.toLocaleDateString()}</ThemedText>
+              </React.Fragment>
+            )}
+  
+            <View style={{flexDirection: "row", padding: 10,}}>
+              <TouchableOpacity onPress={() => setPhoto(null)} 
+                style={{margin: 5, marginRight: 15}}
+                >
+                <Ionicons name="close-outline" size={50} />
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => saveFood()}
+                style={{margin: 5, marginLeft: 15}}
+                >
+                <Ionicons name="checkmark" size={50} />
+              </TouchableOpacity>
             </View>
           </ThemedView>
-        )
-      }
-
+        </Modal>
+      )}
     </ThemedView >
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, width: "100%", paddingTop: 50 },
+  container: { flex: 1, width: "100%", },
   camera: {
     flex: 1,
-    width: "100%",
-    height: "100%",
-    borderRadius: 50,
+    alignSelf: "center", 
+    overflow: "hidden"
   },
   buttonContainer: {
     flex: 1,
@@ -304,8 +314,8 @@ const styles = StyleSheet.create({
     background: "transparent",
   },
   imagePreview: {
-    width: 200,
-    height: 200,
+    width: 300,
+    height: 300,
     borderRadius: 10
   },
     bgImage: {
@@ -318,9 +328,15 @@ const styles = StyleSheet.create({
       marginTop: 10
     },
     uploadContainer: {
-      width: 500,
+      width: "100%",
       flex: 1,
+      justifyContent: "center",
       alignItems: "center",
-      justifyContent: ""
+      backgroundColor: "rgba(199, 191, 206, 0.9)",
+      borderRadius: 90
+    },
+    modal: {
+      flex: 1,
+      width: "100%"
     }
 });

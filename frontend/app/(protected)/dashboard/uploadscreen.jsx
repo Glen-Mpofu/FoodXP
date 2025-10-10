@@ -1,5 +1,5 @@
 import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import ThemedView from '../../../components/ThemedView'
 import ThemedText from '../../../components/ThemedText'
 import { Ionicons } from "@expo/vector-icons";
@@ -11,6 +11,7 @@ import { Toast } from 'toastify-react-native';
 import * as FileSystem from "expo-file-system";
 import ThemedTextInput from '../../../components/ThemedTextInput';
 import DateTimePicker  from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const UploadFood = () => {
   const [photo, setPhoto] = useState(null)
@@ -21,6 +22,19 @@ const UploadFood = () => {
   const [quantity, onQuantityChange] = useState("")
   const [date, setDate] = useState(new Date())
   const [show, setShow] = useState(false)
+
+  const [userToken, setUserToken] = React.useState(null)
+
+  useEffect(() => {
+    const init = async () => {
+      const token = await AsyncStorage.getItem("userToken")
+      if(!token){
+        return router.replace("/")
+      }
+      setUserToken(token)
+    };
+    init();
+  }, [])
 
   const onChangeDate = (event, selectedDate) => {
     setShow(Platform.OS === 'ios') // keep picker open on iOS
@@ -63,19 +77,35 @@ const UploadFood = () => {
         quantity: quantity, 
         date: date,
         photo: photo,
+        token: userToken
       };
     }else if(prediction === "fridge"){
       foodData = {
         name: name, 
         quantity: quantity, 
         photo: photo,
+        token: userToken
       };
     }
     console.log({ name, quantity, date, photo, prediction })
     Toast.show({ type: "success", text1: "Food saved successfully", useModal: false, })
 
     const baseURL = Platform.OS === "web" ? `http://localhost:5001/save${prediction}food` : `http://192.168.137.1:5001/save${prediction}food`
-    axios.post(baseURL, {foodData}, {withCredentials: true})
+    axios.post(baseURL, {foodData}, {withCredentials: true, headers: {Authorization: `Bearer ${userToken}`}}).then((res) => {
+      if(res.data.status === "ok"){
+        Toast.show({
+          type: "success",
+          text1: res.data.data,
+          useModal: false
+        })
+      }else{
+        Toast.show({
+          type: "error",
+          text1: res.data.data,
+          useModal: false
+        })
+      }
+    })
   }
 
   const classifyFood = async (photoUri) => {
@@ -97,16 +127,15 @@ const UploadFood = () => {
 
       const response = await axios.post(baseUrl, { photo: photoData })
       const { Confidence, Prediction } = response.data
-      alert(Prediction)
       if (Prediction) {
         setPrediction(Prediction)
-        Toast.show({ type: "success", text1: `${Prediction} item added` })
+        Toast.show({ type: "success", text1: `${Prediction} item added`, useModal: false })
       } else {
-        Toast.show({ type: "error", text1: "Prediction failed" })
+        Toast.show({ type: "error", text1: "Prediction failed", useModal: false })
       }
     } catch (error) {
       console.error("Classification error:", error)
-      Toast.show({ type: "error", text1: "Classification failed" })
+      Toast.show({ type: "error", text1: "Classification failed", useModal: false })
     }
   }
 

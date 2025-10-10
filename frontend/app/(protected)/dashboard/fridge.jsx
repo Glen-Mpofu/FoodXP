@@ -1,4 +1,4 @@
-import { StyleSheet, Text } from 'react-native'
+import { Platform, StyleSheet, Text } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import ThemedView from '../../../components/ThemedView'
 import ThemedText from '../../../components/ThemedText'
@@ -12,24 +12,23 @@ const Fridge = () => {
 
   useEffect(() => {
     async function init() {
-
-      //token verification
-      const token = await AsyncStorage.getItem("userToken")
-      if(!token){
-        return router.replace("/")
-      }
-
       //fetching loadshedding
       try {
+        //token verification
+        const token = await AsyncStorage.getItem("userToken")
+        if(!token){
+          return router.replace("/")
+        }
         // 1️⃣ Get the numeric area ID for Polokwane
-        const areaRes = await axios.get("http://192.168.137.1:5001/loadshedding/area") 
+        const baseUrl = Platform.OS === "web" ? "http://localhost:5001" : "http://192.168.137.1:5001"
+        const areaRes = await axios.get(`${baseUrl}/loadshedding/area`) 
         // assuming your server returns { areaId, name }
         const areaId = areaRes.data.areaId
 
         if (!areaId) throw new Error("Area ID not found")
 
         // 2️⃣ Get load shedding info for that area
-        const statusRes = await axios.get(`http://192.168.137.1:5001/loadshedding/${areaId}`)
+        const statusRes = await axios.get(`${baseUrl}/loadshedding/${areaId}`)
         setStatus(statusRes.data)
       } catch (error) {
         console.error("Load shedding fetch failed:", error)

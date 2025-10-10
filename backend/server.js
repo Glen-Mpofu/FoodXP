@@ -104,7 +104,8 @@ pool.query(`
         name VARCHAR(20) NOT NULL,
         quantity DOUBLE PRECISION DEFAULT 1,
         expiry_date DATE,
-        foodie_id UUID REFERENCES FOODIE(id)
+        foodie_id UUID REFERENCES FOODIE(id),
+        photo VARCHAR(150)
     );
 `).then((res) => {
     console.log("Pantry_Food Table Ready")
@@ -118,13 +119,36 @@ pool.query(`
         name VARCHAR(20) NOT NULL,
         quantity DOUBLE PRECISION DEFAULT 1,
         isFresh BOOLEAN, 
-        foodie_id UUID REFERENCES FOODIE(id)
+        foodie_id UUID REFERENCES FOODIE(id),
+        photo VARCHAR(150)
     );
 `).then((res) => {
     console.log("Fridge_Food Table Ready")
 }).catch(error => {
     console.error("Something went wrong when creating Pantry_Food table", error)
 });
+
+//reusable FUNCTION
+
+async function getFoodie(email) {
+  const query = `
+    SELECT * FROM Foodie WHERE email = $1
+  `;
+
+  try {
+    const result = await pool.query(query, [email]);
+
+    if (result.rowCount !== 1) {
+      return { status: "error", data: "No such foodie" };
+    }
+    console.log(result.rows[0])
+    return { status: "ok", data: result.rows[0] };
+
+  } catch (err) {
+    console.error("Database error:", err.message);
+    return { status: "error", data: err.message };
+  }
+}
 
 //register
 app.post("/register", async (req, res) => {
@@ -378,15 +402,26 @@ app.post("/savepantryfood", async (req, res) => {
         fs.writeFileSync(filePath, base64Data, "base64")
         console.log("Image saved to: ", filePath)
 
+        //getting email from token
+        const token = foodData.token
+        const decoded = jwt.verify(token, "SECRET_KEY")
+        const email = decoded.email
+
+        const foodie = await getFoodie(email)
+        console.log(foodie)
         //here save pantry food infor to the db
-        pool.query(
+        await pool.query(
             `
-                INSERT INTO PANTRY_FOOD (NAME, QUANTITY, EXPIRY_DATE, FOODIE_ID)
-            `
-        )
+                INSERT INTO PANTRY_FOOD (NAME, QUANTITY, EXPIRY_DATE, FOODIE_ID, PHOTO)
+                Values($1, $2, $3, $4, $5);
+            `, [pantryFood.name, pantryFood.quantity, pantryFood.date, foodie.id, filePath]
+        ).then((result) => {
+            if(result.rowCount <= 0){
+                return res.send({status: "error", data: "Failed to add food"})
+            }
 
-
-        res.send({status: "ok", data: "Food saved successfully"})
+            res.send({status: "ok", data: "Pantry food added"})
+        })
     } catch (error) {
         console.error("Something went wrong", error)
     }    

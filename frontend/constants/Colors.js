@@ -1,7 +1,7 @@
 export const Colors = {
     //constant colors regarless of theme 
     primary: '#A8BBA3',
-    warning: '#8f0000ff',
+    error: '#8f0000ff',
     accent: '#161b22', 
     success: '#9CAFAA', 
     drawerActive:  "#9CAFAA",
@@ -29,7 +29,7 @@ export const Colors = {
         navBackground: '#9e795aff', 
         uiBackground: '#ffffffff',    
         imageColor: '#9CAFAA', 
-        borderColor: '#210435ff',
+        borderColor: '#810d9bff',
         buttonColor: "#e5b2f0ff",
         camera: "#1e2631ff"
     }

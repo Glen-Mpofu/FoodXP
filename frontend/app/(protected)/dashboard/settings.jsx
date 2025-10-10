@@ -44,8 +44,8 @@ const Settings = () => {
       if(!token){
         return router.replace("/")
       }
-    }
-
+      setUserToken(token)
+    };
 
     const baseUrl = Platform.OS === "web" ? "http://localhost:5001/session" : "http://192.168.137.1:5001/session"
     axios.get(baseUrl, {withCredentials: true})
@@ -182,6 +182,8 @@ const Settings = () => {
               text1: res.data.data,
               useModal: false
             })
+
+            AsyncStorage.removeItem("userToken")
             router.replace("/");                    
         }
     }).catch((e) => {

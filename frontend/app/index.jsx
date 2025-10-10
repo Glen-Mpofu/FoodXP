@@ -33,6 +33,9 @@ const index = () => {
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme] ?? Colors.light;
 
+    const [emailBorderColor, setEmailBorderColor] = useState(theme.borderColor)
+    const [passwordBorderColor, setPasswordBorderColor] = useState(theme.borderColor)
+
     async function handleSubmit() {
         if(!email.endsWith("@gmail.com")){
             Toast.show({
@@ -40,6 +43,7 @@ const index = () => {
                 text1: "Please enter a valid email",
                 useModal: false
             })
+            setEmailBorderColor(Colors.error)
             return;
         }else if(password.trim() === ""){
             Toast.show({
@@ -47,9 +51,11 @@ const index = () => {
                 text1: "Please enter a password",
                 useModal: false
             })
+            setPasswordBorderColor(Colors.error)
             return;
         }
-        
+        setEmailBorderColor(theme.borderColor)
+        setPasswordBorderColor(theme.borderColor)
         const foodieData = {
             email,
             password
@@ -68,7 +74,8 @@ const index = () => {
 
                         // SETTING THE TOKEN 
                         await AsyncStorage.setItem("userToken", res.data.token)
-
+                        setPasswordBorderColor(theme.borderColor)
+                        setEmailBorderColor(theme.borderColor)
                     router.replace("/(protected)/dashboard/");                    
                 }
                 else if (res.data.status === "no account") {
@@ -76,7 +83,8 @@ const index = () => {
                         type: "error",
                         text1: res.data.data,
                         useModal: false
-                    })                    
+                    })  
+                    setEmailBorderColor(Colors.error)                  
                 }
                 else if (res.data.status === "wrong password") {
                     Toast.show({
@@ -84,6 +92,7 @@ const index = () => {
                         text1: res.data.data,
                         useModal: false
                     })
+                    setPasswordBorderColor(Colors.error)
                 }else{
                     Toast.show({
                         type: "error",
@@ -119,12 +128,12 @@ const index = () => {
 
                 <View style={styles.inputView}>
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Email</ThemedText>
-                    <ThemedTextInput style={styles.input} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
+                    <ThemedTextInput style={[{borderColor: emailBorderColor}, styles.input]} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
 
                     <ThemedText style={[{ marginBottom: 0 }]}>Password</ThemedText>
                     
                     <View style={styles.passwordContainer}>                        
-                        <ThemedTextInput style={[styles.input, {width: "85%"}]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
+                        <ThemedTextInput style={[{width: "85%", borderColor: passwordBorderColor}, styles.input]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
                         <Pressable onPress={()=>onShowPasswordChange(!showPassword)}>
                             <Ionicons name={ showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"}/>
                         </Pressable>

@@ -33,6 +33,10 @@ const Register = () => {
 
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme] ?? Colors.light;
+    
+    let [emailBorderColor, setEmailBorderColor] = React.useState(theme.borderColor)
+    let [passwordBorderColor, setPasswordBorderColor] = React.useState(theme.borderColor)
+    let [nameBorderColor, setNameBorderColor] = React.useState(theme.borderColor)
 
     function handleSubmit() {
         //valid email check
@@ -42,9 +46,12 @@ const Register = () => {
                 type: "error",
                 text1: "Wrong Email Format"
             })
+            setEmailBorderColor(Colors.error)
             return;
         }
 
+        setEmailBorderColor(theme.backgroundColor)
+        
         //Name
         if(userName.trim() === ""){
             Toast.show({
@@ -52,8 +59,11 @@ const Register = () => {
                 text1: "Please enter a Name",
                 useModal: false
             })
+            setNameBorderColor(Colors.error)
             return;
         }
+
+        setNameBorderColor(theme.borderColor)
 
         //password match check
         if(password != userConfirmPassword){
@@ -62,8 +72,10 @@ const Register = () => {
                 text1: "Passwords don't match",
                 useModal: false
             })
+            setPasswordBorderColor(Colors.error)
             return;
         }
+        setPasswordBorderColor(theme.borderColor)
 
         const foodieData = {
             email: email,
@@ -89,6 +101,7 @@ const Register = () => {
                         text1: res.data.data,
                         useModal: false
                     })
+                    setEmailBorderColor(Colors.error)
                 }
                 else {
                     Toast.show({
@@ -113,16 +126,16 @@ const Register = () => {
                 <View style={styles.inputView}>
                     {/* EMAIL */}
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Email</ThemedText>
-                    <ThemedTextInput style={styles.input} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
+                    <ThemedTextInput style={[{ borderColor: emailBorderColor },styles.input]} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
 
                     {/* NAME */}
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Name</ThemedText>
-                    <ThemedTextInput style={styles.input} value={userName} onChangeText={onNameChange} placeholder="Enter your Name" />
+                    <ThemedTextInput style={[{borderColor: nameBorderColor} , styles.input]} value={userName} onChangeText={onNameChange} placeholder="Enter your Name" />
 
                     {/* PASSWORD */}
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Password</ThemedText>
                     <View style={styles.passwordContainer}>
-                        <ThemedTextInput style={[styles.input, {width: "85%"}]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
+                        <ThemedTextInput style={[styles.input, {width: "85%", borderColor: passwordBorderColor}]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
                         <Pressable onPress={()=>onShowPasswordChange(!showPassword)}>
                             <Ionicons name={ showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"}/>    
                         </Pressable>
@@ -131,7 +144,7 @@ const Register = () => {
                     {/* CONFIRM PASSWORD */}
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Confirm Password</ThemedText>
                     <View style={styles.passwordContainer}>
-                        <ThemedTextInput style={[styles.input, {width: "85%"}]} secureTextEntry={showConfirmPassword} value={userConfirmPassword} onChangeText={onChangeConfirmPassword} placeholder="Confirm Password" />
+                        <ThemedTextInput style={[styles.input, {width: "85%", borderColor: passwordBorderColor}]} secureTextEntry={showConfirmPassword} value={userConfirmPassword} onChangeText={onChangeConfirmPassword} placeholder="Confirm Password" />
                         <Pressable onPress={()=>onConfirmShowPasswordChange(!showConfirmPassword)}>
                             <Ionicons name={ showConfirmPassword ? "eye" : "eye-off"} size={30} style={styles.icon}color={"purple"}/>    
                         </Pressable>
@@ -217,6 +230,6 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
         margin: 0,
-        padding: 0
+        padding: 0,
     }
 })

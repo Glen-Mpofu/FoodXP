@@ -21,6 +21,7 @@ const Recipes = () => {
       if(!token){
         return router.replace("/")
       }
+      setUserToken(token)
     };
     init();
   }, [])

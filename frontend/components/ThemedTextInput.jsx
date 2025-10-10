@@ -8,7 +8,7 @@ const ThemedTextInput = ({ style, ...props }) => {
     const theme = Colors[colorScheme] ?? Colors.light
 
     return (
-        <TextInput placeholderTextColor = {theme.taPlaceholder} style={[ styles.textInput, style, { borderColor: theme.borderColor, color: theme.taPlaceholder}]} {...props} />
+        <TextInput placeholderTextColor = {theme.taPlaceholder} style={[ styles.textInput, { borderColor: theme.borderColor, color: theme.taPlaceholder}, style]} {...props} />
     )
 }
 
@@ -26,6 +26,5 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         padding: Platform.OS === "web" ? 25 : 15,
         marginEnd: Platform.OS === "web" ? 20 : 10,
-        backgroundColor: "transparent"
     }
 })

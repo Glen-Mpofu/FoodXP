@@ -324,7 +324,7 @@ app.post("/deleteaccount", async (req, res) => {
 app.get("/loadshedding/area", async (req, res) => {
   try {
     const response = await axios.get(
-      `https://developer.sepush.co.za/business/2.0/areas_search?text=polokwane`,
+      `https://developer.sepush.co.za/business/2.0/areas_search?text=polokwane&test=current`,
       {
         headers: { token: process.env.ESKOM_API_KEY },
       }
@@ -349,7 +349,7 @@ app.get("/loadshedding/:areaId", async (req, res) => {
   try {
     const { areaId } = req.params;
     const response = await axios.get(
-      `https://developer.sepush.co.za/business/2.0/area?id=${areaId}`,
+      `https://developer.sepush.co.za/business/2.0/area?id=${areaId}&test=current`,
       {
         headers: { token: process.env.ESKOM_API_KEY },
       }

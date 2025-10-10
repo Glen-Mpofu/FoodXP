@@ -2,14 +2,15 @@ import { Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react
 import React, { useEffect, useState } from 'react'
 import { Toast } from "toastify-react-native";
 import axios from "axios"
-import ThemedView from '../../components/ThemedView'
-import ThemedText from '../../components/ThemedText'
+import ThemedView from '../../../components/ThemedView'
+import ThemedText from '../../../components/ThemedText'
 import { Ionicons } from '@expo/vector-icons';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import ThemedTextInput from '../../components/ThemedTextInput';
-import ThemedButton from '../../components/ThemedButton';
+import ThemedTextInput from '../../../components/ThemedTextInput';
+import ThemedButton from '../../../components/ThemedButton';
 import { router } from 'expo-router'
 import DropDownPicker from "react-native-dropdown-picker";
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const Settings = () => {
   const [foodie, setFoodie] = React.useState(null)
@@ -27,6 +28,8 @@ const Settings = () => {
 
   const [selectedOption, setSelectedOption] = React.useState(null)
 
+  const [userToken, setUserToken] = React.useState(null)
+
   //drop down
   const [open, setOpen] = React.useState(false)
   const [value, setValue] = React.useState(null)
@@ -36,6 +39,14 @@ const Settings = () => {
   ])
 
   useEffect(() => {
+    const init = async () =>{
+      const token = await AsyncStorage.getItem("userToken")
+      if(!token){
+        return router.replace("/")
+      }
+    }
+
+
     const baseUrl = Platform.OS === "web" ? "http://localhost:5001/session" : "http://192.168.137.1:5001/session"
     axios.get(baseUrl, {withCredentials: true})
     .then((res) => {
@@ -55,8 +66,8 @@ const Settings = () => {
       }
     }).catch( err => {
       console.log(err)
-    })
-
+    });
+    init();
   }, [])
 
   // Name change
@@ -163,7 +174,7 @@ const Settings = () => {
   // Clear auth/session here
   // redirect to login screen
 
-  await axios.post("http://192.168.137.1:5001/logout", {}, { withCredentials: true }).
+  await axios.post("http://localhost:5001/logout", {}, { withCredentials: true }).
     then((res) => {
         if (res.data.status === "ok") {
             Toast.show({
@@ -176,8 +187,8 @@ const Settings = () => {
     }).catch((e) => {
         console.log(e)
         Toast.show({
-          type: "success",
-          text1: "Something went wrong when logging out",
+          type: "error",
+          text1: "Something went wrong when logging out" + e,
           useModal: false
         })
     })

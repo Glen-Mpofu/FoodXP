@@ -1,9 +1,9 @@
 // app/dashboard.js
 import { StyleSheet } from 'react-native';
-import ThemedView from '../../components/ThemedView';
-import ThemedText from '../../components/ThemedText';
+import ThemedView from '../../../components/ThemedView';
+import ThemedText from '../../../components/ThemedText';
 import { useColorScheme } from 'react-native';
-import { Colors } from '../../constants/Colors';
+import { Colors } from '../../../constants/Colors';
 
 export default function Dashboard() {
   const colorScheme = useColorScheme();

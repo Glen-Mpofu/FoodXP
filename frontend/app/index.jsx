@@ -21,6 +21,8 @@ import { Toast } from 'toastify-react-native'
 // gradient
 import { LinearGradient } from 'expo-linear-gradient'
 
+import AsyncStorage from "@react-native-async-storage/async-storage"
+
 //login page
 const index = () => {
     const [email, onEmailChange] = React.useState("");
@@ -31,7 +33,7 @@ const index = () => {
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme] ?? Colors.light;
 
-    function handleSubmit() {
+    async function handleSubmit() {
         if(!email.endsWith("@gmail.com")){
             Toast.show({
                 type: "error",
@@ -54,7 +56,7 @@ const index = () => {
         }
         const baseURL = Platform.OS === "web" ? "http://localhost:5001/login" : "http://192.168.137.1:5001/login"
         axios.post(baseURL, foodieData, {withCredentials: true}).
-            then(res => {
+            then(async res => {
                 console.log(res.data);
 
                 if (res.data.status === "ok") {
@@ -63,7 +65,11 @@ const index = () => {
                         text1: res.data.data,
                         useModal: false
                     });
-                    router.push("/dashboard/");                    
+
+                        // SETTING THE TOKEN 
+                        await AsyncStorage.setItem("userToken", res.data.token)
+
+                    router.replace("/(protected)/dashboard/");                    
                 }
                 else if (res.data.status === "no account") {
                     Toast.show({

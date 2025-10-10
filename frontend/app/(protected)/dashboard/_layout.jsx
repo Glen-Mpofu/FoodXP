@@ -3,9 +3,9 @@ import { TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useColorScheme } from 'react-native';
-import { Colors } from '../../constants/Colors';
+import { Colors } from '../../../constants/Colors';
 import { MaterialCommunityIcons } from "@expo/vector-icons"
-import LogoutDrawer from "../../components/LogoutDrawer"
+import LogoutDrawer from "../../../components/LogoutDrawer"
 
 export default function DashboardLayout() {
   const router = useRouter();

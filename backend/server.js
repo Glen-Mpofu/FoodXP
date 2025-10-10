@@ -2,6 +2,8 @@
 const express = require("express");
 const session = require("express-session") // npm install express-session
 const axios = require("axios")
+const jwt = require("jsonwebtoken") // creating a token for the pages of the app. prevents access to pages without login
+
 // for running the python file
 const { spawn, execFile } = require("child_process");
 
@@ -24,6 +26,9 @@ if(!fs.existsSync(uploadDir)){
     fs.mkdirSync(uploadDir)
     console.log("Uploads folder created at: ", uploadDir)
 }
+
+// JWT SECRET
+const JWT_SECRET = process.env.JWT_SECRET
 
 //enabling cross origin resource sharing for the app to run on my browser too
 const cors = require("cors");
@@ -59,7 +64,6 @@ app.listen(port, () => {
 })
 
 require("dotenv").config();
-
 
 const database = process.env.DATABASE_URL
 const pool = new Pool({
@@ -173,12 +177,15 @@ app.post("/login", async (req, res) => {
         return res.send({ status: "wrong password", data: "Wrong Password. Try another" })
     }
 
+    // CREATING A TOKEN FOR THE USER
+    const token = jwt.sign({email: email}, "SECRET_KEY", {expiresIn: "7d"})
+
     //SAVING USER IN SESSION
     req.session.user = { email };
     console.log("Session Created: ", req.session)
 
     // else move to dashboard
-    return res.send({ status: "ok", data: "Login Successful" })
+    return res.send({ status: "ok", data: "Login Successful", token: token })
 })
 
 //logout 
@@ -349,12 +356,14 @@ app.get("/loadshedding/:areaId", async (req, res) => {
 
 app.post("/savepantryfood", async (req, res) => {
     try {
-        console.log(req.body)
+        const {foodData} = req.body
+        console.log(foodData)
+        
         const pantryFood = {
-            name: req.body.name,
-            quantity: req.body.quantity,
-            date: req.body.date,
-            photo: req.body.photo,
+            name: foodData.name,
+            quantity: foodData.quantity,
+            date: foodData.date,
+            photo: foodData.photo,
         }
 
         if(!pantryFood.photo) res.send({status: "error", data: "no photo provided"});
@@ -370,8 +379,14 @@ app.post("/savepantryfood", async (req, res) => {
         console.log("Image saved to: ", filePath)
 
         //here save pantry food infor to the db
+        pool.query(
+            `
+                INSERT INTO PANTRY_FOOD (NAME, QUANTITY, EXPIRY_DATE, FOODIE_ID)
+            `
+        )
 
-        res.send({status: "ok", data: "Food save successfully"})
+
+        res.send({status: "ok", data: "Food saved successfully"})
     } catch (error) {
         console.error("Something went wrong", error)
     }    

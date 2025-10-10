@@ -1,15 +1,15 @@
 import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useState } from 'react'
-import ThemedView from '../../components/ThemedView'
-import ThemedText from '../../components/ThemedText'
+import ThemedView from '../../../components/ThemedView'
+import ThemedText from '../../../components/ThemedText'
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios"
 import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker"
-import ThemedButton from '../../components/ThemedButton';
+import ThemedButton from '../../../components/ThemedButton';
 import { Toast } from 'toastify-react-native';
 import * as FileSystem from "expo-file-system";
-import ThemedTextInput from '../../components/ThemedTextInput';
+import ThemedTextInput from '../../../components/ThemedTextInput';
 import DateTimePicker  from '@react-native-community/datetimepicker';
 
 const UploadFood = () => {

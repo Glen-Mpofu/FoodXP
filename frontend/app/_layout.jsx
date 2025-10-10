@@ -54,7 +54,7 @@ const FoodXPLayout = () => {
             >
                 <Stack.Screen name={"index"} options={{ title: "Login", headerShown: false }} />
                 <Stack.Screen name={"register"} options={{ title: "Register", headerShown: false }} />
-                <Stack.Screen name={"dashboard"} options={{ headerShown: false }} />
+                <Stack.Screen name={"(protected)"} options={{ headerShown: false }} />
             </Stack>
             <ToastManager config={toastConfig} style={{position: "absolute", top: 50, width: "100%", zIndex: 999}} />
         </>

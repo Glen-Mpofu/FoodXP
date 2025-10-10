@@ -8,9 +8,9 @@ import DateTimePicker  from '@react-native-community/datetimepicker';
 import * as ImagePicker from "expo-image-picker"
 import * as FileSystem from "expo-file-system";
 //themed components 
-import ThemedButton from "../../components/ThemedButton"
-import ThemedView from "../../components/ThemedView"
-import ThemedText from "../../components/ThemedText"
+import ThemedButton from "../../../components/ThemedButton"
+import ThemedView from "../../../components/ThemedView"
+import ThemedText from "../../../components/ThemedText"
 
 //icons
 import { Ionicons } from "@expo/vector-icons";
@@ -18,8 +18,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { Toast } from "toastify-react-native";
 import axios from "axios"
-import { router } from "expo-router";
-import ThemedTextInput from "../../components/ThemedTextInput";
+import { router, useRouter } from "expo-router";
+import ThemedTextInput from "../../../components/ThemedTextInput";
+import AsyncStorage from "@react-native-async-storage/async-storage"
 
 export default function CameraScreen() {
   const [facing, setFacing] = useState("back");
@@ -63,8 +64,18 @@ export default function CameraScreen() {
     setModalVisible(false)
   }
 
+  const router = useRouter();
+  const [userToken, setUserToken] = React.useState(null)
+
   useEffect(() => {
-    const checkCamera = async () => {
+    const init = async () => {
+      // TOKEN VERIFICATION
+        const token = await AsyncStorage.getItem("userToken")
+        if(!token){
+          return router.replace("/")
+        }
+        setUserToken(token)
+      //CAMERA AVAILABILITY CHECK
       try {
         const {status} = await requestPermission();
         if(status != "granted"){
@@ -84,7 +95,7 @@ export default function CameraScreen() {
       }
     };
 
-    checkCamera();
+    init();
   }, [])
   
   //if the app is in web, allow for uploading

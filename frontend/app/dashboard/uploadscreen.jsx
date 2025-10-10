@@ -96,8 +96,8 @@ const UploadFood = () => {
       }
 
       const response = await axios.post(baseUrl, { photo: photoData })
-      const { Prediction } = response.data
-
+      const { Confidence, Prediction } = response.data
+      alert(Prediction)
       if (Prediction) {
         setPrediction(Prediction)
         Toast.show({ type: "success", text1: `${Prediction} item added` })

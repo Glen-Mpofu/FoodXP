@@ -5,9 +5,12 @@ logging.getLogger("tensorflow").setLevel(logging.ERROR)  # Extra safety
 
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
+from flask import Flask, request, jsonify
 import numpy as np
 import sys
 import json
+import base64, io
+from PIL import Image
 
 model = load_model(r"C:\Users\Reception\OneDrive - Tshwane University of Technology\Desktop\Tshepo\React Course\FoodXP\backend\model\fridge_pantry_model.keras")
 class_labels = ['fridge', 'pantry']
@@ -20,7 +23,33 @@ def classify(imageUri):
     confidence = float(predictions[0][predicted_index])
     return {"Prediction": class_labels[predicted_index], "Confidence": confidence}
 
+# --- flask setup ---
+app = Flask(__name__)
+
+@app.route("/predict", methods=["POST"])
+def predict():
+    try:
+        data = request.get_json()
+        photo = data.get("photo")
+        if not photo:
+            return jsonify({"error": "No image provided"}), 400
+        
+        # Decode base64 to temp image
+        if "," in photo:
+            photo = photo.split(",")[1]
+        img_bytes = base64.b64decode(photo)
+        temp_path = "temp_image.jpg"
+        with open(temp_path, "wb") as f:
+            f.write(img_bytes)
+
+        # classifying the food in the image
+        result = classify(temp_path)
+        # deleting the temp image after classification
+        os.remove(temp_path)
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
-    img_path = sys.argv[1]
-    result = classify(img_path)
-    print(json.dumps(result))
+    app.run(host="192.168.137.1", port=5001)

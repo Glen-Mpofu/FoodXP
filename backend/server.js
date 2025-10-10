@@ -197,38 +197,23 @@ app.post("/classifyfood", async (req, res) => {
   try {
     const { photo } = req.body;
     if (!photo) return res.status(400).json({ error: "No image provided" });
+        console.log("Base64 length:", photo.length)
 
-    // Remove the prefix
-    const base64Data = photo.replace(/^data:image\/\w+;base64,/, "");
-    console.log("Base64 length:", base64Data.length);
+        //sending the photo to flask
+        const response = await axios.post("http://192.168.137.1:5001/predict", {photo});
 
-    const tempPath = path.join(__dirname, "temp_image.jpg");
-    fs.writeFileSync(tempPath, base64Data, "base64");
-
-    execFile("python", [classifyModelFile, tempPath], (err, stdout, stderr) => {
-      // Always delete temp file
-      fs.unlinkSync(tempPath);
-
-      if (err) {
-        console.error("Python error:", err);
-        return res.send({ status: "error", data: err.message });
-      }
-
-      try {
-        const result = JSON.parse(stdout);
-        console.log("Python result:", result);
-        res.json(result);
-        
-      } catch (parseErr) {
-        console.error("Failed to parse Python output:", stdout, parseErr);
-        return res.send({ status: "error", data: parseErr });
-      }
-    });
+        console.log("Python result: ", response.data)
+        res.json(response.data)
 
   } catch (error) {
-    console.error("Server error:", error);
-    return res.send({ status: "error", data: err.message });
-  }
+        console.error("Classification error:", error.message);
+        if (error.response) {
+        // Flask sent an error response
+        res.status(error.response.status).json(error.response.data);
+        } else {
+        res.status(500).json({ error: "Classification failed" });
+        }
+    }
 });
 
 // session getter
@@ -393,6 +378,12 @@ app.post("/savepantryfood", async (req, res) => {
 
 })
 
-app.post("/savepantryfood", async (req, res) => {
-    console.log(req.body)
+app.post("/savefridgefood", async (req, res) => {
+    try{
+        console.log(req.body)
+
+
+    }catch(error){
+        console.log(error)
+    }
 })

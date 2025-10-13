@@ -52,4 +52,4 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="192.168.137.1", port=5001)
+    app.run(host="192.168.137.1", port=5001, threaded = True)

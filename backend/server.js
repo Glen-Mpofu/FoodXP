@@ -141,13 +141,26 @@ async function getFoodie(email) {
     if (result.rowCount !== 1) {
       return { status: "error", data: "No such foodie" };
     }
-    console.log(result.rows[0])
+
     return { status: "ok", data: result.rows[0] };
 
   } catch (err) {
     console.error("Database error:", err.message);
     return { status: "error", data: err.message };
   }
+}
+
+async function getPantryFood(foodie_id) {
+    const result = await pool.query(`
+        SELECT * FROM PANTRY_FOOD WHERE FOODIE_ID = $1   
+    `, [foodie_id]
+    );
+
+    if(result.rowCount <= 0){
+        return { status: "error", data: "No pantry food items found for the current foodie"}
+    }
+
+    return { status: "ok", data: result.rows }
 }
 
 //register
@@ -378,61 +391,87 @@ app.get("/loadshedding/:areaId", async (req, res) => {
   }
 });
 
-app.post("/savepantryfood", async (req, res) => {
-    try {
-        const {foodData} = req.body
-        console.log(foodData)
-        
-        const pantryFood = {
-            name: foodData.name,
-            quantity: foodData.quantity,
-            date: foodData.date,
-            photo: foodData.photo,
-        }
-
-        if(!pantryFood.photo) res.send({status: "error", data: "no photo provided"});
-
-        //file name
-        const filename = `food_${Date.now()}.jpg`;
-        const filePath = path.join(uploadDir, filename)
-
-        const base64Data = pantryFood.photo.replace(/^data:image\/\w+;base64,/, "");
-        console.log("Base64 length:", base64Data.length);
-        
-        fs.writeFileSync(filePath, base64Data, "base64")
-        console.log("Image saved to: ", filePath)
-
-        //getting email from token
-        const token = foodData.token
-        const decoded = jwt.verify(token, "SECRET_KEY")
-        const email = decoded.email
-
-        const foodie = await getFoodie(email)
-        console.log(foodie)
-        //here save pantry food infor to the db
-        await pool.query(
-            `
-                INSERT INTO PANTRY_FOOD (NAME, QUANTITY, EXPIRY_DATE, FOODIE_ID, PHOTO)
-                Values($1, $2, $3, $4, $5);
-            `, [pantryFood.name, pantryFood.quantity, pantryFood.date, foodie.id, filePath]
-        ).then((result) => {
-            if(result.rowCount <= 0){
-                return res.send({status: "error", data: "Failed to add food"})
+// pantry
+    // saving
+    app.post("/savepantryfood", async (req, res) => {
+        try {
+            const {foodData} = req.body
+            console.log(foodData)
+            
+            const pantryFood = {
+                name: foodData.name,
+                quantity: foodData.quantity,
+                date: foodData.date,
+                photo: foodData.photo,
             }
 
-            res.send({status: "ok", data: "Pantry food added"})
-        })
-    } catch (error) {
-        console.error("Something went wrong", error)
-    }    
+            if(!pantryFood.photo) res.send({status: "error", data: "no photo provided"});
 
-})
+            //file name
+            const filename = `food_${Date.now()}.jpg`;
+            const filePath = path.join(uploadDir, filename)
 
+            const base64Data = pantryFood.photo.replace(/^data:image\/\w+;base64,/, "");
+            console.log("Base64 length:", base64Data.length);
+            
+            fs.writeFileSync(filePath, base64Data, "base64")
+            console.log("Image saved to: ", filePath)
+
+            //getting email from token
+            const token = foodData.token
+            const decoded = jwt.verify(token, "SECRET_KEY")
+            const email = decoded.email
+
+            const foodie = await getFoodie(email)
+            //console.log(foodie)
+            //here save pantry food infor to the db
+            await pool.query(
+                `
+                    INSERT INTO PANTRY_FOOD (NAME, QUANTITY, EXPIRY_DATE, FOODIE_ID, PHOTO)
+                    Values($1, $2, $3, $4, $5);
+                `, [pantryFood.name, pantryFood.quantity, pantryFood.date, foodie.data.id, filePath]
+            ).then((result) => {
+                if(result.rowCount <= 0){
+                    return res.send({status: "error", data: "Failed to add food"})
+                }
+
+                res.send({status: "ok", data: "Pantry food added"})
+            })
+        } catch (error) {
+            console.error("Something went wrong", error)
+        }    
+
+    })
+    
+    
+    // retrieving all 
+    app.get("/getpantryfood", async (req, res) => {
+        const email = req.session.user.email
+        const foodie = await getFoodie(email)
+        const pantryFood = await getPantryFood(foodie.data.id)
+
+        console.log(pantryFood.data)
+        if(pantryFood.data.rowCount <= 0){
+            console.log("Nothing here")
+        }
+    })
+
+//fridge
 app.post("/savefridgefood", async (req, res) => {
     try{
         console.log(req.body)
+        const {foodData} = req.body
 
+        if(!foodData){
+            return res.send({status: "error", data: "No data sent"})
+        }
 
+        const fridgeFood = {
+            name: foodData.name,
+            quantity: foodData.quantity,
+            photo: foodData.photo,
+            token: foodData.userToken
+        }
     }catch(error){
         console.log(error)
     }

@@ -133,7 +133,7 @@ const index = () => {
                     <ThemedText style={[{ marginBottom: 0 }]}>Password</ThemedText>
                     
                     <View style={styles.passwordContainer}>                        
-                        <ThemedTextInput style={[{width: "85%", borderColor: passwordBorderColor}, styles.input]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
+                        <ThemedTextInput style={[styles.input, {width: "85%", borderColor: passwordBorderColor}]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
                         <Pressable onPress={()=>onShowPasswordChange(!showPassword)}>
                             <Ionicons name={ showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"}/>
                         </Pressable>

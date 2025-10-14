@@ -22,6 +22,9 @@ const bcrypt = require("bcrypt")
 // upload directory 
 const uploadDir = path.join(__dirname, "uploads")
 
+//serve images from /uploads as public static files
+app.use("/uploads", express.static(uploadDir))
+
 if(!fs.existsSync(uploadDir)){
     fs.mkdirSync(uploadDir)
     console.log("Uploads folder created at: ", uploadDir)
@@ -128,8 +131,7 @@ pool.query(`
     console.error("Something went wrong when creating Pantry_Food table", error)
 });
 
-//reusable FUNCTION
-
+//reusable FUNCTIONS
 async function getFoodie(email) {
   const query = `
     SELECT * FROM Foodie WHERE email = $1
@@ -161,6 +163,28 @@ async function getPantryFood(foodie_id) {
     }
 
     return { status: "ok", data: result.rows }
+}
+
+async function getFridgeFood(foodie_id) {
+    const result = await pool.query(
+        `
+            SELECT * FROM FRIDGE_FOOD WHERE FOODIE_ID = $1
+        `,
+        [foodie_id]
+    )
+
+    if(result.rowCount <= 0){
+        return {status: "error", data: "No Foodie Found with that id"}
+    }
+    const foodie = result.rows
+    return {status: "ok", data: foodie}
+}
+
+function getFoodieEmailFromToken(token){
+    const decoded = jwt.verify(token, "SECRET_KEY")
+    const email = decoded.email
+
+    return email
 }
 
 //register
@@ -451,28 +475,70 @@ app.get("/loadshedding/:areaId", async (req, res) => {
         const pantryFood = await getPantryFood(foodie.data.id)
 
         console.log(pantryFood.data)
-        if(pantryFood.data.rowCount <= 0){
-            console.log("Nothing here")
-        }
+        
+        res.send({status: "ok", data: pantryFood.data})
     })
 
 //fridge
-app.post("/savefridgefood", async (req, res) => {
-    try{
-        console.log(req.body)
-        const {foodData} = req.body
+    //saving
+    app.post("/savefridgefood", async (req, res) => {
+        try{
+            console.log(req.body)
+            const {foodData} = req.body
 
-        if(!foodData){
-            return res.send({status: "error", data: "No data sent"})
-        }
+            const fridgeFood = {
+                name: foodData.name,
+                quantity: foodData.quantity,
+                photo: foodData.photo,
+            }
+            if(!fridgeFood.photo){
+                return res.send({status: "error", data: "No photo sent"})
+            }
 
-        const fridgeFood = {
-            name: foodData.name,
-            quantity: foodData.quantity,
-            photo: foodData.photo,
-            token: foodData.userToken
+            //file name
+            const fileName = `food_${Date.now()}.jpg`
+            const filePath = path.join(uploadDir, fileName)
+
+            const base64Data = fridgeFood.photo.replace(/^data:image\/\w+;base64,/, "")
+            fs.writeFileSync(filePath, base64Data, "base64")
+
+            const email = getFoodieEmailFromToken(foodData.token)
+
+            const foodie = await getFoodie(email)
+
+            await pool.query(
+                `
+                    INSERT INTO FRIDGE_FOOD (NAME, QUANTITY, ISFRESH, FOODIE_ID, PHOTO)
+                    VALUES($1, $2, $3, $4, $5)
+                `,
+                [fridgeFood.name, fridgeFood.quantity, true, foodie.data.id, filePath]
+            ).then((result) => {
+                if(result.rowCount != 1){
+                    return res.send({status: "error", data: "Failed to add the food"})
+                }
+                res.send({status: "ok", data: "Fridge food added"})
+            }).catch(err => {
+                console.error("Something went wrong", err)
+                return res.send({status: "error", data: "Something went wrong"})
+            })
+
+        }catch(error){
+            console.log(error)
         }
-    }catch(error){
-        console.log(error)
-    }
-})
+    })
+
+    //retrieving all
+    app.get("/getfridgefood", async (req, res) => {
+        try {
+            const email = req.session.user.email
+            const foodie = await getFoodie(email)
+            console.log(foodie)
+            const fridgeFood = await getFridgeFood(foodie.data.id)
+
+            console.log(fridgeFood.data)
+            res.send({status: "ok", data: fridgeFood.data})
+        } catch (error) {
+            console.error("Something went wrong", err)
+            return res.send({status: "error", data: "Something went wrong when retrieving items"})
+        }
+    })

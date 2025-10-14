@@ -1,5 +1,5 @@
 // app/dashboard.js
-import { Platform, StyleSheet } from 'react-native';
+import { Image, Platform, StyleSheet, View, Dimensions, FlatList, TouchableOpacity } from 'react-native';
 import ThemedView from '../../../components/ThemedView';
 import ThemedText from '../../../components/ThemedText';
 import { useColorScheme } from 'react-native';
@@ -9,13 +9,20 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import axios from "axios"
 import { Toast } from 'toastify-react-native';
+import { types } from '@babel/core';
+import { Ionicons } from "@expo/vector-icons";
 
 export default function Dashboard() {
     const router = useRouter();
     const [userToken, setUserToken] = React.useState(null)
-    const [pantryFood, onPantryFoodChange] = React.useState()
+    const [pantryFood, onPantryFoodChange] = React.useState([])
+    const [fridgeFood, onFridgeFoodChange] = React.useState([])
   
-  useEffect(async () => {
+    const screenWidth = Dimensions.get("window").width;
+    const itemWidth = 120; // width per item
+    const maxItems = Math.floor(screenWidth / itemWidth) // calculation of how many items can fit
+
+  useEffect(() => {
       const init = async () => {
         const token = await AsyncStorage.getItem("userToken");
         if(!token){
@@ -23,10 +30,16 @@ export default function Dashboard() {
           return;
         }
         setUserToken(token);
-  
-        const baseUrl = Platform.OS === 'android' ? "http://192.168.137.1:5001/getpantryfood" : "http://localhost:5001/getpantryfood"
-        const result = await axios.get(baseUrl, {withCredentials: true})
-        onPantryFoodChange(result.status)
+        
+        
+        const baseUrl = Platform.OS === 'android' ? "http://192.168.137.1:5001" : "http://localhost:5001"
+        //pantry food
+        const result = await axios.get(`${baseUrl}/getpantryfood`, {withCredentials: true})
+        onPantryFoodChange(result.data.data)
+
+        //fridge food
+        const resultFridge = await axios.get(`${baseUrl}/getfridgefood`, {withCredentials: true})
+        onFridgeFoodChange(resultFridge.data.data)
       };
   
       init();
@@ -37,16 +50,98 @@ export default function Dashboard() {
 
   return (
     <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground }]}>
-      <ThemedView style={styles.foodContainer}>
-        <ThemedText>Pantry foods</ThemedText>
-        <ThemedText>{pantryFood}</ThemedText>
+      <ThemedView style={[{width: screenWidth}, styles.foodContainer]}>
+
+        {/*Pantry Food Items */}
+        <ThemedText style={styles.heading}>Pantry foods</ThemedText>
+        
+        <FlatList 
+          horizontal
+          data = {[
+            ...pantryFood.slice(0, maxItems - 1),
+            {id: "show_all", type: "show_all"}
+          ]}
+          keyExtractor={(item) => item.id}
+          renderItem={({item}) => {
+            if(item.type === "show_all"){
+              return (
+                <TouchableOpacity
+                  onPress={() => router.replace("/dashboard/pantry")}
+                  style={[styles.foodItem, styles.showAllCard]}
+                >
+                  <ThemedText style={{ fontWeight: "bold", textAlign: "center"}}>
+                    Show All 
+                  </ThemedText>
+                  <Ionicons name='arrow-forward' size={15}/>
+                </TouchableOpacity>
+              );
+            }
+
+            return(
+              <View style={styles.foodItem}>
+                <Image
+                  source={{ uri: convertFilePathtoUri(item.photo) }}
+                  style={styles.img}
+                />
+                <ThemedText>{item.name}</ThemedText>
+                <ThemedText>Qty: {item.quantity}</ThemedText>
+              </View>
+            )
+          }}
+          showsHorizontalScrollIndicator={false}
+        />
+
       </ThemedView>
 
       <ThemedView style={styles.foodContainer}>
-        <ThemedText>Fridge foods</ThemedText>
+        <ThemedText style={styles.heading}>Fridge foods</ThemedText>
+
+        <FlatList 
+          horizontal
+          data = {[
+            ...fridgeFood.slice(0, maxItems - 1),
+            {id: "show_all", type: "show_all"}
+          ]}
+          keyExtractor={(item) => item.id}
+          renderItem={({item}) => {
+            if(item.type === "show_all"){
+              return (
+                <TouchableOpacity
+                  onPress={() => router.replace("/dashboard/fridge")}
+                  style={[styles.foodItem, styles.showAllCard]}
+                >
+                  <ThemedText style={{ fontWeight: "bold", textAlign: "center"}}>
+                    Show All 
+                  </ThemedText>
+                  <Ionicons name='arrow-forward' size={15}/>
+                </TouchableOpacity>
+              );
+            }
+
+            return(
+              <View style={styles.foodItem}>
+                <Image
+                  source={{ uri: convertFilePathtoUri(item.photo) }}
+                  style={styles.img}
+                />
+                <ThemedText>{item.name}</ThemedText>
+                <ThemedText>Qty: {item.quantity}</ThemedText>
+              </View>
+            )
+          }}
+          showsHorizontalScrollIndicator={false}
+        />
       </ThemedView>
     </ThemedView>
   );
+}
+
+function convertFilePathtoUri(filePath){
+  const fileName = filePath.split("\\").pop();
+
+  const baseUrl = Platform.OS === 'android' ? "http://192.168.137.1:5001" : "http://localhost:5001"
+
+  return `${baseUrl}/uploads/${fileName}`
 }
 
 const styles = StyleSheet.create({
@@ -56,8 +151,32 @@ const styles = StyleSheet.create({
   },
   foodContainer:{
     justifyContent: "",
-    flex: 0.3,
-    backgroundColor: "red",
-    margin: 20
+    flex: 0.4,
+    backgroundColor: "",
+    margin: 20,
+    borderRadius: 5,
+  },
+  heading: {
+    fontSize: 20
+  },
+  foodItem: {
+    marginBottom: 10,
+    borderRadius: 6,
+    width: 110,
+    marginRight: 10,
+    padding: 8,
+    backgroundColor: "#fff2",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  img: {
+    height: 80,
+    width: 80,
+    borderRadius: 6,
+    marginBottom: 4
+  },
+  showAllCard: {
+    backgroundColor: '#ddd',
+    justifyContent: 'center',
   }
 });

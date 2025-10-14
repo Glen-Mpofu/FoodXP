@@ -88,8 +88,6 @@ const UploadFood = () => {
       };
     }
     console.log({ name, quantity, date, photo, prediction })
-    Toast.show({ type: "success", text1: "Food saved successfully", useModal: false, })
-
     const baseURL = Platform.OS === "web" ? `http://localhost:5001/save${prediction}food` : `http://192.168.137.1:5001/save${prediction}food`
     axios.post(baseURL, {foodData}, {withCredentials: true, headers: {Authorization: `Bearer ${userToken}`}}).then((res) => {
       if(res.data.status === "ok"){

@@ -1,4 +1,4 @@
-import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Image, Modal, Platform, StyleSheet, TouchableOpacity, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import ThemedView from '../../../components/ThemedView'
 import ThemedText from '../../../components/ThemedText'
@@ -10,119 +10,79 @@ import ThemedButton from '../../../components/ThemedButton';
 import { Toast } from 'toastify-react-native';
 import * as FileSystem from "expo-file-system";
 import ThemedTextInput from '../../../components/ThemedTextInput';
-import DateTimePicker  from '@react-native-community/datetimepicker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 const UploadFood = () => {
   const [photo, setPhoto] = useState(null)
   const [prediction, setPrediction] = useState(null)
-
-  // Input data
   const [name, onNameChange] = useState("")
   const [quantity, onQuantityChange] = useState("")
   const [date, setDate] = useState(new Date())
   const [show, setShow] = useState(false)
-
-  const [userToken, setUserToken] = React.useState(null)
+  const [userToken, setUserToken] = useState(null)
 
   useEffect(() => {
     const init = async () => {
       const token = await AsyncStorage.getItem("userToken")
-      if(!token){
-        return router.replace("/")
-      }
+      if (!token) return router.replace("/")
       setUserToken(token)
     };
     init();
   }, [])
 
   const onChangeDate = (event, selectedDate) => {
-    setShow(Platform.OS === 'ios') // keep picker open on iOS
+    setShow(Platform.OS === 'ios')
     if (selectedDate) setDate(selectedDate)
   }
 
+  // Convert a web File to Base64
+  const getBase64FromFile = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const uploadImage = async () => {
     try {
-      await ImagePicker.requestMediaLibraryPermissionsAsync()
-      let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 1
-      })
-      if (!result.canceled) {
-        setPhoto(result.assets[0].uri)
-        await classifyFood(result.assets[0].uri);
+      if (Platform.OS === "web") {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = "image/*";
+        input.onchange = async (e) => {
+          const file = e.target.files[0];
+          const base64 = await getBase64FromFile(file);
+          setPhoto(base64);
+          await classifyFood(base64);
+        };
+        input.click();
+      } else {
+        await ImagePicker.requestMediaLibraryPermissionsAsync()
+        let result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 1
+        })
+        if (!result.canceled) {
+          setPhoto(result.assets[0].uri)
+          const base64Image = await FileSystem.readAsStringAsync(result.assets[0].uri, { encoding: FileSystem.EncodingType.Base64 })
+          await classifyFood(`data:image/jpeg;base64,${base64Image}`);
+        }
       }
-      
     } catch (error) {
       console.log(error)
     }
   }
 
-  const saveFood = async () => {
-    if (!name.trim()) {
-      return Toast.show({ type: "error", text1: "Please enter the food's name", useModal: false })
-    }
-    if (!quantity.trim()) {
-      return Toast.show({ type: "error", text1: "Please enter the food's quantity", useModal: false  })
-    }
-    if (!date && prediction === "pantry") {
-      return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false  })
-    }
-    let foodData = null
-    if(prediction === "pantry"){
-      foodData = {
-        name: name, 
-        quantity: quantity, 
-        date: date,
-        photo: photo,
-        token: userToken
-      };
-    }else if(prediction === "fridge"){
-      foodData = {
-        name: name, 
-        quantity: quantity, 
-        photo: photo,
-        token: userToken
-      };
-    }
-    console.log({ name, quantity, date, photo, prediction })
-    const baseURL = Platform.OS === "web" ? `http://localhost:5001/save${prediction}food` : `http://192.168.137.1:5001/save${prediction}food`
-    axios.post(baseURL, {foodData}, {withCredentials: true, headers: {Authorization: `Bearer ${userToken}`}}).then((res) => {
-      if(res.data.status === "ok"){
-        Toast.show({
-          type: "success",
-          text1: res.data.data,
-          useModal: false
-        })
-      }else{
-        Toast.show({
-          type: "error",
-          text1: res.data.data,
-          useModal: false
-        })
-      }
-    })
-  }
-
-  const classifyFood = async (photoUri) => {
-    if (!photoUri) {
-      return Toast.show({ type: "error", text1: "No photo selected" })
-    }
+  const classifyFood = async (photoData) => {
+    if (!photoData) return Toast.show({ type: "error", text1: "No photo selected" })
 
     try {
-      const baseUrl =
-        Platform.OS === "web"
-          ? "http://localhost:5001/classifyfood"
-          : "http://192.168.137.1:5001/classifyfood"
-
-      let photoData = photoUri
-      if (Platform.OS !== "web") {
-        const base64Image = await FileSystem.readAsStringAsync(photoUri, { encoding: FileSystem.EncodingType.Base64 })
-        photoData = `data:image/jpeg;base64,${base64Image}`
-      }
-
+      const baseUrl = Platform.OS === "web" ? "http://localhost:5001/classifyfood" : "http://192.168.137.1:5001/classifyfood"
       const response = await axios.post(baseUrl, { photo: photoData })
       const { Confidence, Prediction } = response.data
       if (Prediction) {
@@ -135,6 +95,32 @@ const UploadFood = () => {
       console.error("Classification error:", error)
       Toast.show({ type: "error", text1: "Classification failed", useModal: false })
     }
+  }
+
+  const saveFood = async () => {
+    if (!name.trim()) return Toast.show({ type: "error", text1: "Please enter the food's name", useModal: false })
+    if (!quantity.trim()) return Toast.show({ type: "error", text1: "Please enter the food's quantity", useModal: false })
+    if (!date && prediction === "pantry") return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false })
+
+    const foodData = {
+      name,
+      quantity,
+      photo,
+      token: userToken,
+      ...(prediction === "pantry" && { date })
+    }
+
+    console.log({ name, quantity, date, photo, prediction })
+
+    const baseURL = Platform.OS === "web" ? `http://localhost:5001/save${prediction}food` : `http://192.168.137.1:5001/save${prediction}food`
+    axios.post(baseURL, { foodData }, { withCredentials: true, headers: { Authorization: `Bearer ${userToken}` } })
+      .then((res) => {
+        if (res.data.status === "ok") {
+          Toast.show({ type: "success", text1: res.data.data, useModal: false })
+        } else {
+          Toast.show({ type: "error", text1: res.data.data, useModal: false })
+        }
+      })
   }
 
   return (
@@ -152,21 +138,15 @@ const UploadFood = () => {
       </View>
 
       {photo && (
-        <Modal
-          visible={true}
-          style={styles.modal}
-          transparent={true}
-        >
+        <Modal visible={true} style={styles.modal} transparent={true}>
           <ThemedView style={styles.uploadContainer}>
             <ThemedText>Image Captured</ThemedText>
-            
             <Image source={{ uri: photo }} style={styles.imagePreview} />
-
             <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
-            <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} keyboardType = "numeric"/>
+            <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} keyboardType="numeric" />
 
             {prediction === "pantry" && (
-              <React.Fragment>
+              <>
                 {Platform.OS === "web" ? (
                   <input
                     type="date"
@@ -180,34 +160,24 @@ const UploadFood = () => {
                       <ThemedText>Select Expiration Date</ThemedText>
                     </ThemedButton>
                     {show && (
-                      <DateTimePicker
-                        value={date}
-                        mode="date"
-                        display="default"
-                        onChange={onChangeDate}
-                      />
+                      <DateTimePicker value={date} mode="date" display="default" onChange={onChangeDate} />
                     )}
                   </>
                 )}
                 <ThemedText>Expiration Date: {date.toLocaleDateString()}</ThemedText>
-              </React.Fragment>
+              </>
             )}
-  
-            <View style={{flexDirection: "row", padding: 10,}}>
-              <TouchableOpacity onPress={() => setPhoto(null)} 
-                style={{margin: 5, marginRight: 15}}
-                >
+
+            <View style={{ flexDirection: "row", padding: 10 }}>
+              <TouchableOpacity onPress={() => setPhoto(null)} style={{ margin: 5, marginRight: 15 }}>
                 <Ionicons name="close-outline" size={50} />
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => saveFood()}
-                style={{margin: 5, marginLeft: 15}}
-                >
+              <TouchableOpacity onPress={saveFood} style={{ margin: 5, marginLeft: 15 }}>
                 <Ionicons name="checkmark" size={50} />
               </TouchableOpacity>
             </View>
           </ThemedView>
-          
         </Modal>
       )}
     </ThemedView>
@@ -217,32 +187,9 @@ const UploadFood = () => {
 export default UploadFood
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    width: "100%",
-    marginTop: 50,
-  },
-  heading: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  uploadContainer: {
-    width: "100%",
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(255, 255, 255, 0.9)",
-    borderRadius: 90
-  },
-  modal: {
-    flex: 1,
-    width: "100%"
-  },
-  imagePreview: {
-    width: 300,
-    height: 300,
-    borderRadius: 10,
-    marginVertical: 10,
-  },
+  container: { flex: 1, alignItems: "center", width: "100%", marginTop: 50 },
+  heading: { fontSize: 24, fontWeight: "bold" },
+  uploadContainer: { width: "100%", flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(255, 255, 255, 0.9)", borderRadius: 90 },
+  modal: { flex: 1, width: "100%" },
+  imagePreview: { width: 300, height: 300, borderRadius: 10, marginVertical: 10 },
 })

@@ -9,7 +9,6 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import axios from "axios"
 import { Toast } from 'toastify-react-native';
-import { types } from '@babel/core';
 import { Ionicons } from "@expo/vector-icons";
 
 export default function Dashboard() {
@@ -30,7 +29,6 @@ export default function Dashboard() {
           return;
         }
         setUserToken(token);
-        
         
         const baseUrl = Platform.OS === 'android' ? "http://192.168.137.1:5001" : "http://localhost:5001"
         //pantry food

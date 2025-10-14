@@ -36,7 +36,7 @@ const JWT_SECRET = process.env.JWT_SECRET
 //enabling cross origin resource sharing for the app to run on my browser too
 const cors = require("cors");
 app.use(cors({
-    origin: ["http://localhost:8082", "http://192.168.137.1:8082"],
+    origin: ["http://localhost:8081", "http://192.168.137.1:8081"],
     credentials: true
 }))
 
@@ -264,6 +264,7 @@ const classifyModelFile = path.join(__dirname, "model", "pantry_frigde_model.py"
 app.post("/classifyfood", async (req, res) => {
   try {
     const { photo } = req.body;
+    console.log("Base64 length:", photo)
     if (!photo) return res.status(400).json({ error: "No image provided" });
         console.log("Base64 length:", photo.length)
 

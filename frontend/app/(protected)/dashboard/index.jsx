@@ -48,88 +48,90 @@ export default function Dashboard() {
 
   return (
     <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground }]}>
-      <ThemedView style={[{width: screenWidth}, styles.foodContainer]}>
+      <View style={styles.rowFoodContainer}>
+        <ThemedView style={[styles.foodContainer]}>
 
-        {/*Pantry Food Items */}
-        <ThemedText style={styles.heading}>Pantry foods</ThemedText>
-        
-        <FlatList 
-          horizontal
-          data = {[
-            ...pantryFood.slice(0, maxItems - 1),
-            {id: "show_all", type: "show_all"}
-          ]}
-          keyExtractor={(item) => item.id}
-          renderItem={({item}) => {
-            if(item.type === "show_all"){
-              return (
-                <TouchableOpacity
-                  onPress={() => router.replace("/dashboard/pantry")}
-                  style={[styles.foodItem, styles.showAllCard]}
-                >
-                  <ThemedText style={{ fontWeight: "bold", textAlign: "center"}}>
-                    Show All 
-                  </ThemedText>
-                  <Ionicons name='arrow-forward' size={15}/>
-                </TouchableOpacity>
-              );
-            }
+          {/*Pantry Food Items */}
+          <ThemedText style={styles.heading}>Pantry foods</ThemedText>
+          
+          <FlatList 
+            numColumns={4}
+            data = {[
+              ...pantryFood.slice(0, maxItems - 1),
+              {id: "show_all", type: "show_all"}
+            ]}
+            keyExtractor={(item) => item.id}
+            renderItem={({item}) => {
+              if(item.type === "show_all"){
+                return (
+                  <TouchableOpacity
+                    onPress={() => router.replace("/dashboard/pantry")}
+                    style={[styles.foodItem, styles.showAllCard]}
+                  >
+                    <ThemedText style={{ fontWeight: "bold", textAlign: "center"}}>
+                      Show All 
+                    </ThemedText>
+                    <Ionicons name='arrow-forward' size={15}/>
+                  </TouchableOpacity>
+                );
+              }
 
-            return(
-              <View style={styles.foodItem}>
-                <Image
-                  source={{ uri: convertFilePathtoUri(item.photo) }}
-                  style={styles.img}
-                />
-                <ThemedText>{item.name}</ThemedText>
-                <ThemedText>Qty: {item.quantity}</ThemedText>
-              </View>
-            )
-          }}
-          showsHorizontalScrollIndicator={false}
-        />
+              return(
+                <View style={styles.foodItem}>
+                  <Image
+                    source={{ uri: convertFilePathtoUri(item.photo) }}
+                    style={styles.img}
+                  />
+                  <ThemedText>{item.name}</ThemedText>
+                  <ThemedText>Qty: {item.quantity}</ThemedText>
+                </View>
+              )
+            }}
+            showsHorizontalScrollIndicator={false}
+          />
 
-      </ThemedView>
+        </ThemedView>
 
-      <ThemedView style={styles.foodContainer}>
-        <ThemedText style={styles.heading}>Fridge foods</ThemedText>
+        <ThemedView style={styles.foodContainer}>
+          <ThemedText style={styles.heading}>Fridge foods</ThemedText>
 
-        <FlatList 
-          horizontal
-          data = {[
-            ...fridgeFood.slice(0, maxItems - 1),
-            {id: "show_all", type: "show_all"}
-          ]}
-          keyExtractor={(item) => item.id}
-          renderItem={({item}) => {
-            if(item.type === "show_all"){
-              return (
-                <TouchableOpacity
-                  onPress={() => router.replace("/dashboard/fridge")}
-                  style={[styles.foodItem, styles.showAllCard]}
-                >
-                  <ThemedText style={{ fontWeight: "bold", textAlign: "center"}}>
-                    Show All 
-                  </ThemedText>
-                  <Ionicons name='arrow-forward' size={15}/>
-                </TouchableOpacity>
-              );
-            }
+          <FlatList 
+            horizontal
+            data = {[
+              ...fridgeFood.slice(0, maxItems - 1),
+              {id: "show_all", type: "show_all"}
+            ]}
+            keyExtractor={(item) => item.id}
+            renderItem={({item}) => {
+              if(item.type === "show_all"){
+                return (
+                  <TouchableOpacity
+                    onPress={() => router.replace("/dashboard/fridge")}
+                    style={[styles.foodItem, styles.showAllCard]}
+                  >
+                    <ThemedText style={{ fontWeight: "bold", textAlign: "center"}}>
+                      Show All 
+                    </ThemedText>
+                    <Ionicons name='arrow-forward' size={15}/>
+                  </TouchableOpacity>
+                );
+              }
 
-            return(
-              <View style={styles.foodItem}>
-                <Image
-                  source={{ uri: convertFilePathtoUri(item.photo) }}
-                  style={styles.img}
-                />
-                <ThemedText>{item.name}</ThemedText>
-                <ThemedText>Qty: {item.quantity}</ThemedText>
-              </View>
-            )
-          }}
-          showsHorizontalScrollIndicator={false}
-        />
-      </ThemedView>
+              return(
+                <View style={styles.foodItem}>
+                  <Image
+                    source={{ uri: convertFilePathtoUri(item.photo) }}
+                    style={styles.img}
+                  />
+                  <ThemedText>{item.name}</ThemedText>
+                  <ThemedText>Qty: {item.quantity}</ThemedText>
+                </View>
+              )
+            }}
+            showsHorizontalScrollIndicator={false}
+          />
+        </ThemedView>
+      </View>
     </ThemedView>
   );
 }
@@ -145,14 +147,15 @@ function convertFilePathtoUri(filePath){
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: ""
+    justifyContent: "",
+    width: "100%"
   },
   foodContainer:{
-    justifyContent: "",
-    flex: 0.4,
+    flex: 1,
     backgroundColor: "",
-    margin: 20,
     borderRadius: 5,
+    padding: 10,
+    marginHorizontal: 5
   },
   heading: {
     fontSize: 20
@@ -160,7 +163,7 @@ const styles = StyleSheet.create({
   foodItem: {
     marginBottom: 10,
     borderRadius: 6,
-    width: 110,
+    width: 120,
     marginRight: 10,
     padding: 8,
     backgroundColor: "#fff2",
@@ -176,5 +179,12 @@ const styles = StyleSheet.create({
   showAllCard: {
     backgroundColor: '#ddd',
     justifyContent: 'center',
+  },
+  rowFoodContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    width: "100%",
+    justifyContent: "space-evenly",
+    paddingHorizontal: 10
   }
 });

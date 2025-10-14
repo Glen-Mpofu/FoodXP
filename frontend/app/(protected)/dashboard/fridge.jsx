@@ -7,15 +7,30 @@ import axios from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { Colors } from '../../../constants/Colors';
+import { Toast } from "toastify-react-native";
 
 const Fridge = () => {
   const [fridgeFood, setFridgeFood] = useState([]);
   const { width: screenWidth } = useWindowDimensions(); // automatically updates on resize
   const itemWidth = 150;
   const itemsPerRow = Math.floor(screenWidth / itemWidth);
+  const baseUrl = Platform.OS === 'android' ? "http://192.168.137.1:5001" : "http://localhost:5001";
 
   async function deleteEaten(id) {
-    
+    const result = await axios.post(`${baseUrl}/deletefridgefood`, {id}, {withCredentials: true});
+    if(result.data.status === "ok"){
+      Toast.show({
+        type: "success",
+        text1: result.data.data,
+        useModal: false
+      })
+    }else{
+      Toast.show({
+        type: "error",
+        text1: result.data.data,
+        useModal: false
+      })
+    }
   }
 
   useEffect(() => {
@@ -24,7 +39,6 @@ const Fridge = () => {
         const token = await AsyncStorage.getItem("userToken");
         if (!token) return router.replace("/");
 
-        const baseUrl = Platform.OS === 'android' ? "http://192.168.137.1:5001" : "http://localhost:5001";
         const result = await axios.get(`${baseUrl}/getfridgefood`, { withCredentials: true });
         setFridgeFood(result.data.data || []);
       } catch (error) {
@@ -52,7 +66,9 @@ const Fridge = () => {
                 <Image source={{ uri: convertFilePathtoUri(item.photo) }} style={styles.img} />
                 <ThemedText>{item.name}</ThemedText>
                 <ThemedText>Qty: {item.quantity}</ThemedText>
-                <ThemedButton style={styles.btn}>
+                <ThemedButton style={styles.btn} onPress={() => {
+                  deleteEaten(item.id)
+                }}>
                   <ThemedText>Eaten</ThemedText>
                 </ThemedButton>
               </View>

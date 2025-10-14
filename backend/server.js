@@ -543,3 +543,22 @@ app.get("/loadshedding/:areaId", async (req, res) => {
             return res.send({status: "error", data: "Something went wrong when retrieving items"})
         }
     })
+
+    //deleting 
+    app.post("/deletefridgefood", async (req, res) => {
+        const id = req.body.id
+
+        //deleting from the fridge_food table
+        await pool.query(
+            `
+                DELETE FROM FRIDGE_FOOD WHERE ID = $1
+            `,
+            [id]
+        ).then((result) => {
+            if (result.rowCount <= 0){
+                return res.send({status: "error", data: "Something went wrong while deleting. Wrong food id maybe!"})
+            }
+
+            res.send({status: "ok", data: "Fridge food deleted successfully"})
+        })
+    })

@@ -92,6 +92,7 @@ export default function Dashboard() {
 
         </ThemedView>
 
+        {/* Fridge food */}
         <ThemedView style={styles.foodContainer}>
           <ThemedText style={styles.heading}>Fridge foods</ThemedText>
 
@@ -179,6 +180,8 @@ const styles = StyleSheet.create({
   showAllCard: {
     backgroundColor: '#ddd',
     justifyContent: 'center',
+    width: 120, // ✅ same as foodItem width
+    height: 130, // optional for uniform look
   },
   rowFoodContainer: {
     flexDirection: "row",

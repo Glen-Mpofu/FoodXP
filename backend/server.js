@@ -5,7 +5,8 @@ const axios = require("axios")
 const jwt = require("jsonwebtoken") // creating a token for the pages of the app. prevents access to pages without login
 
 // for running the python file
-const { spawn, execFile } = require("child_process");
+const { spawn, execFile, exec } = require("child_process");
+const util = require("util")
 
 const { Pool } = require("pg");
 const { stat } = require("fs/promises");
@@ -21,6 +22,8 @@ const bcrypt = require("bcrypt")
 
 // upload directory 
 const uploadDir = path.join(__dirname, "uploads")
+
+const execAsync = util.promisify(exec)
 
 //serve images from /uploads as public static files
 app.use("/uploads", express.static(uploadDir))
@@ -158,10 +161,6 @@ async function getPantryFood(foodie_id) {
     `, [foodie_id]
     );
 
-    if(result.rowCount <= 0){
-        return { status: "error", data: "No pantry food items found for the current foodie"}
-    }
-
     return { status: "ok", data: result.rows }
 }
 
@@ -172,12 +171,7 @@ async function getFridgeFood(foodie_id) {
         `,
         [foodie_id]
     )
-
-    if(result.rowCount <= 0){
-        return {status: "error", data: "No Foodie Found with that id"}
-    }
-    const foodie = result.rows
-    return {status: "ok", data: foodie}
+    return {status: "ok", data: result.rows}
 }
 
 function getFoodieEmailFromToken(token){
@@ -480,6 +474,33 @@ app.get("/loadshedding/:areaId", async (req, res) => {
         res.send({status: "ok", data: pantryFood.data})
     })
 
+    //deleting 
+    app.post("/deletepantryfood", async (req, res) => {
+        const id = req.body.id
+        const photoPath = req.body.photo
+
+        try {
+            //deleting from the fridge_food table
+            const result = await pool.query(
+                `
+                    DELETE FROM PANTRY_FOOD WHERE ID = $1
+                `,
+                [id]
+            )
+
+            if (result.rowCount <= 0){
+                return res.send({status: "error", data: "Something went wrong while deleting. Wrong food id maybe!"})
+            }
+            
+            await execAsync(`del "${photoPath}"`)
+            console.log(photoPath)
+            res.send({status: "ok", data: "Pantry food deleted successfully"})
+        } catch (error) {
+            console.error(error)
+            res.send({status: "error", data: "Something went wrong while deleting. Wrong food id maybe!"})
+        }   
+    })
+
 //fridge
     //saving
     app.post("/savefridgefood", async (req, res) => {
@@ -539,7 +560,7 @@ app.get("/loadshedding/:areaId", async (req, res) => {
             console.log(fridgeFood.data)
             res.send({status: "ok", data: fridgeFood.data})
         } catch (error) {
-            console.error("Something went wrong", err)
+            console.error("Something went wrong", error)
             return res.send({status: "error", data: "Something went wrong when retrieving items"})
         }
     })
@@ -547,18 +568,40 @@ app.get("/loadshedding/:areaId", async (req, res) => {
     //deleting 
     app.post("/deletefridgefood", async (req, res) => {
         const id = req.body.id
+        const photoPath = req.body.photo
 
-        //deleting from the fridge_food table
-        await pool.query(
-            `
-                DELETE FROM FRIDGE_FOOD WHERE ID = $1
-            `,
-            [id]
-        ).then((result) => {
+        try {
+            //deleting from the fridge_food table
+            const result = await pool.query(
+                `
+                    DELETE FROM FRIDGE_FOOD WHERE ID = $1
+                `,
+                [id]
+            )
+
             if (result.rowCount <= 0){
                 return res.send({status: "error", data: "Something went wrong while deleting. Wrong food id maybe!"})
             }
+            
+            await execAsync(`del "${photoPath}"`)
 
             res.send({status: "ok", data: "Fridge food deleted successfully"})
-        })
+        } catch (error) {
+            console.error(error)
+            res.send({status: "error", data: "Something went wrong while deleting. Wrong food id maybe!"})
+        }   
     })
+
+
+// getting NGOs to donate to
+app.get("/get-ngos", async (req, res) => {
+    try {
+        const {lat, lon, radius = 5000} = req.query;
+
+        // nominatim 
+
+    } catch (error) {
+        console.error("Something went wrong!" , error)
+        res.send({status: "error", data: 'Something went wrong when fetching NGO data'})
+    }
+})

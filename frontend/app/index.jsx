@@ -23,8 +23,63 @@ import { LinearGradient } from 'expo-linear-gradient'
 
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
+//Notification
+import * as Notifications from "expo-notifications"
+import * as Device from "expo-device"
+
 //login page
 const index = () => {
+    Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+        })
+    })
+
+    async function registerForPushNotificationsAsync() {
+        let token;
+
+        if(Device.isDevice){
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus
+
+            if(existingStatus !== "granted"){
+                const {status} = await Notifications.requestPermissionsAsync();
+                finalStatus = status;
+            }
+
+            if(finalStatus !== "granted"){
+                Toast.show({
+                    type: "error",
+                    text1: "Failed to get push token for notifications",
+                    useModal: false
+                })
+                return;
+            }
+
+            // Get the expo push token
+            token = (await Notifications.getExpoPushTokenAsync()).data
+            console.log("Expo Push Token: ", token)
+
+            await AsyncStorage.setItem("expoPushToken", token)
+        }else{
+            Toast.show({
+                type: "error",
+                text1: "Must use physical device for Push Notifications",
+                useModal: false
+            })
+        }
+
+        if(Platform.OS === "android"){
+            await Notifications.setNotificationChannelAsync("default", {
+                name: "default",
+                importance: Notifications.AndroidImportance.MAX
+            })
+        }
+        return token
+    }
+
     const [email, onEmailChange] = React.useState("");
     const [password, onPasswordChange] = React.useState("");
     const [showPassword, onShowPasswordChange] = React.useState(true);
@@ -76,6 +131,14 @@ const index = () => {
                         await AsyncStorage.setItem("userToken", res.data.token)
                         setPasswordBorderColor(theme.borderColor)
                         setEmailBorderColor(theme.borderColor)
+
+                        //EXPO NOTIFICATION TOKEN 
+                        const expoPushToken = await registerForPushNotificationsAsync();
+                        await axios.post(`${baseURL.replace("/login", "/save-token")}`, {
+                            token: expoPushToken,
+                            userEmail: email,
+                            });
+
                     router.replace("/(protected)/dashboard/");                    
                 }
                 else if (res.data.status === "no account") {

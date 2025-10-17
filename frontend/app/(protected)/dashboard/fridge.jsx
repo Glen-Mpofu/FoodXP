@@ -41,6 +41,7 @@ const Fridge = () => {
       text1: "Opening Map",
       useModal: false
     })
+    router.replace("/dashboard/donateMap")
   }
   
   useEffect(() => {

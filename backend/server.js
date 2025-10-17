@@ -11,11 +11,15 @@ const util = require("util")
 const { Pool } = require("pg");
 const { stat } = require("fs/promises");
 const { data } = require("@tensorflow/tfjs");
-
+const cron = require("node-cron")
+const {Expo} = require("expo-server-sdk")
+const serviceAccount = require("./config/serviceAccountKey.json")
 const path = require('path');
 const fs = require('fs');
 //initialise express
 const app = express();
+
+let expo = new Expo();
 
 //password encryption
 const bcrypt = require("bcrypt")
@@ -38,6 +42,8 @@ const JWT_SECRET = process.env.JWT_SECRET
 
 //enabling cross origin resource sharing for the app to run on my browser too
 const cors = require("cors");
+const { type } = require("os");
+const { title } = require("process");
 app.use(cors({
     origin: ["http://localhost:8081", "http://192.168.137.1:8081"],
     credentials: true
@@ -93,7 +99,8 @@ pool.query(`
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         EMAIL VARCHAR(100) UNIQUE, 
         NAME VARCHAR(50) NOT NULL, 
-        PASSWORD VARCHAR(100) NOT NULL
+        PASSWORD VARCHAR(100) NOT NULL,
+        expo_push_token Varchar(100)
     )    
     `).then((res) => {
     console.log("Foodie Table Ready")
@@ -135,51 +142,74 @@ pool.query(`
 });
 
 //reusable FUNCTIONS
-async function getFoodie(email) {
-  const query = `
-    SELECT * FROM Foodie WHERE email = $1
-  `;
+    async function getFoodie(email) {
+    const query = `
+        SELECT * FROM Foodie WHERE email = $1
+    `;
 
-  try {
-    const result = await pool.query(query, [email]);
+    try {
+        const result = await pool.query(query, [email]);
 
-    if (result.rowCount !== 1) {
-      return { status: "error", data: "No such foodie" };
+        if (result.rowCount !== 1) {
+        return { status: "error", data: "No such foodie" };
+        }
+
+        return { status: "ok", data: result.rows[0] };
+
+    } catch (err) {
+        console.error("Database error:", err.message);
+        return { status: "error", data: err.message };
+    }
     }
 
-    return { status: "ok", data: result.rows[0] };
+    async function getPantryFood(foodie_id) {
+        const result = await pool.query(`
+            SELECT * FROM PANTRY_FOOD WHERE FOODIE_ID = $1   
+        `, [foodie_id]
+        );
 
-  } catch (err) {
-    console.error("Database error:", err.message);
-    return { status: "error", data: err.message };
-  }
-}
+        return { status: "ok", data: result.rows }
+    }
 
-async function getPantryFood(foodie_id) {
-    const result = await pool.query(`
-        SELECT * FROM PANTRY_FOOD WHERE FOODIE_ID = $1   
-    `, [foodie_id]
-    );
+    async function getFridgeFood(foodie_id) {
+        const result = await pool.query(
+            `
+                SELECT * FROM FRIDGE_FOOD WHERE FOODIE_ID = $1
+            `,
+            [foodie_id]
+        )
+        return {status: "ok", data: result.rows}
+    }
 
-    return { status: "ok", data: result.rows }
-}
+    function getFoodieEmailFromToken(token){
+        const decoded = jwt.verify(token, "SECRET_KEY")
+        const email = decoded.email
 
-async function getFridgeFood(foodie_id) {
-    const result = await pool.query(
-        `
-            SELECT * FROM FRIDGE_FOOD WHERE FOODIE_ID = $1
-        `,
-        [foodie_id]
-    )
-    return {status: "ok", data: result.rows}
-}
+        return email
+    }
 
-function getFoodieEmailFromToken(token){
-    const decoded = jwt.verify(token, "SECRET_KEY")
-    const email = decoded.email
+    async function sendNotification(pushToken, message) {
+        if (!Expo.isExpoPushToken(pushToken)) {
+            console.error("Invalid Expo push token");
+            return;
+        }
 
-    return email
-}
+        const messages = [{
+            to: pushToken,
+            sound: "default",
+            title: "Food Expiry Alert 🍎",
+            body: message,
+        }];
+
+        const chunks = expo.chunkPushNotifications(messages);
+        for (const chunk of chunks) {
+            try {
+            await expo.sendPushNotificationsAsync(chunk);
+            } catch (error) {
+            console.error(error);
+            }
+        }
+    }
 
 //register
 app.post("/register", async (req, res) => {
@@ -234,6 +264,7 @@ app.post("/login", async (req, res) => {
 
     // CREATING A TOKEN FOR THE USER
     const token = jwt.sign({email: email}, "SECRET_KEY", {expiresIn: "7d"})
+    const notToken = jwt.sign({email: email}, "SECRET_NOT", {expiresIn: "7d"})
 
     //SAVING USER IN SESSION
     req.session.user = { email };
@@ -462,7 +493,6 @@ app.get("/loadshedding/:areaId", async (req, res) => {
 
     })
     
-    
     // retrieving all 
     app.get("/getpantryfood", async (req, res) => {
         const email = req.session.user.email
@@ -500,6 +530,42 @@ app.get("/loadshedding/:areaId", async (req, res) => {
             res.send({status: "error", data: "Something went wrong while deleting. Wrong food id maybe!"})
         }   
     })
+     
+    const checkExpiryFoods = async () => {
+        const now = new Date();
+
+        const email = req.session.email;
+        const foodie = await getFoodie(email);
+        const pantryFood = await getPantryFood(foodie.data.id);
+        const fridgeFood = await getFridgeFood(foodie.data.id);
+
+        // Get Expo push token from user
+        const pushToken = foodie.data.expo_push_token;
+
+            // Function to handle checking food arrays
+            const checkFoodList = async (foodList, category) => {
+                for (const item of foodList.data) {
+                const expiryDate = new Date(item.expiry_date);
+                const daysLeft = (expiryDate - now) / (1000 * 60 * 60 * 24);
+
+                if (daysLeft <= 2 && daysLeft > 0) {
+                    const message = `${item.name} in your ${category} will expire in ${Math.ceil(daysLeft)} day(s)!`;
+                    console.log("Sending notification:", message);
+                    await sendNotification(pushToken, message);
+                }
+                }
+            };
+
+        // Check both pantry & fridge foods
+        await checkFoodList(pantryFood, "Pantry");
+        await checkFoodList(fridgeFood, "Fridge");
+    };
+
+    cron.schedule("0 9, 13,19 * * *", async () => {
+        console.log("🔔 Checking expiring foods...")
+        await checkExpiryFoods();
+    })
+
 
 //fridge
     //saving
@@ -592,16 +658,45 @@ app.get("/loadshedding/:areaId", async (req, res) => {
         }   
     })
 
+app.post("/get-ngos", async (req, res) => {
+  try {
+    const { lat, long, radius = 50000 } = req.body;
 
-// getting NGOs to donate to
-app.get("/get-ngos", async (req, res) => {
-    try {
-        const {lat, lon, radius = 5000} = req.query;
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY; // store key in .env
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${long}&radius=${radius}&keyword=charity&type=establishment&key=${apiKey}`;
 
-        // nominatim 
+    const response = await axios.get(url);
 
-    } catch (error) {
-        console.error("Something went wrong!" , error)
-        res.send({status: "error", data: 'Something went wrong when fetching NGO data'})
-    }
-})
+    const ngos = response.data.results.map(place => ({
+      name: place.name,
+      latitude: place.geometry.location.lat,
+      longitude: place.geometry.location.lng,
+      address: place.vicinity,
+      place_id: place.place_id
+    }));
+
+    console.log("NGOs near you:", ngos);
+    res.json({ status: "ok", data: ngos });
+
+  } catch (error) {
+    console.error("Something went wrong!", error);
+    res.send({ status: "error", data: "Something went wrong when fetching NGO data" });
+  }
+});
+
+// this sets the notification token
+app.post("/save-token", async (req, res) => {
+  const { userEmail, token } = req.body;
+
+  try {
+    await db.query(
+      "UPDATE Foodie SET expo_push_token = $1 WHERE email = $2",
+      [token, userEmail]
+    );
+
+    res.json({ status: "ok", message: "Token saved successfully" });
+  } catch (err) {
+    console.error("Error saving token:", err);
+    res.json({ status: "error", message: "Failed to save token" });
+  }
+});

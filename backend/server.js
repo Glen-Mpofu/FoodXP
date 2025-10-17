@@ -242,18 +242,18 @@ app.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     //check if the user exists firs
-    const storedFoodie = pool.query(`
+    const storedFoodie = await pool.query(`
             SELECT EMAIL, PASSWORD FROM FOODIE WHERE EMAIL = $1
         `, [email]
     )
 
     //if the email is not in the db it means the user doesn't exist
-    if ((await storedFoodie).rowCount <= 0) {
+    if (storedFoodie.rowCount <= 0) {
         return res.send({ status: "no account", data: "Foodie has no account yet" })
     }
 
     //checking the password
-    const hashedPassword = (await storedFoodie).rows[0].password
+    const hashedPassword = storedFoodie.rows[0].password
 
     //comparing the passwords
     const comparePasswords = await bcrypt.compare(password, hashedPassword)
@@ -264,7 +264,6 @@ app.post("/login", async (req, res) => {
 
     // CREATING A TOKEN FOR THE USER
     const token = jwt.sign({email: email}, "SECRET_KEY", {expiresIn: "7d"})
-    const notToken = jwt.sign({email: email}, "SECRET_NOT", {expiresIn: "7d"})
 
     //SAVING USER IN SESSION
     req.session.user = { email };
@@ -686,17 +685,16 @@ app.post("/get-ngos", async (req, res) => {
 
 // this sets the notification token
 app.post("/save-token", async (req, res) => {
-  const { userEmail, token } = req.body;
-
-  try {
-    await db.query(
-      "UPDATE Foodie SET expo_push_token = $1 WHERE email = $2",
-      [token, userEmail]
-    );
-
-    res.json({ status: "ok", message: "Token saved successfully" });
-  } catch (err) {
-    console.error("Error saving token:", err);
-    res.json({ status: "error", message: "Failed to save token" });
-  }
+    const { token, userEmail } = req.body;
+    try {
+        await pool.query(
+            `INSERT INTO user_push_tokens (email, push_token) VALUES ($1, $2)
+             ON CONFLICT (email) DO UPDATE SET push_token = $2`,
+            [userEmail, token]
+        );
+        res.send({ status: "ok", data: "Push token saved" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ status: "error", data: "Failed to save push token" });
+    }
 });

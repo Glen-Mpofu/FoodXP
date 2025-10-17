@@ -137,7 +137,7 @@ const index = () => {
                         await axios.post(`${baseURL.replace("/login", "/save-token")}`, {
                             token: expoPushToken,
                             userEmail: email,
-                            });
+                        }).catch(err => console.log("Failed to save push token:", err));
 
                     router.replace("/(protected)/dashboard/");                    
                 }

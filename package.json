@@ -1,5 +1,6 @@
 {
   "dependencies": {
-    "expo": "^54.0.13"
+    "expo": "^54.0.13",
+    "expo-modules-core": "^3.0.21"
   }
 }

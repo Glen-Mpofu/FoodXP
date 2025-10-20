@@ -1,4 +1,4 @@
-package com.anonymous.FoodXP
+package com.glenmpofu.foodXP
 
 import android.os.Build
 import android.os.Bundle

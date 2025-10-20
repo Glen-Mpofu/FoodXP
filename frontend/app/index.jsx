@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert, ImageBackground , Pressable, Image } from 'react-native'
+import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Alert, ImageBackground, Pressable, Image } from 'react-native'
 import { useState } from 'react'
 
 //themedui
@@ -21,6 +21,7 @@ import { Toast } from 'toastify-react-native'
 // gradient
 import { LinearGradient } from 'expo-linear-gradient'
 
+import { API_BASE_URL } from "@env"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 
 //Notification
@@ -40,16 +41,16 @@ const index = () => {
     async function registerForPushNotificationsAsync() {
         let token;
 
-        if(Device.isDevice){
+        if (Device.isDevice) {
             const { status: existingStatus } = await Notifications.getPermissionsAsync();
             let finalStatus = existingStatus
 
-            if(existingStatus !== "granted"){
-                const {status} = await Notifications.requestPermissionsAsync();
+            if (existingStatus !== "granted") {
+                const { status } = await Notifications.requestPermissionsAsync();
                 finalStatus = status;
             }
 
-            if(finalStatus !== "granted"){
+            if (finalStatus !== "granted") {
                 Toast.show({
                     type: "error",
                     text1: "Failed to get push token for notifications",
@@ -63,7 +64,7 @@ const index = () => {
             console.log("Expo Push Token: ", token)
 
             await AsyncStorage.setItem("expoPushToken", token)
-        }else{
+        } else {
             Toast.show({
                 type: "error",
                 text1: "Must use physical device for Push Notifications",
@@ -71,7 +72,7 @@ const index = () => {
             })
         }
 
-        if(Platform.OS === "android"){
+        if (Platform.OS === "android") {
             await Notifications.setNotificationChannelAsync("default", {
                 name: "default",
                 importance: Notifications.AndroidImportance.MAX
@@ -92,7 +93,7 @@ const index = () => {
     const [passwordBorderColor, setPasswordBorderColor] = useState(theme.borderColor)
 
     async function handleSubmit() {
-        if(!email.endsWith("@gmail.com")){
+        if (!email.endsWith("@gmail.com")) {
             Toast.show({
                 type: "error",
                 text1: "Please enter a valid email",
@@ -100,7 +101,7 @@ const index = () => {
             })
             setEmailBorderColor(Colors.error)
             return;
-        }else if(password.trim() === ""){
+        } else if (password.trim() === "") {
             Toast.show({
                 type: "error",
                 text1: "Please enter a password",
@@ -115,8 +116,8 @@ const index = () => {
             email,
             password
         }
-        const baseURL = Platform.OS === "web" ? "http://localhost:5001/login" : "http://192.168.137.1:5001/login"
-        axios.post(baseURL, foodieData, {withCredentials: true}).
+        const baseURL = Platform.OS === "web" ? "http://localhost:5001/login" : `${API_BASE_URL}/login`
+        axios.post(baseURL, foodieData, { withCredentials: true }).
             then(async res => {
                 console.log(res.data);
 
@@ -127,27 +128,27 @@ const index = () => {
                         useModal: false
                     });
 
-                        // SETTING THE TOKEN 
-                        await AsyncStorage.setItem("userToken", res.data.token)
-                        setPasswordBorderColor(theme.borderColor)
-                        setEmailBorderColor(theme.borderColor)
+                    // SETTING THE TOKEN 
+                    await AsyncStorage.setItem("userToken", res.data.token)
+                    setPasswordBorderColor(theme.borderColor)
+                    setEmailBorderColor(theme.borderColor)
 
-                        //EXPO NOTIFICATION TOKEN 
-                        const expoPushToken = await registerForPushNotificationsAsync();
-                        await axios.post(`${baseURL.replace("/login", "/save-token")}`, {
-                            token: expoPushToken,
-                            userEmail: email,
-                        }).catch(err => console.log("Failed to save push token:", err));
+                    //EXPO NOTIFICATION TOKEN 
+                    const expoPushToken = await registerForPushNotificationsAsync();
+                    await axios.post(`${baseURL.replace("/login", "/save-token")}`, {
+                        token: expoPushToken,
+                        userEmail: email,
+                    }).catch(err => console.log("Failed to save push token:", err));
 
-                    router.replace("/(protected)/dashboard/");                    
+                    router.replace("/(protected)/dashboard/");
                 }
                 else if (res.data.status === "no account") {
                     Toast.show({
                         type: "error",
                         text1: res.data.data,
                         useModal: false
-                    })  
-                    setEmailBorderColor(Colors.error)                  
+                    })
+                    setEmailBorderColor(Colors.error)
                 }
                 else if (res.data.status === "wrong password") {
                     Toast.show({
@@ -156,7 +157,7 @@ const index = () => {
                         useModal: false
                     })
                     setPasswordBorderColor(Colors.error)
-                }else{
+                } else {
                     Toast.show({
                         type: "error",
                         text1: res.data.data,
@@ -181,7 +182,7 @@ const index = () => {
     return (
         //main view
         <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
-            
+
             <ThemedView style={styles.mainView}>
                 {/* foodxp heading*/}
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>
@@ -191,14 +192,14 @@ const index = () => {
 
                 <View style={styles.inputView}>
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Email</ThemedText>
-                    <ThemedTextInput style={[{borderColor: emailBorderColor}, styles.input]} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
+                    <ThemedTextInput style={[{ borderColor: emailBorderColor }, styles.input]} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
 
                     <ThemedText style={[{ marginBottom: 0 }]}>Password</ThemedText>
-                    
-                    <View style={styles.passwordContainer}>                        
-                        <ThemedTextInput style={[styles.input, {width: "85%", borderColor: passwordBorderColor}]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
-                        <Pressable onPress={()=>onShowPasswordChange(!showPassword)}>
-                            <Ionicons name={ showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"}/>
+
+                    <View style={styles.passwordContainer}>
+                        <ThemedTextInput style={[styles.input, { width: "85%", borderColor: passwordBorderColor }]} secureTextEntry={showPassword} value={password} onChangeText={onPasswordChange} placeholder="Enter your Password" />
+                        <Pressable onPress={() => onShowPasswordChange(!showPassword)}>
+                            <Ionicons name={showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"} />
                         </Pressable>
                     </View>
 
@@ -233,9 +234,9 @@ const index = () => {
                             </ThemedText>
 
                             <ThemedTextInput style={styles.input} value={password} onChangeText={onPasswordChange} placeholder="Enter your Old Password" />
-                            
+
                             <ThemedTextInput style={styles.input} value={newPassword} onChangeText={onNewPasswordChange} placeholder="Enter your New Password" />
-                            <Ionicons name={ showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"}/>
+                            <Ionicons name={showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={"purple"} />
 
                             <ThemedButton onPress={closeForgotPasswordModal}>
                                 <ThemedText>
@@ -322,12 +323,12 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         resizeMode: "cover"
     },
-    icon:{
-        alignSelf:"center",
+    icon: {
+        alignSelf: "center",
     },
-    passwordContainer:{
+    passwordContainer: {
         height: 70,
-        width: "100%", 
+        width: "100%",
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "center"

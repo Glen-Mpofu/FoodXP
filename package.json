@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "expo": "^54.0.13",
-    "toastify-react-native": "^7.2.3"
+    "expo": "^54.0.13"
   }
 }

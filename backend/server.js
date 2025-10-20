@@ -12,8 +12,7 @@ const { Pool } = require("pg");
 const { stat } = require("fs/promises");
 const { data } = require("@tensorflow/tfjs");
 const cron = require("node-cron")
-const {Expo} = require("expo-server-sdk")
-const serviceAccount = require("./config/serviceAccountKey.json")
+const { Expo } = require("expo-server-sdk")
 const path = require('path');
 const fs = require('fs');
 //initialise express
@@ -32,7 +31,7 @@ const execAsync = util.promisify(exec)
 //serve images from /uploads as public static files
 app.use("/uploads", express.static(uploadDir))
 
-if(!fs.existsSync(uploadDir)){
+if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir)
     console.log("Uploads folder created at: ", uploadDir)
 }
@@ -142,7 +141,7 @@ pool.query(`
 });
 
 //reusable FUNCTIONS
-    async function getFoodie(email) {
+async function getFoodie(email) {
     const query = `
         SELECT * FROM Foodie WHERE email = $1
     `;
@@ -151,7 +150,7 @@ pool.query(`
         const result = await pool.query(query, [email]);
 
         if (result.rowCount !== 1) {
-        return { status: "error", data: "No such foodie" };
+            return { status: "error", data: "No such foodie" };
         }
 
         return { status: "ok", data: result.rows[0] };
@@ -160,56 +159,56 @@ pool.query(`
         console.error("Database error:", err.message);
         return { status: "error", data: err.message };
     }
-    }
+}
 
-    async function getPantryFood(foodie_id) {
-        const result = await pool.query(`
+async function getPantryFood(foodie_id) {
+    const result = await pool.query(`
             SELECT * FROM PANTRY_FOOD WHERE FOODIE_ID = $1   
         `, [foodie_id]
-        );
+    );
 
-        return { status: "ok", data: result.rows }
-    }
+    return { status: "ok", data: result.rows }
+}
 
-    async function getFridgeFood(foodie_id) {
-        const result = await pool.query(
-            `
+async function getFridgeFood(foodie_id) {
+    const result = await pool.query(
+        `
                 SELECT * FROM FRIDGE_FOOD WHERE FOODIE_ID = $1
             `,
-            [foodie_id]
-        )
-        return {status: "ok", data: result.rows}
+        [foodie_id]
+    )
+    return { status: "ok", data: result.rows }
+}
+
+function getFoodieEmailFromToken(token) {
+    const decoded = jwt.verify(token, "SECRET_KEY")
+    const email = decoded.email
+
+    return email
+}
+
+async function sendNotification(pushToken, message) {
+    if (!Expo.isExpoPushToken(pushToken)) {
+        console.error("Invalid Expo push token");
+        return;
     }
 
-    function getFoodieEmailFromToken(token){
-        const decoded = jwt.verify(token, "SECRET_KEY")
-        const email = decoded.email
+    const messages = [{
+        to: pushToken,
+        sound: "default",
+        title: "Food Expiry Alert 🍎",
+        body: message,
+    }];
 
-        return email
-    }
-
-    async function sendNotification(pushToken, message) {
-        if (!Expo.isExpoPushToken(pushToken)) {
-            console.error("Invalid Expo push token");
-            return;
-        }
-
-        const messages = [{
-            to: pushToken,
-            sound: "default",
-            title: "Food Expiry Alert 🍎",
-            body: message,
-        }];
-
-        const chunks = expo.chunkPushNotifications(messages);
-        for (const chunk of chunks) {
-            try {
+    const chunks = expo.chunkPushNotifications(messages);
+    for (const chunk of chunks) {
+        try {
             await expo.sendPushNotificationsAsync(chunk);
-            } catch (error) {
+        } catch (error) {
             console.error(error);
-            }
         }
     }
+}
 
 //register
 app.post("/register", async (req, res) => {
@@ -263,7 +262,7 @@ app.post("/login", async (req, res) => {
     }
 
     // CREATING A TOKEN FOR THE USER
-    const token = jwt.sign({email: email}, "SECRET_KEY", {expiresIn: "7d"})
+    const token = jwt.sign({ email: email }, "SECRET_KEY", { expiresIn: "7d" })
 
     //SAVING USER IN SESSION
     req.session.user = { email };
@@ -283,28 +282,28 @@ app.post("/logout", async (req, res) => {
 })
 
 //saving the food
-const classifyModelFile = path.join(__dirname, "model", "pantry_frigde_model.py") 
+const classifyModelFile = path.join(__dirname, "model", "pantry_frigde_model.py")
 
 app.post("/classifyfood", async (req, res) => {
-  try {
-    const { photo } = req.body;
-    console.log("Base64 length:", photo)
-    if (!photo) return res.status(400).json({ error: "No image provided" });
+    try {
+        const { photo } = req.body;
+        console.log("Base64 length:", photo)
+        if (!photo) return res.status(400).json({ error: "No image provided" });
         console.log("Base64 length:", photo.length)
 
         //sending the photo to flask
-        const response = await axios.post("http://192.168.137.1:5001/predict", {photo});
+        const response = await axios.post("http://192.168.137.1:5001/predict", { photo });
 
         console.log("Python result: ", response.data)
         res.json(response.data)
 
-  } catch (error) {
+    } catch (error) {
         console.error("Classification error:", error.message);
         if (error.response) {
-        // Flask sent an error response
-        res.status(error.response.status).json(error.response.data);
+            // Flask sent an error response
+            res.status(error.response.status).json(error.response.data);
         } else {
-        res.status(500).json({ error: "Classification failed" });
+            res.status(500).json({ error: "Classification failed" });
         }
     }
 });
@@ -312,25 +311,25 @@ app.post("/classifyfood", async (req, res) => {
 // session getter
 app.get("/session", async (req, res) => {
     console.log(req.session.user);
-    if(req.session.user){
+    if (req.session.user) {
         //searching the database for the logged in user
         const email = req.session.user.email
-        
+
         pool.query(`
             SELECT * FROM FOODIE WHERE EMAIL = $1
             `, [email]).then((result) => {
-                const foodie = {
-                   email: result.rows[0].email,
-                   name: result.rows[0].name,
-                   password: result.rows[0].password,
-                }
-                console.log(foodie)
-                res.send({status: "ok", data: foodie})
-                console.log("Foodie",result.rows[0])
-            })            
-        
-    }else{
-        res.send({status: "error", data: req.session.user})
+            const foodie = {
+                email: result.rows[0].email,
+                name: result.rows[0].name,
+                password: result.rows[0].password,
+            }
+            console.log(foodie)
+            res.send({ status: "ok", data: foodie })
+            console.log("Foodie", result.rows[0])
+        })
+
+    } else {
+        res.send({ status: "error", data: req.session.user })
     }
 })
 
@@ -344,11 +343,11 @@ app.post("/namechange", async (req, res) => {
     pool.query(`
         UPDATE FOODIE SET NAME = $1 WHERE EMAIL = $2 
         `, [name, email]
-    ).then((result)=> {
-        if(result.rowCount >= 1){
-            res.send({status: "ok", data: "Name changed successfully"})
-        }else{
-            res.send({status: "error", data: "Name changes rejected"})
+    ).then((result) => {
+        if (result.rowCount >= 1) {
+            res.send({ status: "ok", data: "Name changed successfully" })
+        } else {
+            res.send({ status: "error", data: "Name changes rejected" })
         }
         console.log(result)
     }).catch(err => {
@@ -369,10 +368,10 @@ app.post("/passwordchange", async (req, res) => {
         UPDATE FOODIE SET PASSWORD = $1 WHERE EMAIL = $2
         `, [encryptedPassword, email]
     ).then((result) => {
-        if(result.rowCount >= 1){
-            res.send({status: "ok", data: "Password Changed Successfully"})
-        }else{
-            res.send({status: "error", data: "Password Changed Rejected"})
+        if (result.rowCount >= 1) {
+            res.send({ status: "ok", data: "Password Changed Successfully" })
+        } else {
+            res.send({ status: "error", data: "Password Changed Rejected" })
         }
     }).catch(err => {
         console.log(err)
@@ -388,10 +387,10 @@ app.post("/deleteaccount", async (req, res) => {
         DELETE FROM FOODIE WHERE EMAIL = $1
         `, [email]
     ).then((result) => {
-        if(result.rowCount >= 1){
-            res.send({status: "ok", data: "Account Deleted Successfully"})
-        }else{
-            res.send({status: "error", data: "Account Delete Rejected"})
+        if (result.rowCount >= 1) {
+            res.send({ status: "ok", data: "Account Deleted Successfully" })
+        } else {
+            res.send({ status: "error", data: "Account Delete Rejected" })
         }
     }).catch(err => {
         console.log(err)
@@ -400,287 +399,287 @@ app.post("/deleteaccount", async (req, res) => {
 
 // ✅ Endpoint to search for area by name
 app.get("/loadshedding/area", async (req, res) => {
-  try {
-    const response = await axios.get(
-      `https://developer.sepush.co.za/business/2.0/areas_search?text=polokwane&test=current`,
-      {
-        headers: { token: process.env.ESKOM_API_KEY },
-      }
-    );
+    try {
+        const response = await axios.get(
+            `https://developer.sepush.co.za/business/2.0/areas_search?text=polokwane&test=current`,
+            {
+                headers: { token: process.env.ESKOM_API_KEY },
+            }
+        );
 
-    const areas = response.data.areas; // ⚠️ important: the array is under .areas
-    if (!areas || areas.length === 0) {
-      return res.status(404).json({ error: "Area not found" });
+        const areas = response.data.areas; // ⚠️ important: the array is under .areas
+        if (!areas || areas.length === 0) {
+            return res.status(404).json({ error: "Area not found" });
+        }
+
+        const area = areas[0]; // take the first match
+        res.json({ areaId: area.id, name: area.name });
+        console.log("Area search result:", area);
+    } catch (error) {
+        console.error(error.response?.data || error.message);
+        res.status(500).json({ error: "Failed to search area" });
     }
-
-    const area = areas[0]; // take the first match
-    res.json({ areaId: area.id, name: area.name });
-    console.log("Area search result:", area);
-  } catch (error) {
-    console.error(error.response?.data || error.message);
-    res.status(500).json({ error: "Failed to search area" });
-  }
 });
 
 // ✅ Endpoint to get load shedding stages by areaId
 app.get("/loadshedding/:areaId", async (req, res) => {
-  try {
-    const { areaId } = req.params;
-    const response = await axios.get(
-      `https://developer.sepush.co.za/business/2.0/area?id=${areaId}&test=current`,
-      {
-        headers: { token: process.env.ESKOM_API_KEY },
-      }
-    );
-    console.log(response.data.schedule.days[2].stages[3])
-    res.json(response.data);
-  } catch (error) {
-    console.error(error.response?.data || error.message);
-    res.status(500).json({ error: "Failed to fetch load shedding info" });
-  }
+    try {
+        const { areaId } = req.params;
+        const response = await axios.get(
+            `https://developer.sepush.co.za/business/2.0/area?id=${areaId}&test=current`,
+            {
+                headers: { token: process.env.ESKOM_API_KEY },
+            }
+        );
+        console.log(response.data.schedule.days[2].stages[3])
+        res.json(response.data);
+    } catch (error) {
+        console.error(error.response?.data || error.message);
+        res.status(500).json({ error: "Failed to fetch load shedding info" });
+    }
 });
 
 // pantry
-    // saving
-    app.post("/savepantryfood", async (req, res) => {
-        try {
-            const {foodData} = req.body
-            console.log(foodData)
-            
-            const pantryFood = {
-                name: foodData.name,
-                quantity: foodData.quantity,
-                date: foodData.date,
-                photo: foodData.photo,
-            }
+// saving
+app.post("/savepantryfood", async (req, res) => {
+    try {
+        const { foodData } = req.body
+        console.log(foodData)
 
-            if(!pantryFood.photo) res.send({status: "error", data: "no photo provided"});
+        const pantryFood = {
+            name: foodData.name,
+            quantity: foodData.quantity,
+            date: foodData.date,
+            photo: foodData.photo,
+        }
 
-            //file name
-            const filename = `food_${Date.now()}.jpg`;
-            const filePath = path.join(uploadDir, filename)
+        if (!pantryFood.photo) res.send({ status: "error", data: "no photo provided" });
 
-            const base64Data = pantryFood.photo.replace(/^data:image\/\w+;base64,/, "");
-            console.log("Base64 length:", base64Data.length);
-            
-            fs.writeFileSync(filePath, base64Data, "base64")
-            console.log("Image saved to: ", filePath)
+        //file name
+        const filename = `food_${Date.now()}.jpg`;
+        const filePath = path.join(uploadDir, filename)
 
-            //getting email from token
-            const token = foodData.token
-            const decoded = jwt.verify(token, "SECRET_KEY")
-            const email = decoded.email
+        const base64Data = pantryFood.photo.replace(/^data:image\/\w+;base64,/, "");
+        console.log("Base64 length:", base64Data.length);
 
-            const foodie = await getFoodie(email)
-            //console.log(foodie)
-            //here save pantry food infor to the db
-            await pool.query(
-                `
+        fs.writeFileSync(filePath, base64Data, "base64")
+        console.log("Image saved to: ", filePath)
+
+        //getting email from token
+        const token = foodData.token
+        const decoded = jwt.verify(token, "SECRET_KEY")
+        const email = decoded.email
+
+        const foodie = await getFoodie(email)
+        //console.log(foodie)
+        //here save pantry food infor to the db
+        await pool.query(
+            `
                     INSERT INTO PANTRY_FOOD (NAME, QUANTITY, EXPIRY_DATE, FOODIE_ID, PHOTO)
                     Values($1, $2, $3, $4, $5);
                 `, [pantryFood.name, pantryFood.quantity, pantryFood.date, foodie.data.id, filePath]
-            ).then((result) => {
-                if(result.rowCount <= 0){
-                    return res.send({status: "error", data: "Failed to add food"})
-                }
+        ).then((result) => {
+            if (result.rowCount <= 0) {
+                return res.send({ status: "error", data: "Failed to add food" })
+            }
 
-                res.send({status: "ok", data: "Pantry food added"})
-            })
-        } catch (error) {
-            console.error("Something went wrong", error)
-        }    
+            res.send({ status: "ok", data: "Pantry food added" })
+        })
+    } catch (error) {
+        console.error("Something went wrong", error)
+    }
 
-    })
-    
-    // retrieving all 
-    app.get("/getpantryfood", async (req, res) => {
-        const email = req.session.user.email
-        const foodie = await getFoodie(email)
-        const pantryFood = await getPantryFood(foodie.data.id)
+})
 
-        console.log(pantryFood.data)
-        
-        res.send({status: "ok", data: pantryFood.data})
-    })
+// retrieving all 
+app.get("/getpantryfood", async (req, res) => {
+    const email = req.session.user.email
+    const foodie = await getFoodie(email)
+    const pantryFood = await getPantryFood(foodie.data.id)
 
-    //deleting 
-    app.post("/deletepantryfood", async (req, res) => {
-        const id = req.body.id
-        const photoPath = req.body.photo
+    console.log(pantryFood.data)
 
-        try {
-            //deleting from the fridge_food table
-            const result = await pool.query(
-                `
+    res.send({ status: "ok", data: pantryFood.data })
+})
+
+//deleting 
+app.post("/deletepantryfood", async (req, res) => {
+    const id = req.body.id
+    const photoPath = req.body.photo
+
+    try {
+        //deleting from the fridge_food table
+        const result = await pool.query(
+            `
                     DELETE FROM PANTRY_FOOD WHERE ID = $1
                 `,
-                [id]
-            )
+            [id]
+        )
 
-            if (result.rowCount <= 0){
-                return res.send({status: "error", data: "Something went wrong while deleting. Wrong food id maybe!"})
+        if (result.rowCount <= 0) {
+            return res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
+        }
+
+        await execAsync(`del "${photoPath}"`)
+        console.log(photoPath)
+        res.send({ status: "ok", data: "Pantry food deleted successfully" })
+    } catch (error) {
+        console.error(error)
+        res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
+    }
+})
+
+const checkExpiryFoods = async () => {
+    const now = new Date();
+
+    const email = req.session.email;
+    const foodie = await getFoodie(email);
+    const pantryFood = await getPantryFood(foodie.data.id);
+    const fridgeFood = await getFridgeFood(foodie.data.id);
+
+    // Get Expo push token from user
+    const pushToken = foodie.data.expo_push_token;
+
+    // Function to handle checking food arrays
+    const checkFoodList = async (foodList, category) => {
+        for (const item of foodList.data) {
+            const expiryDate = new Date(item.expiry_date);
+            const daysLeft = (expiryDate - now) / (1000 * 60 * 60 * 24);
+
+            if (daysLeft <= 2 && daysLeft > 0) {
+                const message = `${item.name} in your ${category} will expire in ${Math.ceil(daysLeft)} day(s)!`;
+                console.log("Sending notification:", message);
+                await sendNotification(pushToken, message);
             }
-            
-            await execAsync(`del "${photoPath}"`)
-            console.log(photoPath)
-            res.send({status: "ok", data: "Pantry food deleted successfully"})
-        } catch (error) {
-            console.error(error)
-            res.send({status: "error", data: "Something went wrong while deleting. Wrong food id maybe!"})
-        }   
-    })
-     
-    const checkExpiryFoods = async () => {
-        const now = new Date();
-
-        const email = req.session.email;
-        const foodie = await getFoodie(email);
-        const pantryFood = await getPantryFood(foodie.data.id);
-        const fridgeFood = await getFridgeFood(foodie.data.id);
-
-        // Get Expo push token from user
-        const pushToken = foodie.data.expo_push_token;
-
-            // Function to handle checking food arrays
-            const checkFoodList = async (foodList, category) => {
-                for (const item of foodList.data) {
-                const expiryDate = new Date(item.expiry_date);
-                const daysLeft = (expiryDate - now) / (1000 * 60 * 60 * 24);
-
-                if (daysLeft <= 2 && daysLeft > 0) {
-                    const message = `${item.name} in your ${category} will expire in ${Math.ceil(daysLeft)} day(s)!`;
-                    console.log("Sending notification:", message);
-                    await sendNotification(pushToken, message);
-                }
-                }
-            };
-
-        // Check both pantry & fridge foods
-        await checkFoodList(pantryFood, "Pantry");
-        await checkFoodList(fridgeFood, "Fridge");
+        }
     };
 
-    cron.schedule("0 9, 13,19 * * *", async () => {
-        console.log("🔔 Checking expiring foods...")
-        await checkExpiryFoods();
-    })
+    // Check both pantry & fridge foods
+    await checkFoodList(pantryFood, "Pantry");
+    await checkFoodList(fridgeFood, "Fridge");
+};
+
+cron.schedule("0 9, 13,19 * * *", async () => {
+    console.log("🔔 Checking expiring foods...")
+    await checkExpiryFoods();
+})
 
 
 //fridge
-    //saving
-    app.post("/savefridgefood", async (req, res) => {
-        try{
-            console.log(req.body)
-            const {foodData} = req.body
+//saving
+app.post("/savefridgefood", async (req, res) => {
+    try {
+        console.log(req.body)
+        const { foodData } = req.body
 
-            const fridgeFood = {
-                name: foodData.name,
-                quantity: foodData.quantity,
-                photo: foodData.photo,
-            }
-            if(!fridgeFood.photo){
-                return res.send({status: "error", data: "No photo sent"})
-            }
+        const fridgeFood = {
+            name: foodData.name,
+            quantity: foodData.quantity,
+            photo: foodData.photo,
+        }
+        if (!fridgeFood.photo) {
+            return res.send({ status: "error", data: "No photo sent" })
+        }
 
-            //file name
-            const fileName = `food_${Date.now()}.jpg`
-            const filePath = path.join(uploadDir, fileName)
+        //file name
+        const fileName = `food_${Date.now()}.jpg`
+        const filePath = path.join(uploadDir, fileName)
 
-            const base64Data = fridgeFood.photo.replace(/^data:image\/\w+;base64,/, "")
-            fs.writeFileSync(filePath, base64Data, "base64")
+        const base64Data = fridgeFood.photo.replace(/^data:image\/\w+;base64,/, "")
+        fs.writeFileSync(filePath, base64Data, "base64")
 
-            const email = getFoodieEmailFromToken(foodData.token)
+        const email = getFoodieEmailFromToken(foodData.token)
 
-            const foodie = await getFoodie(email)
+        const foodie = await getFoodie(email)
 
-            await pool.query(
-                `
+        await pool.query(
+            `
                     INSERT INTO FRIDGE_FOOD (NAME, QUANTITY, ISFRESH, FOODIE_ID, PHOTO)
                     VALUES($1, $2, $3, $4, $5)
                 `,
-                [fridgeFood.name, fridgeFood.quantity, true, foodie.data.id, filePath]
-            ).then((result) => {
-                if(result.rowCount != 1){
-                    return res.send({status: "error", data: "Failed to add the food"})
-                }
-                res.send({status: "ok", data: "Fridge food added"})
-            }).catch(err => {
-                console.error("Something went wrong", err)
-                return res.send({status: "error", data: "Something went wrong"})
-            })
+            [fridgeFood.name, fridgeFood.quantity, true, foodie.data.id, filePath]
+        ).then((result) => {
+            if (result.rowCount != 1) {
+                return res.send({ status: "error", data: "Failed to add the food" })
+            }
+            res.send({ status: "ok", data: "Fridge food added" })
+        }).catch(err => {
+            console.error("Something went wrong", err)
+            return res.send({ status: "error", data: "Something went wrong" })
+        })
 
-        }catch(error){
-            console.log(error)
-        }
-    })
+    } catch (error) {
+        console.log(error)
+    }
+})
 
-    //retrieving all
-    app.get("/getfridgefood", async (req, res) => {
-        try {
-            const email = req.session.user.email
-            const foodie = await getFoodie(email)
-            console.log(foodie)
-            const fridgeFood = await getFridgeFood(foodie.data.id)
+//retrieving all
+app.get("/getfridgefood", async (req, res) => {
+    try {
+        const email = req.session.user.email
+        const foodie = await getFoodie(email)
+        console.log(foodie)
+        const fridgeFood = await getFridgeFood(foodie.data.id)
 
-            console.log(fridgeFood.data)
-            res.send({status: "ok", data: fridgeFood.data})
-        } catch (error) {
-            console.error("Something went wrong", error)
-            return res.send({status: "error", data: "Something went wrong when retrieving items"})
-        }
-    })
+        console.log(fridgeFood.data)
+        res.send({ status: "ok", data: fridgeFood.data })
+    } catch (error) {
+        console.error("Something went wrong", error)
+        return res.send({ status: "error", data: "Something went wrong when retrieving items" })
+    }
+})
 
-    //deleting 
-    app.post("/deletefridgefood", async (req, res) => {
-        const id = req.body.id
-        const photoPath = req.body.photo
+//deleting 
+app.post("/deletefridgefood", async (req, res) => {
+    const id = req.body.id
+    const photoPath = req.body.photo
 
-        try {
-            //deleting from the fridge_food table
-            const result = await pool.query(
-                `
+    try {
+        //deleting from the fridge_food table
+        const result = await pool.query(
+            `
                     DELETE FROM FRIDGE_FOOD WHERE ID = $1
                 `,
-                [id]
-            )
+            [id]
+        )
 
-            if (result.rowCount <= 0){
-                return res.send({status: "error", data: "Something went wrong while deleting. Wrong food id maybe!"})
-            }
-            
-            await execAsync(`del "${photoPath}"`)
+        if (result.rowCount <= 0) {
+            return res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
+        }
 
-            res.send({status: "ok", data: "Fridge food deleted successfully"})
-        } catch (error) {
-            console.error(error)
-            res.send({status: "error", data: "Something went wrong while deleting. Wrong food id maybe!"})
-        }   
-    })
+        await execAsync(`del "${photoPath}"`)
+
+        res.send({ status: "ok", data: "Fridge food deleted successfully" })
+    } catch (error) {
+        console.error(error)
+        res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
+    }
+})
 
 app.post("/get-ngos", async (req, res) => {
-  try {
-    const { lat, long, radius = 50000 } = req.body;
+    try {
+        const { lat, long, radius = 50000 } = req.body;
 
-    const apiKey = process.env.GOOGLE_PLACES_API_KEY; // store key in .env
-    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${long}&radius=${radius}&keyword=charity&type=establishment&key=${apiKey}`;
+        const apiKey = process.env.GOOGLE_PLACES_API_KEY; // store key in .env
+        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${long}&radius=${radius}&keyword=charity&type=establishment&key=${apiKey}`;
 
-    const response = await axios.get(url);
+        const response = await axios.get(url);
 
-    const ngos = response.data.results.map(place => ({
-      name: place.name,
-      latitude: place.geometry.location.lat,
-      longitude: place.geometry.location.lng,
-      address: place.vicinity,
-      place_id: place.place_id
-    }));
+        const ngos = response.data.results.map(place => ({
+            name: place.name,
+            latitude: place.geometry.location.lat,
+            longitude: place.geometry.location.lng,
+            address: place.vicinity,
+            place_id: place.place_id
+        }));
 
-    console.log("NGOs near you:", ngos);
-    res.json({ status: "ok", data: ngos });
+        console.log("NGOs near you:", ngos);
+        res.json({ status: "ok", data: ngos });
 
-  } catch (error) {
-    console.error("Something went wrong!", error);
-    res.send({ status: "error", data: "Something went wrong when fetching NGO data" });
-  }
+    } catch (error) {
+        console.error("Something went wrong!", error);
+        res.send({ status: "error", data: "Something went wrong when fetching NGO data" });
+    }
 });
 
 // this sets the notification token

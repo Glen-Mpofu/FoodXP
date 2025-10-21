@@ -142,10 +142,10 @@ const index = () => {
                             userEmail: email,
                         }).catch(err => console.log("Failed to save push token:", err));
 
-                        router.push("/(protected)/dashboard/");
+                        router.replace("/(protected)/dashboard/");
                     } 
 
-                    router.push("/dashboard/");
+                    router.replace("/dashboard/");
                 }
                 else if (res.data.status === "no account") {
                     Toast.show({

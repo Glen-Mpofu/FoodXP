@@ -6,7 +6,8 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library"
 import DateTimePicker  from '@react-native-community/datetimepicker';
 import * as ImagePicker from "expo-image-picker"
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
+
 //themed components 
 import ThemedButton from "../../../components/ThemedButton"
 import ThemedView from "../../../components/ThemedView"
@@ -175,9 +176,27 @@ export default function CameraScreen() {
       return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false  })
     }
 
+    const foodData = {
+      name,
+      quantity,
+      photo,
+      token: userToken,
+      ...(prediction === "pantry" && { date })
+    }
+
     // Here you can send data to your backend
     console.log({ name, quantity, date, photo, prediction })
-    Toast.show({ type: "success", text1: "Food saved successfully" })
+    axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }, { withCredentials: true, headers: { Authorization: `Bearer ${userToken}` } })
+      .then((res) => {
+        if(res.data.status === "ok"){
+          Toast.show({ type: "success", text1: res.data.data, useModal: false })
+        }else{
+          Toast.show({ type: "error", text1: res.data.data, useModal: false })
+        }
+      }).catch(err => {
+        console.error("Something went wrong", err)
+        Toast.show({ type: "error", text1: "Something went wrong", useModal: false })
+      })
   }
 
   const classifyFood = async (photoUri) => {
@@ -192,9 +211,13 @@ export default function CameraScreen() {
           : "http://192.168.137.1:5001/classifyfood"*/
 
       let photoData = photoUri
-      if (Platform.OS !== "web") {
-        const base64Image = await FileSystem.readAsStringAsync(photoUri, { encoding: FileSystem.EncodingType.Base64 })
-        photoData = `data:image/jpeg;base64,${base64Image}`
+       if (Platform.OS !== "web") {
+        // Read file as base64 using the new API
+        const fileInfo = await FileSystem.getInfoAsync(photoUri);
+        if (!fileInfo.exists) throw new Error("File not found");
+
+        const fileContent = await FileSystem.readAsStringAsync(photoUri, { encoding: 'base64' }); // still supported for now
+        photoData = `data:image/jpeg;base64,${fileContent}`;
       }
 
       const response = await axios.post(`${API_BASE_URL}/classifyfood`, { photo: photoData })

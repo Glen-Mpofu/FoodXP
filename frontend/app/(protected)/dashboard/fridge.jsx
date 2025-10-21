@@ -99,7 +99,6 @@ const Fridge = () => {
           ))}
         </ScrollView>
       ) : (
-
         <ThemedView style={styles.emptyContainer}>
           <ThemedText style={styles.heading}>No food added yet</ThemedText>
         </ThemedView>

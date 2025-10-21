@@ -8,7 +8,7 @@ import { router } from "expo-router";
 import * as ImagePicker from "expo-image-picker"
 import ThemedButton from '../../../components/ThemedButton';
 import { Toast } from 'toastify-react-native';
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import ThemedTextInput from '../../../components/ThemedTextInput';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -121,6 +121,9 @@ const UploadFood = () => {
         } else {
           Toast.show({ type: "error", text1: res.data.data, useModal: false })
         }
+      }).catch(err => {
+        console.error("Something went wrong", err)
+        Toast.show({ type: "error", text1: "Something went wrong", useModal: false })
       })
   }
 

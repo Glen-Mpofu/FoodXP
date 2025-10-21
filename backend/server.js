@@ -100,7 +100,7 @@ pool.query(`
         EMAIL VARCHAR(100) UNIQUE, 
         NAME VARCHAR(50) NOT NULL, 
         PASSWORD VARCHAR(100) NOT NULL,
-        expo_push_token Varchar(100)
+        expo_push_token Varchar(100) REFERENCES User_Push_Tokens(push_token)
     )    
     `).then((res) => {
     console.log("Foodie Table Ready")
@@ -146,8 +146,8 @@ pool.query(
     `
         CREATE TABLE IF NOT EXISTS user_push_tokens 
         (
-            foodie_id uuid REFERENCES FOODIE(id),
-            push_token VARCHAR(250) PRIMARY KEY
+            foodie_id uuid UNIQUE REFERENCES FOODIE(id),
+            push_token VARCHAR(250) PRIMARY KEY 
         )
     `
 ).then((res) => {
@@ -733,7 +733,7 @@ app.post("/save-token", async (req, res) => {
     try {
         await pool.query(
             `INSERT INTO user_push_tokens (foodie_id, push_token) VALUES ($1, $2)
-            ON CONFLICT (foodie_id) DO UPDATE SET push_token = $2`,
+                ON CONFLICT (foodie_id, push_token) DO NOTHING;`,
             [foodie.data.id, token]
         );
         res.send({ status: "ok", data: "Push token saved" });

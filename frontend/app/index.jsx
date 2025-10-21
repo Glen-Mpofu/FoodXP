@@ -134,14 +134,18 @@ const index = () => {
                     setPasswordBorderColor(theme.borderColor)
                     setEmailBorderColor(theme.borderColor)
 
-                    //EXPO NOTIFICATION TOKEN 
-                    const expoPushToken = await registerForPushNotificationsAsync();
-                    await axios.post(`${baseURL}/save-token`, {
-                        token: expoPushToken,
-                        userEmail: email,
-                    }).catch(err => console.log("Failed to save push token:", err));
+                    //EXPO NOTIFICATION TOKEN
+                    if(Platform.OS === "android"){
+                        const expoPushToken = await registerForPushNotificationsAsync();
+                        await axios.post(`${API_BASE_URL}/save-token`, {
+                            token: expoPushToken,
+                            userEmail: email,
+                        }).catch(err => console.log("Failed to save push token:", err));
 
-                    router.replace("/(protected)/dashboard/");
+                        router.push("/(protected)/dashboard/");
+                    } 
+
+                    router.push("/dashboard/");
                 }
                 else if (res.data.status === "no account") {
                     Toast.show({

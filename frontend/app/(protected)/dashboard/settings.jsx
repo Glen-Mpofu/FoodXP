@@ -46,28 +46,29 @@ const Settings = () => {
         return router.replace("/")
       }
       setUserToken(token)
+
+      //const baseUrl = Platform.OS === "web" ? "http://localhost:5001/session" : "http://192.168.137.1:5001/session"
+      axios.get(`${API_BASE_URL}/session`, {withCredentials: true, headers: {Authorization: `Bearer ${token}`}})
+      .then((res) => {
+        if(res.data.status === "ok"){
+          Toast.show({
+            type: "success",
+            text1: "Session on",
+            useModal: false
+          })
+          setFoodie(res.data.data)
+        }else{
+          Toast.show({
+            type: "error",
+            text1: "Session off",
+            useModal: false
+          })
+        }
+      }).catch( err => {
+        console.log(err)
+      });
     };
 
-    //const baseUrl = Platform.OS === "web" ? "http://localhost:5001/session" : "http://192.168.137.1:5001/session"
-    axios.get(`${API_BASE_URL}/session`, {withCredentials: true})
-    .then((res) => {
-      if(res.data.status === "ok"){
-        Toast.show({
-          type: "success",
-          text1: "Session on",
-          useModal: false
-        })
-        setFoodie(res.data.data)
-      }else{
-        Toast.show({
-          type: "error",
-          text1: "Session off",
-          useModal: false
-        })
-      }
-    }).catch( err => {
-      console.log(err)
-    });
     init();
   }, [])
 

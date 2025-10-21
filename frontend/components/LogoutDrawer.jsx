@@ -5,6 +5,7 @@ import axios from "axios"
 import { Toast } from 'toastify-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { API_BASE_URL } from "@env"
 
 export default function LogoutDrawer(props) {
     const router = useRouter();
@@ -15,7 +16,7 @@ export default function LogoutDrawer(props) {
 
         const token = await AsyncStorage.removeItem("userToken")
 
-        await axios.post("http://localhost:5001/logout", {}, {withCredentials: true}).
+        await axios.post(`${API_BASE_URL}/logout`, {}, {withCredentials: true}).
             then((res) => {
                 if (res.data.status === "ok") {
                     Toast.show({

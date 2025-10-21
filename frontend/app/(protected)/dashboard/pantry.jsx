@@ -57,7 +57,7 @@ const Pantry = () => {
         }
         setUserToken(token);
 
-        const result = await axios.get(`${API_BASE_URL}/getpantryfood`, {withCredentials: true})
+        const result = await axios.get(`${API_BASE_URL}/getpantryfood`, {withCredentials: true, headers: {Authorization: `Bearer ${token}`}})
         setPantryFood(result.data.data || [])
 
       }
@@ -81,8 +81,10 @@ const Pantry = () => {
   }
 
   return (
-    <ThemedView style={styles.container}> 
-    <ImageBackground style={styles.imgBackground} source={require("../../../assets/foodxp/pantry bg.jpg")} />
+    <View style={styles.container}> 
+    <ImageBackground style={styles.imgBackground} source={require("../../../assets/foodxp/pantry bg.jpg")} 
+      resizeMode='cover'
+    />
 
       {rows.length > 0 ? (
         <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -114,11 +116,11 @@ const Pantry = () => {
         </ScrollView>
       ) : (
         <ThemedView style={styles.emptyContainer}>
-          <ThemedText>No food added yet</ThemedText>
+          <ThemedText style={styles.heading}>No food added yet</ThemedText>
         </ThemedView>
       )}
 
-    </ThemedView>
+    </View>
   )
 }
 
@@ -129,27 +131,31 @@ function convertFilePathtoUri(filePath){
   return `${API_BASE_URL}/uploads/${fileName}`
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    width: "100%",
+    height: "100%",
   },
   heading:{
-    alignSelf: "center"
+    alignSelf: "center",
+    fontSize: 25
   },
   imgBackground: { 
     width: "100%", 
     height: "100%", 
     ...StyleSheet.absoluteFillObject,
-    flex: 1
+    
   },
   emptyContainer: {
     flex: 1, 
     alignItems: "center",
-    marginTop: 100
+    marginTop: 100,
+    justifyContent: ""
   },
   scrollContainer: { 
     flexGrow: 1,
+    padding: 10
   },
   row: { 
     flexDirection: 'row', 

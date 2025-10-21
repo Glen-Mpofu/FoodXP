@@ -326,26 +326,33 @@ app.post("/classifyfood", async (req, res) => {
 
 // session getter
 app.get("/session", async (req, res) => {
-    console.log(req.session.user);
-    if(req.session.user){
-        //searching the database for the logged in user
-        const email = req.session.user.email
+    try {
+        const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
+    if (!authHeader) return res.status(401).send({ status: "error", data: "No token sent" });
+
+    const token = authHeader.split(" ")[1];
+    let email;
+    try {
+        const decoded = jwt.verify(token, "SECRET_KEY");
+        email = decoded.email;
+    } catch (err) {
+        return res.status(401).send({ status: "error", data: "Invalid token" });
+    }
+    pool.query(`
+        SELECT * FROM FOODIE WHERE EMAIL = $1
+        `, [email]).then((result) => {
+            const foodie = {
+                email: result.rows[0].email,
+                name: result.rows[0].name,
+                password: result.rows[0].password,
+            }
+            console.log(foodie)
+            res.send({status: "ok", data: foodie})
+            console.log("Foodie",result.rows[0])
+        }) 
         
-        pool.query(`
-            SELECT * FROM FOODIE WHERE EMAIL = $1
-            `, [email]).then((result) => {
-                const foodie = {
-                   email: result.rows[0].email,
-                   name: result.rows[0].name,
-                   password: result.rows[0].password,
-                }
-                console.log(foodie)
-                res.send({status: "ok", data: foodie})
-                console.log("Foodie",result.rows[0])
-            })            
-        
-    }else{
-        res.send({status: "error", data: req.session.user})
+    } catch (error) {
+        console.error("Something went wrong", error)
     }
 })
 
@@ -509,7 +516,17 @@ app.get("/loadshedding/:areaId", async (req, res) => {
     
     // retrieving all 
     app.get("/getpantryfood", async (req, res) => {
-        const email = req.session.user.email
+        const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
+        if (!authHeader) return res.status(401).send({ status: "error", data: "No token sent" });
+
+        const token = authHeader.split(" ")[1];
+        let email;
+        try {
+            const decoded = jwt.verify(token, "SECRET_KEY");
+            email = decoded.email;
+        } catch (err) {
+            return res.status(401).send({ status: "error", data: "Invalid token" });
+        }
         const foodie = await getFoodie(email)
         const pantryFood = await getPantryFood(foodie.data.id)
 
@@ -632,8 +649,18 @@ app.get("/loadshedding/:areaId", async (req, res) => {
     //retrieving all
     app.get("/getfridgefood", async (req, res) => {
         try {
-            const email = req.session.user.email
-            const foodie = await getFoodie(email)
+            const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
+        if (!authHeader) return res.status(401).send({ status: "error", data: "No token sent" });
+
+        const token = authHeader.split(" ")[1];
+        let email;
+        try {
+            const decoded = jwt.verify(token, "SECRET_KEY");
+            email = decoded.email;
+        } catch (err) {
+            return res.status(401).send({ status: "error", data: "Invalid token" });
+        }
+        const foodie = await getFoodie(email)
             console.log(foodie)
             const fridgeFood = await getFridgeFood(foodie.data.id)
 

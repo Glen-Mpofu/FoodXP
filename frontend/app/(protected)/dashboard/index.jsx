@@ -33,11 +33,11 @@ export default function Dashboard() {
         
         const baseUrl = API_BASE_URL
         //pantry food
-        const result = await axios.get(`${baseUrl}/getpantryfood`, {withCredentials: true})
+        const result = await axios.get(`${baseUrl}/getpantryfood`, {withCredentials: true, headers: {Authorization: `Bearer ${token}`}})
         onPantryFoodChange(result.data.data)
 
         //fridge food
-        const resultFridge = await axios.get(`${baseUrl}/getfridgefood`, {withCredentials: true})
+        const resultFridge = await axios.get(`${baseUrl}/getfridgefood`, {withCredentials: true, headers: {Authorization: `Bearer ${token}`}})
         onFridgeFoodChange(resultFridge.data.data)
       };
   

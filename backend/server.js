@@ -145,43 +145,45 @@ pool.query("Select version();").
         return email
     }
 
-    async function sendNotification(pushToken, message) {
-        if (!Expo.isExpoPushToken(pushToken)) {
-            console.error("Invalid Expo push token");
-            return;
-        }
+    async function sendNotification(nativeNotifyUserId, message) {
+        if (!nativeNotifyUserId) return;
 
-        const messages = [{
-            to: pushToken,
-            sound: "default",
-            title: "Food Expiry Alert 🍎",
-            body: message,
-        }];
+        try {
+            const response = await axios.post(
+                "https://app.nativenotify.com/api/notification",
+                {
+                    subID: nativeNotifyUserId,   // The Native Notify user ID
+                    appId: process.env.NATIVE_NOTIFY_APP_ID, // numeric App ID from Native Notify
+                    appToken: process.env.NATIVE_NOTIFY_APP_TOKEN, // your app token
+                    title: "Food Expiry Alert 🍎",
+                    message: message,
+                    url: "" // optional: a link to open when notification is clicked
+                },
+                {
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                }
+            );
 
-        const chunks = expo.chunkPushNotifications(messages);
-        for (const chunk of chunks) {
-            try {
-            await expo.sendPushNotificationsAsync(chunk);
-            } catch (error) {
-            console.error(error);
-            }
+            console.log("Notification sent:", response.data);
+        } catch (err) {
+            console.error("Failed to send notification:", err.response?.data || err.message);
         }
     }
 
-    async function getToken(foodie_id) {
+    async function getNativeNotifyId(foodie_id) {
         const result = await pool.query(
-            `
-                SELECT push_token from user_push_tokens 
-                WHERE foodie_id = $1
-            `, [foodie_id]
-        )
-
-        return result.rows.map(row => row.push_token)
+            `SELECT native_notify_id FROM foodie WHERE id = $1`,
+            [foodie_id]
+        );
+        return result.rows[0]?.native_notify_id;
     }
+
 //register
 app.post("/register", async (req, res) => {
-    const { email, name, password } = req.body
-    console.log(password)
+    const { email, name, password, subID } = req.body
+    console.log(subID)
 
     //encrypting password
     const encryptedPassword = await bcrypt.hash(password, 10)
@@ -192,13 +194,19 @@ app.post("/register", async (req, res) => {
         return res.send({ status: "foodie exists", data: "Foodie Already Has an Account" });
     }
 
-    pool.query(
+    await pool.query(
         `INSERT INTO FOODIE(EMAIL, NAME, PASSWORD)
          VALUES($1, $2, $3);
         `, [email, name, encryptedPassword]
     ).then(() => {
         console.log("Foodie Account Created")
     }).catch((e) => console.log("Error creating account: " + e))
+
+    const nativeNotifyUserId = subID;
+    await pool.query(
+        `UPDATE FOODIE SET native_notify_id = $1 WHERE email = $2`,
+        [nativeNotifyUserId, email]
+    );
 
     res.send({ status: "ok", data: "Foodie Registered Successfully" })
 })
@@ -523,23 +531,24 @@ app.get("/loadshedding/:areaId", async (req, res) => {
         for (const foodie of foodies) {
             const pantryFood = await getPantryFood(foodie.id);
             const fridgeFood = await getFridgeFood(foodie.id);
-            const pushTokens = await getToken(foodie.id);
+            const nativeNotifyId  = await getNativeNotifyId(foodie.id);
 
-            if (pushTokens.length === 0) continue;
+            if (!nativeNotifyId) continue;
 
             const checkFoodList = async (foodList, category) => {
                 for (const item of foodList.data) {
                     const expiryDate = new Date(item.expiry_date);
                     const daysLeft = (expiryDate - now) / (1000 * 60 * 60 * 24);
+                    
+                    console.log(daysLeft)
 
-                    if (daysLeft <= 2 && daysLeft > 0) {
+                    if (daysLeft <= 2) {
                         const message = `${item.name} in your ${category} will expire in ${Math.ceil(daysLeft)} day(s)!`;
                         console.log(`Sending notification to ${foodie.email}:`, message);
 
                         // Send to all tokens of the foodie
-                        for (const token of pushTokens) {
-                            await sendNotification(token, message);
-                        }
+                        await sendNotification(nativeNotifyId, message);
+                        
                     }
                 }
             };
@@ -550,12 +559,10 @@ app.get("/loadshedding/:areaId", async (req, res) => {
         }
     };
 
-
-    cron.schedule("*/5 * * * **", async () => {
+    cron.schedule("*/2 * * * *", async () => {
         console.log("🔔 Checking expiring foods...")
         await checkExpiryFoods();
     })
-
 
 //fridge
     //saving
@@ -684,21 +691,15 @@ app.post("/get-ngos", async (req, res) => {
   }
 });
 
-// this sets the notification token
-app.post("/save-token", async (req, res) => {
-    const { token, userEmail } = req.body;
-    const foodie = await getFoodie(userEmail)
-
+// For testing only:
+app.get("/test-notification", async (req, res) => {
+    const testToken = "ExponentPushToken[cqNbu3EE_e7YAHO7H8g8w8]"; // Replace with your real token
     try {
-        await pool.query(
-            `INSERT INTO user_push_tokens (foodie_id, push_token) VALUES ($1, $2)
-            ON CONFLICT (push_token) DO NOTHING`,
-            [foodie.data.id, token]
-        );
-        res.send({ status: "ok", data: "Push token saved" });
-    } catch (error) {
-        console.error(error);
-        res.status(500).send({ status: "error", data: "Failed to save push token" });
+        await sendNotification(testToken, "🔔 This is a test notification!");
+        res.send("Test notification sent!");
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Failed to send notification");
     }
 });
 

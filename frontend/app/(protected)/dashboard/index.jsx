@@ -7,10 +7,11 @@ import { Colors } from '../../../constants/Colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import axios from "axios"
+import axios, { Axios } from "axios"
 import { Toast } from 'toastify-react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { API_BASE_URL } from "@env"
+import ThemedButton from '../../../components/ThemedButton';
 
 export default function Dashboard() {
     const router = useRouter();
@@ -134,6 +135,13 @@ export default function Dashboard() {
           />
         </ThemedView>
       </View>
+      <ThemedButton onPress= {() => {
+        axios.get(`${API_BASE_URL}/test-notification`, {withCredentials: true}).then((res) => {
+          alert(res.data)
+        })
+      }}>
+        <ThemedText>Test Notification</ThemedText>
+      </ThemedButton>
     </ThemedView>
   );
 }

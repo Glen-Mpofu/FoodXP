@@ -113,8 +113,8 @@ const index = () => {
         setEmailBorderColor(theme.borderColor)
         setPasswordBorderColor(theme.borderColor)
         const foodieData = {
-            email,
-            password
+            email: email.trim(),
+            password: password.trim()
         }
         const baseURL = Platform.OS === "web" ? "http://localhost:5001" : API_BASE_URL
         console.log(API_BASE_URL)

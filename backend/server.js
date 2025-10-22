@@ -4,6 +4,9 @@ const session = require("express-session") // npm install express-session
 const axios = require("axios")
 const jwt = require("jsonwebtoken") // creating a token for the pages of the app. prevents access to pages without login
 
+//database table
+const { initialiseTables } = require("./schemas/tableSetup")
+
 // for running the python file
 const { spawn, execFile, exec } = require("child_process");
 const util = require("util")
@@ -92,69 +95,8 @@ pool.query("Select version();").
         console.log("Version " + res.rows[0].version)
     }).catch((e) => console.log("Database Connection Error: " + e))
 
-//FOODIE table creation
-pool.query(`
-    CREATE TABLE IF NOT EXISTS FOODIE
-    ( 
-        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        EMAIL VARCHAR(100) UNIQUE, 
-        NAME VARCHAR(50) NOT NULL, 
-        PASSWORD VARCHAR(100) NOT NULL,
-        expo_push_token Varchar(100) REFERENCES User_Push_Tokens(push_token)
-    )    
-    `).then((res) => {
-    console.log("Foodie Table Ready")
-
-}).catch((e) => {
-    console.log("Error creating table" + e)
-})
-
-//PANTRY AND FRIDGE TABLE CREATION
-pool.query(`
-    CREATE TABLE IF NOT EXISTS PANTRY_FOOD
-    (
-        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(20) NOT NULL,
-        quantity DOUBLE PRECISION DEFAULT 1,
-        expiry_date DATE,
-        foodie_id UUID REFERENCES FOODIE(id),
-        photo VARCHAR(150)
-    );
-`).then((res) => {
-    console.log("Pantry_Food Table Ready")
-}).catch(error => {
-    console.error("Something went wrong when creating Pantry_Food table", error)
-});
-pool.query(`
-    CREATE TABLE IF NOT EXISTS FRIDGE_FOOD
-    (
-        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        name VARCHAR(20) NOT NULL,
-        quantity DOUBLE PRECISION DEFAULT 1,
-        isFresh BOOLEAN, 
-        foodie_id UUID REFERENCES FOODIE(id),
-        photo VARCHAR(150)
-    );
-`).then((res) => {
-    console.log("Fridge_Food Table Ready")
-}).catch(error => {
-    console.error("Something went wrong when creating Pantry_Food table", error)
-});
-
-// User_Push_Tokens SCHEMA
-pool.query(
-    `
-        CREATE TABLE IF NOT EXISTS user_push_tokens 
-        (
-            foodie_id uuid UNIQUE REFERENCES FOODIE(id),
-            push_token VARCHAR(250) PRIMARY KEY 
-        )
-    `
-).then((res) => {
-    console.log("User_Push_Tokens Table Ready")
-}).catch(error => {
-    console.error("Something went wrong when creating User_Push_Tokens table", error)
-});
+    // creating the DATABASE TABLES
+    initialiseTables(pool)
 
 //reusable FUNCTIONS
     async function getFoodie(email) {
@@ -226,6 +168,16 @@ pool.query(
         }
     }
 
+    async function getToken(foodie_id) {
+        const result = await pool.query(
+            `
+                SELECT push_token from user_push_tokens 
+                WHERE foodie_id = $1
+            `, [foodie_id]
+        )
+
+        return result.rows.map(row => row.push_token)
+    }
 //register
 app.post("/register", async (req, res) => {
     const { email, name, password } = req.body
@@ -565,34 +517,41 @@ app.get("/loadshedding/:areaId", async (req, res) => {
     const checkExpiryFoods = async () => {
         const now = new Date();
 
-        const email = req.session.email;
-        const foodie = await getFoodie(email);
-        const pantryFood = await getPantryFood(foodie.data.id);
-        const fridgeFood = await getFridgeFood(foodie.data.id);
+        const allFoodies = await pool.query(`SELECT id, email FROM foodie`);
+        const foodies = allFoodies.rows;
 
-        // Get Expo push token from user
-        const pushToken = foodie.data.expo_push_token;
+        for (const foodie of foodies) {
+            const pantryFood = await getPantryFood(foodie.id);
+            const fridgeFood = await getFridgeFood(foodie.id);
+            const pushTokens = await getToken(foodie.id);
 
-            // Function to handle checking food arrays
+            if (pushTokens.length === 0) continue;
+
             const checkFoodList = async (foodList, category) => {
                 for (const item of foodList.data) {
-                const expiryDate = new Date(item.expiry_date);
-                const daysLeft = (expiryDate - now) / (1000 * 60 * 60 * 24);
+                    const expiryDate = new Date(item.expiry_date);
+                    const daysLeft = (expiryDate - now) / (1000 * 60 * 60 * 24);
 
-                if (daysLeft <= 2 && daysLeft > 0) {
-                    const message = `${item.name} in your ${category} will expire in ${Math.ceil(daysLeft)} day(s)!`;
-                    console.log("Sending notification:", message);
-                    await sendNotification(pushToken, message);
-                }
+                    if (daysLeft <= 2 && daysLeft > 0) {
+                        const message = `${item.name} in your ${category} will expire in ${Math.ceil(daysLeft)} day(s)!`;
+                        console.log(`Sending notification to ${foodie.email}:`, message);
+
+                        // Send to all tokens of the foodie
+                        for (const token of pushTokens) {
+                            await sendNotification(token, message);
+                        }
+                    }
                 }
             };
 
-        // Check both pantry & fridge foods
-        await checkFoodList(pantryFood, "Pantry");
-        await checkFoodList(fridgeFood, "Fridge");
+            // Check both pantry & fridge foods for this foodie
+            await checkFoodList(pantryFood, "Pantry");
+            await checkFoodList(fridgeFood, "Fridge");
+        }
     };
 
-    cron.schedule("0 9, 13,19 * * *", async () => {
+
+    cron.schedule("*/5 * * * **", async () => {
         console.log("🔔 Checking expiring foods...")
         await checkExpiryFoods();
     })
@@ -733,7 +692,7 @@ app.post("/save-token", async (req, res) => {
     try {
         await pool.query(
             `INSERT INTO user_push_tokens (foodie_id, push_token) VALUES ($1, $2)
-                ON CONFLICT (foodie_id, push_token) DO NOTHING;`,
+            ON CONFLICT (push_token) DO NOTHING`,
             [foodie.data.id, token]
         );
         res.send({ status: "ok", data: "Push token saved" });

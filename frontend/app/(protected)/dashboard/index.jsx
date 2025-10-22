@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   foodItem: {
     marginBottom: 10,
     borderRadius: 6,
-    width: 120,
+    width: 110,
     marginRight: 10,
     padding: 8,
     backgroundColor: "#fff2",
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   showAllCard: {
     backgroundColor: '#ddd',
     justifyContent: 'center',
-    width: 120, // ✅ same as foodItem width
+    width: 110, // ✅ same as foodItem width
     height: 130, // optional for uniform look
   },
   rowFoodContainer: {

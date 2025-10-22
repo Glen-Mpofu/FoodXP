@@ -78,9 +78,9 @@ const Register = () => {
         setPasswordBorderColor(theme.borderColor)
 
         const foodieData = {
-            email: email,
-            name: userName,
-            password: userConfirmPassword,
+            email: email.trim(),
+            name: userName.trim(),
+            password: userConfirmPassword.trim(),
         };
 
         const baseUrl = Platform.OS === "web" ? "http://localhost:5001" : API_BASE_URL

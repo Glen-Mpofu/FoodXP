@@ -38,3 +38,5 @@ yarn-error.*
 
 # FIREBASE SERVICE ACCOUNT KEY
 config/serviceAccountKey.json
+
+.env

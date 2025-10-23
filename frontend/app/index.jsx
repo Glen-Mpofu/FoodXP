@@ -35,10 +35,6 @@ const Index = () => {
 
     const [modalVisible, setModalVisible] = useState(false)
 
-    // Register Native Notify token on app start
-
-        registerNNPushToken(32486, 'rO2Gkf0kRxykOTtwu2XDeX');
-
     // Handle login
     async function handleSubmit() {
         if (!email.endsWith("@gmail.com")) {
@@ -64,16 +60,6 @@ const Index = () => {
                 if (res.data.status === "ok") {
                     Toast.show({ type: "success", text1: res.data.data, useModal: false })
                     await AsyncStorage.setItem("userToken", res.data.token)
-
-                    // Send Native Notify userId to backend
-                    getUserId(async (userId) => {
-                        if (userId) {
-                            await axios.post(`${API_BASE_URL}/save-native-notify-id`, {
-                                userId,
-                                userEmail: email,
-                            }).catch(err => console.log("Failed to save Native Notify ID:", err));
-                        }
-                    });
 
                     router.replace("/dashboard/");
                 }

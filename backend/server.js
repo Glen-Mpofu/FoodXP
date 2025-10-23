@@ -145,19 +145,16 @@ pool.query("Select version();").
         return email
     }
 
-    async function sendNotification(nativeNotifyUserId, message) {
-        if (!nativeNotifyUserId) return;
+    async function sendNotification(message) {
 
         try {
             const response = await axios.post(
                 "https://app.nativenotify.com/api/notification",
-                {
-                    subID: nativeNotifyUserId,   // The Native Notify user ID
+                {  // The Native Notify user ID
                     appId: process.env.NATIVE_NOTIFY_APP_ID, // numeric App ID from Native Notify
                     appToken: process.env.NATIVE_NOTIFY_APP_TOKEN, // your app token
                     title: "Food Expiry Alert 🍎",
-                    message: message,
-                    url: "" // optional: a link to open when notification is clicked
+                    dateSent: message,
                 },
                 {
                     headers: {
@@ -172,18 +169,9 @@ pool.query("Select version();").
         }
     }
 
-    async function getNativeNotifyId(foodie_id) {
-        const result = await pool.query(
-            `SELECT native_notify_id FROM foodie WHERE id = $1`,
-            [foodie_id]
-        );
-        return result.rows[0]?.native_notify_id;
-    }
-
 //register
 app.post("/register", async (req, res) => {
-    const { email, name, password, subID } = req.body
-    console.log(subID)
+    const { email, name, password } = req.body
 
     //encrypting password
     const encryptedPassword = await bcrypt.hash(password, 10)
@@ -201,12 +189,6 @@ app.post("/register", async (req, res) => {
     ).then(() => {
         console.log("Foodie Account Created")
     }).catch((e) => console.log("Error creating account: " + e))
-
-    const nativeNotifyUserId = subID;
-    await pool.query(
-        `UPDATE FOODIE SET native_notify_id = $1 WHERE email = $2`,
-        [nativeNotifyUserId, email]
-    );
 
     res.send({ status: "ok", data: "Foodie Registered Successfully" })
 })
@@ -531,10 +513,7 @@ app.get("/loadshedding/:areaId", async (req, res) => {
         for (const foodie of foodies) {
             const pantryFood = await getPantryFood(foodie.id);
             const fridgeFood = await getFridgeFood(foodie.id);
-            const nativeNotifyId  = await getNativeNotifyId(foodie.id);
-
-            if (!nativeNotifyId) continue;
-
+        
             const checkFoodList = async (foodList, category) => {
                 for (const item of foodList.data) {
                     const expiryDate = new Date(item.expiry_date);
@@ -547,8 +526,7 @@ app.get("/loadshedding/:areaId", async (req, res) => {
                         console.log(`Sending notification to ${foodie.email}:`, message);
 
                         // Send to all tokens of the foodie
-                        await sendNotification(nativeNotifyId, message);
-                        
+                        await sendNotification(message);
                     }
                 }
             };
@@ -702,4 +680,54 @@ app.get("/test-notification", async (req, res) => {
         res.status(500).send("Failed to send notification");
     }
 });
+
+app.get("/get-recipes", async (req, res) => {
+  try {
+    const id = getIdFromHeader(req); // if needed
+
+    const response = await axios.get(
+      `https://api.spoonacular.com/recipes/complexSearch?query=chicken&number=3&addRecipeInstructions=true&fillIngredients=true&apiKey=${process.env.SPOONACULAR_API_KEY}`,
+      {
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    console.log("Recipes fetched:", response.data);
+
+    res.json({
+      status: "ok",
+      data: response.data,
+    });
+  } catch (error) {
+    console.error("Error fetching recipes:", error.message);
+
+    if (!res.headersSent) {
+      res.status(500).json({
+        status: "error",
+        message: "Failed to fetch recipes",
+        error: error.message,
+      });
+    }
+  }
+});
+
+async function getIdFromHeader(req) {
+  const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
+  if (!authHeader) throw new Error("No token sent");
+
+  const token = authHeader.split(" ")[1];
+  let email;
+    console.log(token)
+  try {
+    const decoded = jwt.verify(token, "SECRET_KEY");
+    email = decoded.email;
+  } catch (err) {
+    throw new Error("Invalid token");
+  }
+
+  const foodie = await getFoodie(email);
+  if (!foodie?.data?.id) throw new Error("Foodie not found");
+
+  return foodie.data.id;
+}
 

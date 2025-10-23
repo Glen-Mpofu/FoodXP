@@ -22,7 +22,7 @@ import registerNNPushToken from 'native-notify'
 
 //login page
 const Register = () => {
-
+    registerNNPushToken(32486, 'rO2Gkf0kRxykOTtwu2XDeX');
     const [email, onEmailChange] = React.useState("");
     const [userName, onNameChange] = React.useState("");
         //password
@@ -41,7 +41,7 @@ const Register = () => {
     let [nameBorderColor, setNameBorderColor] = React.useState(theme.borderColor)
 
     async function handleSubmit() {
-        const subID = await registerNNPushToken(32486, 'rO2Gkf0kRxykOTtwu2XDeX');
+        
         //valid email check
         const emailCheck = email.endsWith("@gmail.com");
         if(!emailCheck){
@@ -84,7 +84,6 @@ const Register = () => {
             email: email.trim(),
             name: userName.trim(),
             password: userConfirmPassword.trim(),
-            subID
         };
 
         const baseUrl = Platform.OS === "web" ? "http://localhost:5001" : API_BASE_URL

@@ -135,10 +135,20 @@ export default function Dashboard() {
           />
         </ThemedView>
       </View>
-      <ThemedButton onPress= {() => {
-        axios.get(`${API_BASE_URL}/test-notification`, {withCredentials: true}).then((res) => {
-          alert(res.data)
-        })
+      <ThemedButton onPress= {async () => {
+        try {
+          const res = await axios.get(`${API_BASE_URL}/get-recipes`, {
+            withCredentials: true,
+            headers: {
+              Authorization: `Bearer ${userToken}`,
+            },
+          });
+
+          alert(JSON.stringify(res.data, null, 2));
+        } catch (err) {
+          console.error("Error fetching recipes:", err.message);
+          alert("Failed to fetch recipes: " + err.message);
+        }
       }}>
         <ThemedText>Test Notification</ThemedText>
       </ThemedButton>

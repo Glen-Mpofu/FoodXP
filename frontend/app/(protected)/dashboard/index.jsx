@@ -57,7 +57,7 @@ export default function Dashboard() {
           <ThemedText style={styles.heading}>Pantry foods</ThemedText>
           
           <FlatList 
-            numColumns={4}
+            horizontal
             data = {[
               ...pantryFood.slice(0, maxItems - 1),
               {id: "show_all", type: "show_all"}

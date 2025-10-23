@@ -683,10 +683,18 @@ app.get("/test-notification", async (req, res) => {
 
 app.get("/get-recipes", async (req, res) => {
   try {
-    const id = getIdFromHeader(req); // if needed
+    const id = await getIdFromHeader(req); // if needed
+    const pantryFood = await getPantryFood(id);
+    const fridgeFood = await getFridgeFood(id);
 
+    const namesF = fridgeFood.data.map(item => item.name);
+    const namesP = pantryFood.data.map(item => item.name);
+    const allIngredients = [...namesF, ...namesP]
+
+    ingredientQuery = encodeURIComponent(allIngredients.join(" "))
+    console.log(ingredientQuery)
     const response = await axios.get(
-      `https://api.spoonacular.com/recipes/complexSearch?query=chicken&number=3&addRecipeInstructions=true&fillIngredients=true&apiKey=${process.env.SPOONACULAR_API_KEY}`,
+      `https://api.spoonacular.com/recipes/complexSearch?number=16&fillIngredients=true&query=${ingredientQuery}&sort=popularity&apiKey=${process.env.SPOONACULAR_API_KEY}`,
       {
         headers: { "Content-Type": "application/json" },
       }
@@ -717,7 +725,7 @@ async function getIdFromHeader(req) {
 
   const token = authHeader.split(" ")[1];
   let email;
-    console.log(token)
+    
   try {
     const decoded = jwt.verify(token, "SECRET_KEY");
     email = decoded.email;

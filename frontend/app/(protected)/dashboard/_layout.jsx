@@ -34,6 +34,7 @@ export default function DashboardLayout() {
         drawerStyle: {
           backgroundColor: theme.uiBackground,
         },
+        
         headerRight: () => (
           <>
             <TouchableOpacity
@@ -64,9 +65,9 @@ export default function DashboardLayout() {
     >
       <Drawer.Screen
         name="index"
-        options={{ drawerLabel: "Home", title: "Dashboard", 
+        options={{ drawerLabel: "Kitchen", title: "Your Kitchen", 
           drawerIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color}/>
+            <MaterialCommunityIcons name="home" size={size} color={color}/>
           )
          }}
       />
@@ -117,6 +118,14 @@ export default function DashboardLayout() {
         options={{ drawerLabel: "Settings", title: "Settings", 
           drawerIcon: ({ color, size }) => (
             <Ionicons name="settings" size={size} color={color}/>
+          )
+        }}
+      />
+      <Drawer.Screen
+        name="donateHub"
+        options={{ drawerLabel: "Donate Hub", title: "Food Donate Hub",
+          drawerIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="hand-heart-outline" size={size} color={color}/>
           )
         }}
       />

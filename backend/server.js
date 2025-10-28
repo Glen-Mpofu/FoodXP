@@ -693,21 +693,40 @@ app.get("/get-recipes", async (req, res) => {
 
     ingredientQuery = encodeURIComponent(allIngredients.join(" "))
     console.log(ingredientQuery)
-    const response = await axios.get(
-      `https://api.spoonacular.com/recipes/complexSearch?number=16&fillIngredients=true&query=${ingredientQuery}&sort=popularity&apiKey=${process.env.SPOONACULAR_API_KEY}`,
-      {
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+    
+    // getting the meals
+    let meals = []
+    for(let index = 0; index < allIngredients.length; index ++){
+        const mealsReponse = await axios.get(`
+            https://www.themealdb.com/api/json/v1/1/filter.php?i=${allIngredients.at(index)}
+        `)
+        meals.push(...mealsReponse.data.meals)
+        
+    }
+    console.log("Meals fetched:", meals)
+    
+    const mealInstruct = []
+    // getting the ingredients and instructions for every meal
+    for(let index = 0; index < meals.length; index ++){
+        const mealName = meals.at(index).strMeal
+        const mealsDetail = await axios.get(`
+            https://www.themealdb.com/api/json/v1/1/search.php?s=${mealName}
+        `)
+        //console.log(mealsDetail.data.meals)
+        mealInstruct.push(...mealsDetail.data.meals)
+    }
 
-    console.log("Recipes fetched:", response.data);
+    console.log("Meal Instructions fetched:", mealInstruct)
+
+    console.log("Recipes fetched:", mealInstruct);
 
     res.json({
       status: "ok",
-      data: response.data,
+      data: mealInstruct,
     });
+
   } catch (error) {
-    console.error("Error fetching recipes:", error.message);
+    console.error("Error fetching recipes:", error);
 
     if (!res.headersSent) {
       res.status(500).json({

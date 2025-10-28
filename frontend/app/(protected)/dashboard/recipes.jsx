@@ -8,6 +8,7 @@ import { Colors } from '../../../constants/Colors';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useRouter } from 'expo-router';
 import { API_BASE_URL } from "@env"
+import axios from 'axios';
 
 const Recipes = () => {
   const colorScheme = useColorScheme();
@@ -15,6 +16,7 @@ const Recipes = () => {
 
   const router = useRouter();
   const [userToken, setUserToken] = React.useState(null)
+  const [recipes, setRecipes] = React.useState([])
 
   useEffect(() => {
     const init = async () => {
@@ -23,6 +25,19 @@ const Recipes = () => {
         return router.replace("/")
       }
       setUserToken(token)
+
+      if(recipes.length === 0){
+        // recipes
+        const recipeResults = await axios.get(`${API_BASE_URL}/get-recipes`, {
+            withCredentials: true,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+        });
+        setRecipes(recipeResults.data.data);
+        //alert(JSON.stringify(recipeResults.data, null, 2));
+      }
+    
     };
     init();
   }, [])

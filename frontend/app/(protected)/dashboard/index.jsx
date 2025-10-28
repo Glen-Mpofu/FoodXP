@@ -14,50 +14,51 @@ import { API_BASE_URL } from "@env"
 import ThemedButton from '../../../components/ThemedButton';
 
 export default function Dashboard() {
-    const router = useRouter();
-    const [userToken, setUserToken] = React.useState(null)
-    const [pantryFood, onPantryFoodChange] = React.useState([])
-    const [fridgeFood, onFridgeFoodChange] = React.useState([])
-  
-    const [recipes, setRecipes] = React.useState([])
+  const router = useRouter();
+  const [userToken, setUserToken] = React.useState(null)
+  const [pantryFood, onPantryFoodChange] = React.useState([])
+  const [fridgeFood, onFridgeFoodChange] = React.useState([])
 
-    const screenWidth = Dimensions.get("window").width;
-    const itemWidth = 120; // width per item
-    const maxItems = Math.floor(screenWidth / itemWidth) // calculation of how many items can fit
+  const [recipes, setRecipes] = React.useState([])
+
+  const screenWidth = Dimensions.get("window").width;
+  const itemWidth = 120; // width per item
+  const maxItems = Math.floor(screenWidth / itemWidth) // calculation of how many items can fit
 
   useEffect(() => {
-      const init = async () => {
-        const token = await AsyncStorage.getItem("userToken");
-        if(!token){
-          router.replace("/")
-          return;
-        }
-        setUserToken(token);
-        
-        const baseUrl = API_BASE_URL
-        //pantry food
-        const result = await axios.get(`${baseUrl}/getpantryfood`, {withCredentials: true, headers: {Authorization: `Bearer ${token}`}})
-        onPantryFoodChange(result.data.data)
+    //alert()
+    const init = async () => {
+      const token = await AsyncStorage.getItem("userToken");
+      if (!token) {
+        router.replace("/")
+        return;
+      }
+      setUserToken(token);
 
-        //fridge food
-        const resultFridge = await axios.get(`${baseUrl}/getfridgefood`, {withCredentials: true, headers: {Authorization: `Bearer ${token}`}})
-        onFridgeFoodChange(resultFridge.data.data)
-        if(recipes.length === 0){
-          // recipes
-          const recipeResults = await axios.get(`${API_BASE_URL}/get-recipes`, {
-              withCredentials: true,
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-          });
-          setRecipes(recipeResults.data.data);
-          //alert(JSON.stringify(recipeResults.data, null, 2));
-        }
-      };
-  
-      init();
-    }, [])
-    
+      const baseUrl = API_BASE_URL
+      alert(baseUrl)
+      //pantry food
+      const result = await axios.get(`${baseUrl}/getpantryfood`, { headers: { Authorization: `Bearer ${token}` } })
+      onPantryFoodChange(result.data.data)
+
+      //fridge food
+      const resultFridge = await axios.get(`${baseUrl}/getfridgefood`, { headers: { Authorization: `Bearer ${token}` } })
+      onFridgeFoodChange(resultFridge.data.data)
+      if (recipes.length === 0) {
+        // recipes
+        const recipeResults = await axios.get(`${API_BASE_URL}/get-recipes`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setRecipes(recipeResults.data.data);
+        //alert(JSON.stringify(recipeResults.data, null, 2));
+      }
+    };
+
+    init();
+  }, [])
+
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light
 
@@ -68,30 +69,30 @@ export default function Dashboard() {
 
           {/*Pantry Food Items */}
           <ThemedText style={styles.heading}>Pantry foods</ThemedText>
-          
-          <FlatList 
+
+          <FlatList
             horizontal
-            data = {[
+            data={[
               ...pantryFood.slice(0, maxItems - 1),
-              {id: "show_all", type: "show_all"}
+              { id: "show_all", type: "show_all" }
             ]}
             keyExtractor={(item) => item.id}
-            renderItem={({item}) => {
-              if(item.type === "show_all"){
+            renderItem={({ item }) => {
+              if (item.type === "show_all") {
                 return (
                   <TouchableOpacity
                     onPress={() => router.replace("/dashboard/pantry")}
                     style={[styles.foodItem, styles.showAllCard]}
                   >
-                    <ThemedText style={{ fontWeight: "bold", textAlign: "center"}}>
-                      Show All 
+                    <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
+                      Show All
                     </ThemedText>
-                    <Ionicons name='arrow-forward' size={15}/>
+                    <Ionicons name='arrow-forward' size={15} />
                   </TouchableOpacity>
                 );
               }
 
-              return(
+              return (
                 <View style={styles.foodItem}>
                   <Image
                     source={{ uri: convertFilePathtoUri(item.photo) }}
@@ -111,29 +112,29 @@ export default function Dashboard() {
         <ThemedView style={styles.foodContainer}>
           <ThemedText style={styles.heading}>Fridge foods</ThemedText>
 
-          <FlatList 
+          <FlatList
             horizontal
-            data = {[
+            data={[
               ...fridgeFood.slice(0, maxItems - 1),
-              {id: "show_all", type: "show_all"}
+              { id: "show_all", type: "show_all" }
             ]}
             keyExtractor={(item) => item.id}
-            renderItem={({item}) => {
-              if(item.type === "show_all"){
+            renderItem={({ item }) => {
+              if (item.type === "show_all") {
                 return (
                   <TouchableOpacity
                     onPress={() => router.replace("/dashboard/fridge")}
                     style={[styles.foodItem, styles.showAllCard]}
                   >
-                    <ThemedText style={{ fontWeight: "bold", textAlign: "center"}}>
-                      Show All 
+                    <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
+                      Show All
                     </ThemedText>
-                    <Ionicons name='arrow-forward' size={15}/>
+                    <Ionicons name='arrow-forward' size={15} />
                   </TouchableOpacity>
                 );
               }
 
-              return(
+              return (
                 <View style={styles.foodItem}>
                   <Image
                     source={{ uri: convertFilePathtoUri(item.photo) }}
@@ -148,47 +149,53 @@ export default function Dashboard() {
           />
         </ThemedView>
       </View>
+
+      {/* RECIPE CONTAINER */}
       <View style={styles.rowFoodContainer}>
         <ThemedView style={styles.recipeContainer}>
           <ThemedText style={styles.heading}>Recipes</ThemedText>
-          <FlatList 
-            data={recipes && recipes.length > 0 ? [...recipes.slice(0, maxItems - 1), {id: "show_all", type: "show_all"}] : []}
-            keyExtractor={(item) => item.idMeals}
-            renderItem={({item}) => {
-              if(item.type === "show_all"){
-                return (
-                  <TouchableOpacity
-                    onPress={() => router.replace("/dashboard/recipes")}
-                    style={[styles.foodItem, styles.showAllCard]}
-                  >
-                    <ThemedText style={{ fontWeight: "bold", textAlign: "center"}}>
-                      Show All 
-                    </ThemedText>
-                    <Ionicons name='arrow-forward' size={15}/>
-                  </TouchableOpacity>
-                );
-              }
+          {recipes && recipes.length > 0 ? (
+            <FlatList
+              data={[...recipes.slice(0, maxItems - 1), { id: "show_all", type: "show_all" }]}
+              keyExtractor={(item) => item.idMeals || item.id}
+              renderItem={({ item }) => {
+                if (item.type === "show_all") {
+                  return (
+                    <TouchableOpacity
+                      onPress={() => router.replace("/dashboard/recipes")}
+                      style={[styles.foodItem, styles.showAllCard]}
+                    >
+                      <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
+                        Show All
+                      </ThemedText>
+                      <Ionicons name='arrow-forward' size={15} />
+                    </TouchableOpacity>
+                  );
+                }
 
-              // Regular recipe card
-              return (
-                <View style={styles.foodItem}>
-                  <Image source={{ uri: item.strMealThumb }} style={styles.img} />
-                  <ThemedText numberOfLines={2} style={[styles.nameTxt , { textAlign: "center" }]}>
-                    {item.strMeal}
-                  </ThemedText>
-                </View>
-              );
-            }}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          />
+                return (
+                  <View style={styles.foodItem}>
+                    <Image source={{ uri: item.strMealThumb }} style={styles.img} />
+                    <ThemedText numberOfLines={2} style={[styles.nameTxt, { textAlign: "center" }]}>
+                      {item.strMeal}
+                    </ThemedText>
+                  </View>
+                );
+              }}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+            />
+          ) : (
+            <ThemedText style={{ marginTop: 20 }}>Please add items to get recipes</ThemedText>
+          )}
+
         </ThemedView>
-      </View>      
+      </View>
     </ThemedView>
   );
 }
 
-function convertFilePathtoUri(filePath){
+function convertFilePathtoUri(filePath) {
   const fileName = filePath.split("\\").pop();
 
   return `${API_BASE_URL}/uploads/${fileName}`
@@ -201,7 +208,7 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingHorizontal: 0
   },
-  foodContainer:{
+  foodContainer: {
     flex: 1,
     backgroundColor: "",
     borderRadius: 5,
@@ -218,7 +225,7 @@ const styles = StyleSheet.create({
     paddingStart: 20,
     elevation: 5
   },
-  recipeContainer:{
+  recipeContainer: {
     flex: 1,
     backgroundColor: "#ffffffff",
     borderRadius: 30,

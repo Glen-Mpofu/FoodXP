@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import { MaterialCommunityIcons } from "@expo/vector-icons"
+import { MaterialIcons } from "@expo/vector-icons"
 import LogoutDrawer from "../../../components/LogoutDrawer"
 
 export default function DashboardLayout() {
@@ -34,7 +35,7 @@ export default function DashboardLayout() {
         drawerStyle: {
           backgroundColor: theme.uiBackground,
         },
-        
+
         headerRight: () => (
           <>
             <TouchableOpacity
@@ -59,39 +60,43 @@ export default function DashboardLayout() {
                 color={theme.camera}
               />
             </TouchableOpacity>
-            </>
+          </>
         ),
       }}
     >
       <Drawer.Screen
         name="index"
-        options={{ drawerLabel: "Kitchen", title: "Your Kitchen", 
+        options={{
+          drawerLabel: "Kitchen", title: "Your Kitchen",
           drawerIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="home" size={size} color={color}/>
+            <MaterialIcons name="local-dining" size={size} color={color} />
           )
-         }}
+        }}
       />
       <Drawer.Screen
         name="recipes"
-        options={{ drawerLabel: "Recipes", title: "Recipes",
-          drawerIcon: ({ color, size}) => (
-            <MaterialCommunityIcons name = "chef-hat" size={size} color={color}/>
+        options={{
+          drawerLabel: "Recipes", title: "Recipes",
+          drawerIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="chef-hat" size={size} color={color} />
           )
-         }}
+        }}
       />
       <Drawer.Screen
         name="pantry"
-        options={{ drawerLabel: "Pantry", title: "My Pantry",
-          drawerIcon: ({ color, size}) => (
-            <MaterialCommunityIcons name = "cupboard-outline" size={size} color={color}/>
+        options={{
+          drawerLabel: "Pantry", title: "My Pantry",
+          drawerIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="cupboard-outline" size={size} color={color} />
           )
-         }}
+        }}
       />
       <Drawer.Screen
         name="fridge"
-        options={{ drawerLabel: "Fridge", title: "My Fridge",
-          drawerIcon: ({ color, size}) => (
-            <MaterialCommunityIcons name = "fridge-outline" size={size} color={color}/>
+        options={{
+          drawerLabel: "Fridge", title: "My Fridge",
+          drawerIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="fridge-outline" size={size} color={color} />
           )
         }}
       />
@@ -115,17 +120,19 @@ export default function DashboardLayout() {
       />
       <Drawer.Screen
         name="settings"
-        options={{ drawerLabel: "Settings", title: "Settings", 
+        options={{
+          drawerLabel: "Settings", title: "Settings",
           drawerIcon: ({ color, size }) => (
-            <Ionicons name="settings" size={size} color={color}/>
+            <Ionicons name="settings" size={size} color={color} />
           )
         }}
       />
       <Drawer.Screen
         name="donateHub"
-        options={{ drawerLabel: "Donate Hub", title: "Food Donate Hub",
+        options={{
+          drawerLabel: "Donate Hub", title: "Food Donate Hub",
           drawerIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="hand-heart-outline" size={size} color={color}/>
+            <MaterialCommunityIcons name="hand-heart-outline" size={size} color={color} />
           )
         }}
       />

@@ -51,7 +51,7 @@ const Index = () => {
         setPasswordBorderColor(theme.borderColor)
 
         const foodieData = { email: email.trim(), password: password.trim() }
-        const baseURL = Platform.OS === "web" ? "http://localhost:5001" : API_BASE_URL
+        const baseURL = API_BASE_URL
 
         axios.post(`${baseURL}/login`, foodieData, { withCredentials: true })
             .then(async res => {

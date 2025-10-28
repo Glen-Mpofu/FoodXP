@@ -20,8 +20,8 @@ const Pantry = () => {
   const itemsPerRow = Math.floor(screenWidth / itemWidth);
 
   async function deleteEaten(id, photo) {
-    const result = await axios.post(`${API_BASE_URL}/deletepantryfood`, {id, photo}, {withCredentials: true});
-    if(result.data.status === "ok"){
+    const result = await axios.post(`${API_BASE_URL}/deletepantryfood`, { id, photo }, { withCredentials: true });
+    if (result.data.status === "ok") {
       Toast.show({
         type: "success",
         text1: result.data.data,
@@ -29,7 +29,7 @@ const Pantry = () => {
       })
 
       setPantryFood(prev => prev.filter(item => item.id !== id))
-    }else{
+    } else {
       Toast.show({
         type: "error",
         text1: result.data.data,
@@ -40,28 +40,28 @@ const Pantry = () => {
 
   async function openMap() {
     Toast.show({
-      type: "info", 
+      type: "info",
       text1: "Opening Map",
       useModal: false
     })
-    router.replace("/dashboard/donateMap")
+    router.replace("/dashboard/donateHub")
   }
 
   useEffect(() => {
     async function init() {
-      try{
+      try {
         const token = await AsyncStorage.getItem("userToken");
-        if(!token){
+        if (!token) {
           router.replace("/")
           return;
         }
         setUserToken(token);
 
-        const result = await axios.get(`${API_BASE_URL}/getpantryfood`, {withCredentials: true, headers: {Authorization: `Bearer ${token}`}})
+        const result = await axios.get(`${API_BASE_URL}/getpantryfood`, { withCredentials: true, headers: { Authorization: `Bearer ${token}` } })
         setPantryFood(result.data.data || [])
 
       }
-      catch(err){
+      catch (err) {
         console.error(err)
         alert(err)
         Toast.show({
@@ -74,38 +74,45 @@ const Pantry = () => {
 
     init();
   }, [])
-  
+
   const rows = []
-  for(let i = 0; i < pantryFood.length; i += itemsPerRow){
+  for (let i = 0; i < pantryFood.length; i += itemsPerRow) {
     rows.push(pantryFood.slice(i, i + itemsPerRow))
   }
 
   return (
-    <View style={styles.container}> 
-    <ImageBackground style={styles.imgBackground} source={require("../../../assets/foodxp/pantry bg.jpg")} 
-      resizeMode='cover'
-    />
+    <View style={styles.container}>
+      <ImageBackground
+        style={styles.imgBackground}
+        source={require("../../../assets/foodxp/pantry bg.jpg")}
+        resizeMode="cover"
+      />
 
       {rows.length > 0 ? (
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           {rows.map((row, rowIndex) => (
-            <View key = {rowIndex} style={styles.row}>
+            <View key={rowIndex} style={styles.shelf}>
               {row.map(item => (
                 <View key={item.id} style={styles.foodItem}>
-                  <Image source={{ uri: convertFilePathtoUri(item.photo) }} style={styles.img} />
-                  <ThemedText>{item.name}</ThemedText>
-                  <ThemedText>Qty: {item.quantity}</ThemedText>
+                  <Image
+                    source={{ uri: convertFilePathtoUri(item.photo) }}
+                    style={styles.img}
+                  />
+                  <ThemedText style={styles.foodName}>{item.name}</ThemedText>
+                  <ThemedText style={styles.qty}>Qty: {item.quantity}</ThemedText>
 
-                  <View style={{ flexDirection: "row" }}>
-                    <ThemedButton style={styles.btn} onPress={() => {
-                      deleteEaten(item.id, item.photo)
-                    }}>
+                  <View style={styles.buttonRow}>
+                    <ThemedButton
+                      style={[styles.btn, { backgroundColor: "#f28b82" }]}
+                      onPress={() => deleteEaten(item.id, item.photo)}
+                    >
                       <ThemedText>Eaten</ThemedText>
                     </ThemedButton>
 
-                    <ThemedButton style={styles.btn} onPress={() => {
-                      openMap()
-                    }}>
+                    <ThemedButton
+                      style={[styles.btn, { backgroundColor: "#81c995" }]}
+                      onPress={() => openMap()}
+                    >
                       <ThemedText>Donate</ThemedText>
                     </ThemedButton>
                   </View>
@@ -119,14 +126,14 @@ const Pantry = () => {
           <ThemedText style={styles.heading}>No food added yet</ThemedText>
         </ThemedView>
       )}
-
     </View>
+
   )
 }
 
 export default Pantry
 
-function convertFilePathtoUri(filePath){
+function convertFilePathtoUri(filePath) {
   const fileName = filePath.split("\\").pop();
   return `${API_BASE_URL}/uploads/${fileName}`
 }
@@ -137,50 +144,71 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  heading:{
-    alignSelf: "center",
-    fontSize: 25
-  },
-  imgBackground: { 
-    width: "100%", 
-    height: "100%", 
+  imgBackground: {
+    width: "100%",
+    height: "100%",
     ...StyleSheet.absoluteFillObject,
-    
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    padding: 15,
+  },
+  shelf: {
+    flexDirection: "row",
+    marginBottom: 20,
+    justifyContent: "flex-start",
+    alignItems: "flex-start",
+  },
+  foodItem: {
+    width: 140,
+    marginRight: 15,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: "#fff9", // semi-transparent white
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 3, height: 4 },
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  img: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+  foodName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#4a2c0a", // warm brown text
+    textAlign: "center",
+  },
+  qty: {
+    fontSize: 13,
+    color: "#5a3c1a",
+    marginBottom: 6,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  btn: {
+    flex: 1,
+    margin: 3,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignItems: "center",
   },
   emptyContainer: {
-    flex: 1, 
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    marginTop: 100,
-    justifyContent: ""
   },
-  scrollContainer: { 
-    flexGrow: 1,
-    padding: 10
+  heading: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#4a2c0a",
   },
-  row: { 
-    flexDirection: 'row', 
-    marginBottom: 10 
-  },
-  foodItem: { 
-    width: 150, 
-    marginRight: 10, 
-    padding: 8, 
-    borderRadius: 6, 
-    backgroundColor: "#fff2", 
-    alignItems: "center", 
-    justifyContent: "center", 
-    marginTop: 50 
-  },
-  img: { 
-    width: 100, 
-    height: 100, 
-    borderRadius: 6, 
-    marginBottom: 4 
-  },
-  btn:{
-    height: 50, 
-    width: 50, 
-    alignSelf: "flex-end",
-    margin: 5
-  },
-})
+});

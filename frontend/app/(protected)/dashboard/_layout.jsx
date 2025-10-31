@@ -24,7 +24,7 @@ export default function DashboardLayout() {
           fontWeight: "bold",
           fontFamily: "AlanSans"
         },
-        drawerActiveBackgroundColor: Colors.drawerActive,
+        drawerActiveBackgroundColor: theme.drawerActive,
         drawerActiveTintColor: theme.uiBackground,
         headerStyle: {
           backgroundColor: theme.navBackground,

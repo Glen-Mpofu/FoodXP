@@ -168,6 +168,26 @@ async function sendNotification(message) {
     }
 }
 
+async function getIdFromHeader(req) {
+    const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
+    if (!authHeader) throw new Error("No token sent");
+
+    const token = authHeader.split(" ")[1];
+    let email;
+
+    try {
+        const decoded = jwt.verify(token, "SECRET_KEY");
+        email = decoded.email;
+    } catch (err) {
+        throw new Error("Invalid token");
+    }
+
+    const foodie = await getFoodie(email);
+    if (!foodie?.data?.id) throw new Error("Foodie not found");
+
+    return foodie.data.id;
+}
+
 //register
 app.post("/register", async (req, res) => {
     const { email, name, password } = req.body
@@ -503,6 +523,27 @@ app.post("/deletepantryfood", async (req, res) => {
     }
 })
 
+//updating
+app.post("/editPantryFood", async (req, res) => {
+    console.log(req.body)
+    const newFood = req.body.newFood
+    await pool.query(
+        `
+            UPDATE PANTRY_FOOD 
+            SET name = $1, quantity = $2, expiry_date = $3
+            WHERE id = $4;
+        `, [newFood.name, newFood.quantity, newFood.expiry_date, newFood.id]
+    ).then((result) => {
+        if (result.rowCount <= 0) {
+            res.send({ status: "error", data: "Failed to update food item" })
+        } else {
+            res.send({ status: "ok", data: "Successfully updated food item" })
+        }
+    }).catch(err => {
+        console.error("Something wrong happened while updating Pantry Food Item: ", err)
+    })
+})
+
 const checkExpiryFoods = async () => {
     const now = new Date();
 
@@ -642,6 +683,29 @@ app.post("/deletefridgefood", async (req, res) => {
     }
 })
 
+//updating
+app.post("/editFridgeFood", async (req, res) => {
+    console.log(req.body)
+    const newFood = req.body.newFood
+    await pool.query(
+        `
+            UPDATE FRIDGE_FOOD 
+            SET name = $1, quantity = $2
+            WHERE id = $3;
+        `, [newFood.name, newFood.quantity, newFood.id]
+    ).then((result) => {
+        if (result.rowCount <= 0) {
+            res.send({ status: "error", data: "Failed to update food item" })
+        } else {
+            res.send({ status: "ok", data: "Successfully updated food item" })
+        }
+    }).catch(err => {
+        console.error("Something wrong happened while updating Pantry Food Item: ", err)
+    })
+})
+
+/////////////////////////
+
 app.post("/get-ngos", async (req, res) => {
     try {
         const { lat, long, radius = 50000 } = req.body;
@@ -704,7 +768,6 @@ app.get("/get-recipes", async (req, res) => {
                     meals.push(...mealsReponse.data.meals)
                 }
 
-
             }
             console.log("Meals fetched:", meals)
 
@@ -752,23 +815,10 @@ app.get("/", async (req, res) => {
     res.send({ status: "ok", data: "Server is up" })
 })
 
-async function getIdFromHeader(req) {
-    const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
-    if (!authHeader) throw new Error("No token sent");
+app.post("/donate", async (req, res) => {
+    res.send({ status: "ok", data: "Server is up" })
+    console.log("Donation items " + req.body.selectedItems)
+})
 
-    const token = authHeader.split(" ")[1];
-    let email;
 
-    try {
-        const decoded = jwt.verify(token, "SECRET_KEY");
-        email = decoded.email;
-    } catch (err) {
-        throw new Error("Invalid token");
-    }
-
-    const foodie = await getFoodie(email);
-    if (!foodie?.data?.id) throw new Error("Foodie not found");
-
-    return foodie.data.id;
-}
 

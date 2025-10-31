@@ -47,6 +47,22 @@ async function initialiseTables(pool) {
     }).catch(error => {
         console.error("Something went wrong when creating Pantry_Food table", error)
     });
+
+    // DONATION TABLE CREATION
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS DONATION(
+            donation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            photo VARCHAR(150),
+            quantity INT,
+            isPerishable BOOLEAN,
+            expiry_date DATE,
+            foodie_id uuid REFERENCES FOODIE(id)
+        )
+    `).then((res) => {
+        console.log("DONATION Table Ready")
+    }).catch(error => {
+        console.error("Something went wrong when creating DONATION table", error)
+    });
 }
 
 module.exports = { initialiseTables };

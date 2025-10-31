@@ -36,7 +36,7 @@ export default function Dashboard() {
       setUserToken(token);
 
       const baseUrl = API_BASE_URL
-      alert(baseUrl)
+
       //pantry food
       const result = await axios.get(`${baseUrl}/getpantryfood`, { headers: { Authorization: `Bearer ${token}` } })
       onPantryFoodChange(result.data.data)
@@ -93,7 +93,7 @@ export default function Dashboard() {
               }
 
               return (
-                <View style={styles.foodItem}>
+                <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                   <Image
                     source={{ uri: convertFilePathtoUri(item.photo) }}
                     style={styles.img}
@@ -135,7 +135,7 @@ export default function Dashboard() {
               }
 
               return (
-                <View style={styles.foodItem}>
+                <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                   <Image
                     source={{ uri: convertFilePathtoUri(item.photo) }}
                     style={styles.img}
@@ -174,7 +174,7 @@ export default function Dashboard() {
                 }
 
                 return (
-                  <View style={styles.foodItem}>
+                  <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                     <Image source={{ uri: item.strMealThumb }} style={styles.img} />
                     <ThemedText numberOfLines={2} style={[styles.nameTxt, { textAlign: "center" }]}>
                       {item.strMeal}
@@ -190,6 +190,17 @@ export default function Dashboard() {
           )}
 
         </ThemedView>
+      </View>
+
+      <View style={styles.foodContainer}>
+        <ThemedText>
+          An absurd amount of the food produced in the world today – as much as a third – goes to waste across the supply chain.
+          A third of all edible food in South Africa is never consumed and ends up in landfill, adding pressure to an already over-extended waste system.
+          Meanwhile, millions don’t have enough to eat.
+        </ThemedText>
+        <ThemedText>
+          © Paballo Thekiso of WWF
+        </ThemedText>
       </View>
     </ThemedView>
   );
@@ -244,19 +255,18 @@ const styles = StyleSheet.create({
     margin: 10
   },
   foodItem: {
-    marginBottom: 10,
-    borderRadius: 6,
+    marginBottom: 12,
+    borderRadius: 12,
     width: 110,
     marginRight: 10,
     padding: 8,
-    backgroundColor: "rgba(150, 99, 49, 0.13)",
     alignItems: "center",
     justifyContent: "center",
     height: 150,
     shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 4, height: 5 },
-    elevation: 3,
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 6,
   },
   img: {
     height: 80,

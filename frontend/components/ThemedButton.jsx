@@ -9,7 +9,7 @@ const ThemedButton = ({ style, children, ...props }) => {
   return (
     <Pressable style={[{
       backgroundColor: theme.buttonColor,
-      borderColor: theme.text,
+      borderColor: theme.borderColor,
     }, styles.button, style]} {...props}>
       {children}
     </Pressable>

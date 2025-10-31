@@ -9,7 +9,7 @@ const ThemedText = ({ style, ...props }) => {
     const theme = Colors[colorScheme] ?? Colors.light
 
     return (
-        <Text style={[style, styles.text, {color: theme.text}]} {...props} />
+        <Text style={[style, styles.text, { color: theme.text }]} {...props} />
     )
 }
 

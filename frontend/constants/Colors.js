@@ -2,36 +2,43 @@ export const Colors = {
     //constant colors regarless of theme 
     primary: '#A8BBA3',
     error: '#8f0000ff',
-    accent: '#161b22', 
-    success: '#9CAFAA', 
-    drawerActive:  "#9CAFAA",
-    drawerActiveTint:  "#fff8f4ff",
+    accent: '#161b22',
+    success: '#9CAFAA',
+
 
     dark: {
-        text: '#241e00ff',          
-        title: '#000000ff', 
+        text: 'white',
+        title: 'white',
         taPlaceholder: "#272607ff",
-        forgotPassword: "#ffe600ff",         
-        background: '#F7F4EA',     
-        navBackground: '#86664bff', 
-        uiBackground: '#ffffffff',    
-        imageColor: '#9CAFAA', 
+        forgotPassword: "#ffe600ff",
+        background: 'black',
+        navBackground: 'black',
+        uiBackground: '#36454F',
+        imageColor: '#9CAFAA',
         borderColor: '#1e2401ff',
-        buttonColor: "#e5b2f0ff",
-        camera: "#1e2631ff"
+        buttonColor: "#ADD8E6",
+        camera: "#1e2631ff",
+        cardColor: "#36454F",
+        drawerActive: "black",
+        drawerActiveTint: "#fff8f4ff",
+        iconColor: "#191970"
     },
     light: {
-        text: '#241e00ff',          
-        title: '#000000ff', 
+        text: '#241e00ff',
+        title: '#000000ff',
         taPlaceholder: "#272607ff",
-        forgotPassword: "#ffe600ff",         
-        background: '#F7F4EA',     
-        navBackground: '#86664bff', 
-        uiBackground: '#ffffffff',    
-        imageColor: '#9CAFAA', 
-        borderColor: '#1e2401ff',
-        buttonColor: "#e5b2f0ff",
-        camera: "#1e2631ff"
+        forgotPassword: "#ffe600ff",
+        background: '#FAF9F6',
+        navBackground: '#008080',
+        uiBackground: '#ffffffff',
+        imageColor: '#9CAFAA',
+        borderColor: '#000080',
+        buttonColor: "#B6D0E2",
+        camera: "#1e2631ff",
+        cardColor: "#F0FFFF",
+        drawerActive: "#008080",
+        drawerActiveTint: "#fff8f4ff",
+        iconColor: "#0F52BA"
     }
 }
 

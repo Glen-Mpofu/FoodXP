@@ -32,10 +32,14 @@ const Fridge = () => {
   const itemsPerRow = Math.floor(screenWidth / itemWidth);
   const baseUrl = API_BASE_URL;
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [editingItem, setEditingItem] = useState(null);
   const [editName, setEditName] = useState('');
   const [editQuantity, setEditQuantity] = useState('');
+
+  const [deletingItem, setDeletingItem] = useState(null);
+  const [deleteQuantity, setDeleteQuantity] = useState(1);
 
   // Fetch fridge food
   useEffect(() => {
@@ -58,26 +62,50 @@ const Fridge = () => {
     init();
   }, []);
 
-  async function deleteEaten(id, photo) {
+  async function handleDeleteConfirm() {
+    if (!deletingItem) return;
+
     try {
-      const result = await axios.post(`${baseUrl}/deletefridgefood`, { id, photo }, { withCredentials: true });
+      const result = await axios.post(`${baseUrl}/deletefridgefood`, {
+        id: deletingItem.id,
+        deleteQuantity: deleteQuantity,
+        quantity: deletingItem.quantity
+      }, {
+        headers: { Authorization: `Bearer ${userToken}` }
+      });
+
       if (result.data.status === "ok") {
-        setFridgeFood(prev => prev.filter(item => item.id !== id));
-        Toast.show({ type: "success", text1: result.data.data, useModal: false });
+        setFridgeFood(prev =>
+          prev.map(item =>
+            item.id === deletingItem.id
+              ? { ...item, quantity: item.quantity - deleteQuantity }
+              : item
+          ).filter(item => item.quantity > 0)
+        );
+
+        Toast.show({ type: "success", text1: "Item updated successfully", useModal: false });
+        setShowDeleteModal(false);
       } else {
         Toast.show({ type: "error", text1: result.data.data, useModal: false });
       }
     } catch (err) {
       console.error(err);
-      Toast.show({ type: "error", text1: "Could not delete item", useModal: false });
+      Toast.show({ type: "error", text1: "Delete failed", useModal: false });
     }
   }
+
 
   const openEditModal = (item) => {
     setEditingItem(item);
     setEditName(item.name);
     setEditQuantity(item.quantity.toString());
     setShowEditModal(true);
+  };
+
+  const openDeleteModal = (item) => {
+    setDeletingItem(item);
+    setDeleteQuantity(1);
+    setShowDeleteModal(true);
   };
 
   const toggleSelectItem = (item) => {
@@ -187,7 +215,7 @@ const Fridge = () => {
                         <ThemedText>Qty: {item.quantity}</ThemedText>
 
                         <View style={{ flexDirection: "row" }}>
-                          <ThemedButton style={[styles.btn, { backgroundColor: "#f28b82" }]} onPress={() => deleteEaten(item.id, item.photo)}>
+                          <ThemedButton style={[styles.btn, { backgroundColor: "#f28b82" }]} onPress={() => openDeleteModal(item)}>
                             <ThemedText>Eaten</ThemedText>
                           </ThemedButton>
                         </View>
@@ -275,34 +303,117 @@ const Fridge = () => {
             <View style={styles.modalContent}>
               <ThemedText style={styles.modalTitle}>Edit Food</ThemedText>
 
-              <ScrollView contentContainerStyle={{ alignItems: "center" }}>
-                <ThemedText>Name</ThemedText>
-                <ThemedTextInput
-                  value={editName}
-                  onChangeText={setEditName}
-                  placeholder="Food Name"
-                />
+              {editingItem && (
+                <>
+                  <ScrollView contentContainerStyle={{ alignItems: "center" }}>
+                    <ThemedText>Name</ThemedText>
+                    <ThemedTextInput
+                      value={editName}
+                      onChangeText={setEditName}
+                      placeholder="Food Name"
+                    />
 
-                <ThemedText>Quantity</ThemedText>
-                <ThemedTextInput
-                  value={editQuantity}
-                  onChangeText={setEditQuantity}
-                  placeholder="Food Quantity"
-                  keyboardType="numeric"
-                />
-              </ScrollView>
+                    <ThemedText style={{ marginTop: 10 }}>Quantity</ThemedText>
+
+                    {/* Quantity + / - Controls */}
+                    <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
+                      <TouchableOpacity
+                        onPress={() =>
+                          setEditQuantity(prev => {
+                            const value = parseInt(prev || "0");
+                            return Math.max(1, value - 1).toString();
+                          })
+                        }
+                      >
+                        <ThemedText style={styles.qtyBtn}>−</ThemedText>
+                      </TouchableOpacity>
+
+                      <ThemedText style={styles.qtyValue}>{editQuantity}</ThemedText>
+
+                      <TouchableOpacity
+                        onPress={() =>
+                          setEditQuantity(prev => {
+                            const value = parseInt(prev || "0");
+                            return (value + 1).toString();
+                          })
+                        }
+                      >
+                        <ThemedText style={styles.qtyBtn}>＋</ThemedText>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </>
+              )}
 
               <View style={styles.modalButtons}>
-                <ThemedButton style={[styles.btn, { backgroundColor: "#81c995" }]} onPress={() => { handleEditConfirm() }}>
+                <ThemedButton
+                  style={[styles.btn, { backgroundColor: "#81c995" }]}
+                  onPress={handleEditConfirm}
+                >
                   <ThemedText>Save Changes</ThemedText>
                 </ThemedButton>
-                <ThemedButton style={[styles.btn, { backgroundColor: "#ccc" }]} onPress={() => setShowEditModal(false)}>
+
+                <ThemedButton
+                  style={[styles.btn, { backgroundColor: "#ccc" }]}
+                  onPress={() => setShowEditModal(false)}
+                >
                   <ThemedText>Cancel</ThemedText>
                 </ThemedButton>
               </View>
             </View>
           </View>
         </Modal>
+
+        {/* Modal code for deleting */}
+        <Modal
+          animationType='fade'
+          transparent={true}
+          visible={showDeleteModal}
+          onRequestClose={() => setShowDeleteModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <ThemedText style={styles.modalTitle}>Remove Some Food</ThemedText>
+
+              {deletingItem && (
+                <>
+                  <ThemedText style={{ textAlign: "center", marginBottom: 10 }}>
+                    {deletingItem.name}
+                  </ThemedText>
+
+                  <ThemedText style={{ textAlign: "center" }}>Select quantity to remove</ThemedText>
+
+                  <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
+                    <TouchableOpacity onPress={() => setDeleteQuantity(q => Math.max(1, q - 1))}>
+                      <ThemedText style={styles.qtyBtn}>−</ThemedText>
+                    </TouchableOpacity>
+                    <ThemedText style={styles.qtyValue}>{deleteQuantity}</ThemedText>
+                    <TouchableOpacity onPress={() => setDeleteQuantity(q => Math.min(deletingItem.quantity, q + 1))}>
+                      <ThemedText style={styles.qtyBtn}>＋</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              <View style={styles.modalButtons}>
+                <ThemedButton
+                  style={[styles.btn, { backgroundColor: "#f28b82" }]}
+                  onPress={handleDeleteConfirm}
+                >
+                  <ThemedText>Confirm</ThemedText>
+                </ThemedButton>
+
+                <ThemedButton
+                  style={[styles.btn, { backgroundColor: "#ccc" }]}
+                  onPress={() => setShowDeleteModal(false)}
+                >
+                  <ThemedText>Cancel</ThemedText>
+                </ThemedButton>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
       </ImageBackground>
     </View>
   );

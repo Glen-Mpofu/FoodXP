@@ -104,9 +104,9 @@ const UploadFood = () => {
     if (!date && prediction === "pantry") return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false })
 
     const foodData = {
-      name,
-      quantity,
-      photo,
+      name: name.trim(),
+      quantity: quantity.trim(),
+      photo: photo.trim(),
       token: userToken,
       ...(prediction === "pantry" && { date })
     }

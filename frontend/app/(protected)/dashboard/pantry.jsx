@@ -43,6 +43,10 @@ const Pantry = () => {
   const itemWidth = 150;
   const itemsPerRow = Math.floor(screenWidth / itemWidth);
 
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingItem, setDeletingItem] = useState(null);
+  const [deleteQuantity, setDeleteQuantity] = useState(1);
+
   useEffect(() => {
     async function init() {
       try {
@@ -70,13 +74,35 @@ const Pantry = () => {
     init();
   }, []);
 
-  async function deleteEaten(id, photo) {
-    const result = await axios.post(`${API_BASE_URL}/deletepantryfood`, { id, photo }, { withCredentials: true });
-    if (result.data.status === "ok") {
-      Toast.show({ type: "success", text1: result.data.data, useModal: false });
-      setPantryFood(prev => prev.filter(item => item.id !== id));
-    } else {
-      Toast.show({ type: "error", text1: result.data.data, useModal: false });
+  async function handleDeleteConfirm() {
+    if (!deletingItem) return;
+
+    try {
+      const result = await axios.post(`${API_BASE_URL}/deletepantryfood`, {
+        id: deletingItem.id,
+        deleteQuantity: deleteQuantity,
+        quantity: deletingItem.quantity
+      }, {
+        headers: { Authorization: `Bearer ${userToken}` }
+      });
+
+      if (result.data.status === "ok") {
+        setPantryFood(prev =>
+          prev.map(item =>
+            item.id === deletingItem.id
+              ? { ...item, quantity: item.quantity - deleteQuantity }
+              : item
+          ).filter(item => item.quantity > 0)
+        );
+
+        Toast.show({ type: "success", text1: "Item updated successfully", useModal: false });
+        setShowDeleteModal(false);
+      } else {
+        Toast.show({ type: "error", text1: result.data.data, useModal: false });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Delete failed", useModal: false });
     }
   }
 
@@ -155,6 +181,12 @@ const Pantry = () => {
       })
   }
 
+  const openDeleteModal = (item) => {
+    setDeletingItem(item);
+    setDeleteQuantity(1);
+    setShowDeleteModal(true);
+  };
+
   const openEditModal = (item) => {
     setEditingItem(item);
     setEditName(item.name);
@@ -210,7 +242,7 @@ const Pantry = () => {
                         <View style={styles.buttonRow}>
                           <ThemedButton
                             style={[styles.btn, { backgroundColor: "#f28b82" }]}
-                            onPress={() => deleteEaten(item.id, item.photo)}
+                            onPress={() => openDeleteModal(item)}
                           >
                             <ThemedText>Eaten</ThemedText>
                           </ThemedButton>
@@ -235,7 +267,8 @@ const Pantry = () => {
           <ThemedView style={styles.emptyContainer}>
             <ThemedText style={styles.heading}>No food added yet</ThemedText>
           </ThemedView>
-        )}
+        )
+        }
 
         {/* Modal code for donating */}
         <Modal
@@ -295,7 +328,6 @@ const Pantry = () => {
         </Modal>
 
         {/* Modal code for editing */}
-        {/* ---------------------- EDIT FOOD MODAL ---------------------- */}
         <Modal
           animationType='fade'
           transparent={true}
@@ -315,13 +347,32 @@ const Pantry = () => {
                 />
 
                 <ThemedText>Quantity</ThemedText>
-                <ThemedTextInput
-                  value={editQuantity}
-                  onChangeText={setEditQuantity}
-                  placeholder="Food Quantity"
-                  keyboardType="numeric"
-                />
+                {/* Quantity + / - Controls */}
+                <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
+                  <TouchableOpacity
+                    onPress={() =>
+                      setEditQuantity(prev => {
+                        const value = parseInt(prev || "0");
+                        return Math.max(1, value - 1).toString();
+                      })
+                    }
+                  >
+                    <ThemedText style={styles.qtyBtn}>−</ThemedText>
+                  </TouchableOpacity>
 
+                  <ThemedText style={styles.qtyValue}>{editQuantity}</ThemedText>
+
+                  <TouchableOpacity
+                    onPress={() =>
+                      setEditQuantity(prev => {
+                        const value = parseInt(prev || "0");
+                        return (value + 1).toString();
+                      })
+                    }
+                  >
+                    <ThemedText style={styles.qtyBtn}>＋</ThemedText>
+                  </TouchableOpacity>
+                </View>
                 <ThemedText>Expiry Date</ThemedText>
                 <TouchableOpacity
                   style={styles.dateBox}
@@ -356,10 +407,60 @@ const Pantry = () => {
             </View>
           </View>
         </Modal>
-      </View>
-    </ImageBackground>
-  );
 
+        {/* Modal code for deleting */}
+        <Modal
+          animationType='fade'
+          transparent={true}
+          visible={showDeleteModal}
+          onRequestClose={() => setShowDeleteModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <ThemedText style={styles.modalTitle}>Remove Some Food</ThemedText>
+
+              {deletingItem && (
+                <>
+                  <ThemedText style={{ textAlign: "center", marginBottom: 10 }}>
+                    {deletingItem.name}
+                  </ThemedText>
+
+                  <ThemedText style={{ textAlign: "center" }}>Select quantity to remove</ThemedText>
+
+                  <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
+                    <TouchableOpacity onPress={() => setDeleteQuantity(q => Math.max(1, q - 1))}>
+                      <ThemedText style={styles.qtyBtn}>−</ThemedText>
+                    </TouchableOpacity>
+                    <ThemedText style={styles.qtyValue}>{deleteQuantity}</ThemedText>
+                    <TouchableOpacity onPress={() => setDeleteQuantity(q => Math.min(deletingItem.quantity, q + 1))}>
+                      <ThemedText style={styles.qtyBtn}>＋</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              <View style={styles.modalButtons}>
+                <ThemedButton
+                  style={[styles.btn, { backgroundColor: "#f28b82" }]}
+                  onPress={handleDeleteConfirm}
+                >
+                  <ThemedText>Confirm</ThemedText>
+                </ThemedButton>
+
+                <ThemedButton
+                  style={[styles.btn, { backgroundColor: "#ccc" }]}
+                  onPress={() => setShowDeleteModal(false)}
+                >
+                  <ThemedText>Cancel</ThemedText>
+                </ThemedButton>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+      </View>
+    </ImageBackground >
+  );
 };
 
 export default Pantry;

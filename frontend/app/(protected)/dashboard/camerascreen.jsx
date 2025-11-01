@@ -4,7 +4,7 @@ import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform, Imag
 //camera
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as MediaLibrary from "expo-media-library"
-import DateTimePicker  from '@react-native-community/datetimepicker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from "expo-image-picker"
 import * as FileSystem from "expo-file-system/legacy";
 
@@ -39,18 +39,18 @@ export default function CameraScreen() {
   //only renders the camera when the camera screen is open
   const isFocused = useIsFocused();
 
-  const {height, width} = Dimensions.get("window")
+  const { height, width } = Dimensions.get("window")
 
   //camera availability
   const [cameraAvailable, setCameraAvailable] = useState(null);
   const [prediction, setPrediction] = useState(null)
   let response = useState(null)
-  
+
   const [name, onNameChange] = useState("")
   const [quantity, onQuantityChange] = useState("")
   const [date, setDate] = useState(new Date())
   const [show, setShow] = useState(false)
-  
+
   // modal for the food data input
   const [modalVisible, setModalVisible] = useState()
 
@@ -73,15 +73,15 @@ export default function CameraScreen() {
   useEffect(() => {
     const init = async () => {
       // TOKEN VERIFICATION
-        const token = await AsyncStorage.getItem("userToken")
-        if(!token){
-          return router.replace("/")
-        }
-        setUserToken(token)
+      const token = await AsyncStorage.getItem("userToken")
+      if (!token) {
+        return router.replace("/")
+      }
+      setUserToken(token)
       //CAMERA AVAILABILITY CHECK
       try {
-        const {status} = await requestPermission();
-        if(status != "granted"){
+        const { status } = await requestPermission();
+        if (status != "granted") {
           setCameraAvailable(false);
           Toast.show({
             type: "info",
@@ -89,7 +89,7 @@ export default function CameraScreen() {
             useModal: false
           })
           return;
-        } 
+        }
 
         setCameraAvailable(true)
       } catch (error) {
@@ -100,19 +100,19 @@ export default function CameraScreen() {
 
     init();
   }, [])
-  
+
   //if the app is in web, allow for uploading
   /*
     npx expo install expo-image-picker
   */
-  if(cameraAvailable == false || !permission){
-    return(
-      <ThemedView style={{alignItems: "center"}}>
+  if (cameraAvailable == false || !permission) {
+    return (
+      <ThemedView style={{ alignItems: "center" }}>
         <ThemedText>No Camera Available. Upload Images</ThemedText>
         <TouchableOpacity onPress={() => {
           router.replace("/dashboard/uploadscreen")
-        }}>  
-          <Ionicons name="cloud-upload" size={30}/>
+        }}>
+          <Ionicons name="cloud-upload" size={30} />
         </TouchableOpacity>
       </ThemedView>
     )
@@ -152,7 +152,7 @@ export default function CameraScreen() {
       const options = { quality: 0.8, base64: true, skipProcessing: true, androidCaptureSound: false, }
       const photoData = await cameraRef.current.takePictureAsync(options);
       setPhoto(photoData.uri)
-      
+
       await classifyFood(photoData.uri);
 
       if (hasMediaLibraryPermission?.granted) {
@@ -170,16 +170,16 @@ export default function CameraScreen() {
       return Toast.show({ type: "error", text1: "Please enter the food's name", useModal: false })
     }
     if (!quantity.trim()) {
-      return Toast.show({ type: "error", text1: "Please enter the food's quantity", useModal: false  })
+      return Toast.show({ type: "error", text1: "Please enter the food's quantity", useModal: false })
     }
     if (!date && prediction === "pantry") {
-      return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false  })
+      return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false })
     }
 
     const foodData = {
-      name,
-      quantity,
-      photo,
+      name: name.trim(),
+      quantity: quantity.trim(),
+      photo: photo.trim(),
       token: userToken,
       ...(prediction === "pantry" && { date })
     }
@@ -188,9 +188,9 @@ export default function CameraScreen() {
     console.log({ name, quantity, date, photo, prediction })
     axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }, { withCredentials: true, headers: { Authorization: `Bearer ${userToken}` } })
       .then((res) => {
-        if(res.data.status === "ok"){
+        if (res.data.status === "ok") {
           Toast.show({ type: "success", text1: res.data.data, useModal: false })
-        }else{
+        } else {
           Toast.show({ type: "error", text1: res.data.data, useModal: false })
         }
       }).catch(err => {
@@ -211,7 +211,7 @@ export default function CameraScreen() {
           : "http://192.168.137.1:5001/classifyfood"*/
 
       let photoData = photoUri
-       if (Platform.OS !== "web") {
+      if (Platform.OS !== "web") {
         // Read file as base64 using the new API
         const fileInfo = await FileSystem.getInfoAsync(photoUri);
         if (!fileInfo.exists) throw new Error("File not found");
@@ -239,7 +239,7 @@ export default function CameraScreen() {
     <ThemedView style={styles.container}>
       {isFocused && (
         <CameraView
-          style={[styles.camera, {width: width, height: height}]} facing={facing}
+          style={[styles.camera, { width: width, height: height }]} facing={facing}
           enableTorch={enableTorch}
           videoQuality="2160p"
           zoom={0}
@@ -274,7 +274,7 @@ export default function CameraScreen() {
           </ThemedView>
         </CameraView>
       )}
-        {photo && (
+      {photo && (
         <Modal
           visible={true}
           style={styles.modal}
@@ -282,11 +282,11 @@ export default function CameraScreen() {
         >
           <ThemedView style={styles.uploadContainer}>
             <ThemedText>Image Captured</ThemedText>
-            
+
             <Image source={{ uri: photo }} style={styles.imagePreview} />
 
             <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
-            <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} keyboardType = "numeric"/>
+            <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} keyboardType="numeric" />
 
             {prediction === "pantry" && (
               <React.Fragment>
@@ -315,17 +315,17 @@ export default function CameraScreen() {
                 <ThemedText>Expiration Date: {date.toLocaleDateString()}</ThemedText>
               </React.Fragment>
             )}
-  
-            <View style={{flexDirection: "row", padding: 10,}}>
-              <TouchableOpacity onPress={() => setPhoto(null)} 
-                style={{margin: 5, marginRight: 15}}
-                >
+
+            <View style={{ flexDirection: "row", padding: 10, }}>
+              <TouchableOpacity onPress={() => setPhoto(null)}
+                style={{ margin: 5, marginRight: 15 }}
+              >
                 <Ionicons name="close-outline" size={50} />
               </TouchableOpacity>
 
               <TouchableOpacity onPress={() => saveFood()}
-                style={{margin: 5, marginLeft: 15}}
-                >
+                style={{ margin: 5, marginLeft: 15 }}
+              >
                 <Ionicons name="checkmark" size={50} />
               </TouchableOpacity>
             </View>
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, width: "100%", },
   camera: {
     flex: 1,
-    alignSelf: "center", 
+    alignSelf: "center",
     overflow: "hidden"
   },
   buttonContainer: {
@@ -359,25 +359,25 @@ const styles = StyleSheet.create({
     height: 300,
     borderRadius: 10
   },
-    bgImage: {
-      ...StyleSheet.absoluteFillObject,
-      resizeMode: "cover"        
-    },
-    heading: {
-      fontSize: 30,
-      fontWeight: 'bold',
-      marginTop: 10
-    },
-    uploadContainer: {
-      width: "100%",
-      flex: 1,
-      justifyContent: "center",
-      alignItems: "center",
-      backgroundColor: "rgba(255, 255, 255, 0.9)",
-      borderRadius: 90
-    },
-    modal: {
-      flex: 1,
-      width: "100%"
-    }
+  bgImage: {
+    ...StyleSheet.absoluteFillObject,
+    resizeMode: "cover"
+  },
+  heading: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    marginTop: 10
+  },
+  uploadContainer: {
+    width: "100%",
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    borderRadius: 90
+  },
+  modal: {
+    flex: 1,
+    width: "100%"
+  }
 });

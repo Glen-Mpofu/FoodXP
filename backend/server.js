@@ -498,28 +498,50 @@ app.get("/getpantryfood", async (req, res) => {
 
 //deleting 
 app.post("/deletepantryfood", async (req, res) => {
+    console.log(req.body)
     const id = req.body.id
     const photoPath = req.body.photo
+    const quantity = req.body.quantity
+    const deleteQuantity = req.body.deleteQuantity
+    const dbQuantity = quantity - deleteQuantity
+    if (dbQuantity === 0) {
+        try {
+            //deleting from the fridge_food table
+            const result = await pool.query(
+                `
+                        DELETE FROM PANTRY_FOOD WHERE ID = $1
+                    `,
+                [id]
+            )
 
-    try {
-        //deleting from the fridge_food table
-        const result = await pool.query(
-            `
-                    DELETE FROM PANTRY_FOOD WHERE ID = $1
-                `,
-            [id]
-        )
+            if (result.rowCount <= 0) {
+                return res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
+            }
 
-        if (result.rowCount <= 0) {
-            return res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
+            await execAsync(`del "${photoPath}"`)
+            console.log(photoPath)
+            res.send({ status: "ok", data: "Pantry food deleted successfully" })
+        } catch (error) {
+            console.error(error)
+            res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
         }
-
-        await execAsync(`del "${photoPath}"`)
-        console.log(photoPath)
-        res.send({ status: "ok", data: "Pantry food deleted successfully" })
-    } catch (error) {
-        console.error(error)
-        res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
+    }
+    //update if the user wants to reduce the quantity
+    else {
+        await pool.query(`
+            UPDATE PANTRY_FOOD
+            SET QUANTITY = $1
+            WHERE ID = $2;
+        `, [dbQuantity, id]).then((result) => {
+            if (result.rowCount > 0) {
+                res.send({ status: "ok", data: "Pantry food quantity updated successfully" })
+            } else {
+                res.send({ status: "error", data: "Something went wrong while updating Pantry food quantity." })
+            }
+        }).catch(err => {
+            console.error(error)
+            res.send({ status: "error", data: "Something went wrong while updating Pantry food quantity." })
+        })
     }
 })
 
@@ -658,28 +680,51 @@ app.get("/getfridgefood", async (req, res) => {
 
 //deleting 
 app.post("/deletefridgefood", async (req, res) => {
+    console.log(req.body)
     const id = req.body.id
     const photoPath = req.body.photo
+    const quantity = req.body.quantity
+    const deleteQuantity = req.body.deleteQuantity
 
-    try {
-        //deleting from the fridge_food table
-        const result = await pool.query(
-            `
-                    DELETE FROM FRIDGE_FOOD WHERE ID = $1
-                `,
-            [id]
-        )
+    const dbQuantity = quantity - deleteQuantity
+    if (dbQuantity === 0) {
+        try {
+            //deleting from the fridge_food table
+            const result = await pool.query(
+                `
+                        DELETE FROM FRIDGE_FOOD WHERE ID = $1
+                    `,
+                [id]
+            )
 
-        if (result.rowCount <= 0) {
-            return res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
+            if (result.rowCount <= 0) {
+                return res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
+            }
+
+            await execAsync(`del "${photoPath}"`)
+
+            res.send({ status: "ok", data: "Fridge food deleted successfully" })
+        } catch (error) {
+            console.error(error)
+            res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
         }
-
-        await execAsync(`del "${photoPath}"`)
-
-        res.send({ status: "ok", data: "Fridge food deleted successfully" })
-    } catch (error) {
-        console.error(error)
-        res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
+    }
+    //update if the user wants to reduce the quantity
+    else {
+        await pool.query(`
+            UPDATE FRIDGE_FOOD
+            SET QUANTITY = $1
+            WHERE ID = $2;
+        `, [dbQuantity, id]).then((result) => {
+            if (result.rowCount > 0) {
+                res.send({ status: "ok", data: "Fridge food quantity updated successfully" })
+            } else {
+                res.send({ status: "error", data: "Something went wrong while updating Fridge food quantity." })
+            }
+        }).catch(err => {
+            console.error(error)
+            res.send({ status: "error", data: "Something went wrong while updating Fridge food quantity." })
+        })
     }
 })
 

@@ -7,7 +7,8 @@ import {
   View,
   useWindowDimensions,
   TouchableOpacity,
-  Modal
+  Modal,
+  useColorScheme
 } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import ThemedView from '../../../components/ThemedView';
@@ -20,8 +21,12 @@ import { Toast } from "toastify-react-native";
 import { API_BASE_URL } from "@env";
 import { LinearGradient } from 'expo-linear-gradient';
 import ThemedTextInput from '../../../components/ThemedTextInput';
+import { Colors } from '../../../constants/Colors';
 
 const Fridge = () => {
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light
+
   const [fridgeFood, setFridgeFood] = useState([]);
   const [userToken, setUserToken] = useState(null);
   const [showDonateModal, setShowDonateModal] = useState(false);
@@ -41,50 +46,55 @@ const Fridge = () => {
   const [deletingItem, setDeletingItem] = useState(null);
   const [deleteQuantity, setDeleteQuantity] = useState(1);
 
-  // Fetch fridge food
+  // --- Inside your Fridge component ---
+
+  // Fetch fridge food function
+  const fetchFridgeFood = async (token) => {
+    try {
+      const result = await axios.get(`${API_BASE_URL}/getfridgefood`, {
+        withCredentials: true,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setFridgeFood(result.data.data || []);
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Failed to fetch fridge food", useModal: false });
+    }
+  };
+
+  // useEffect to initialize
   useEffect(() => {
     async function init() {
       try {
         const token = await AsyncStorage.getItem("userToken");
         if (!token) return router.replace("/");
         setUserToken(token);
-
-        const result = await axios.get(`${baseUrl}/getfridgefood`, {
-          withCredentials: true,
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setFridgeFood(result.data.data || []);
-      } catch (error) {
-        console.error("Fridge fetch failed:", error);
-        Toast.show({ type: "error", text1: "Failed to load fridge items", useModal: false });
+        fetchFridgeFood(token);
+      } catch (err) {
+        console.error(err);
+        Toast.show({ type: "error", text1: "Something went wrong", useModal: false });
       }
     }
     init();
   }, []);
 
-  async function handleDeleteConfirm() {
+  // Delete confirmation
+  const handleDeleteConfirm = async () => {
     if (!deletingItem) return;
 
     try {
-      const result = await axios.post(`${baseUrl}/deletefridgefood`, {
+      const result = await axios.post(`${API_BASE_URL}/deletefridgefood`, {
         id: deletingItem.id,
-        deleteQuantity: deleteQuantity,
+        deleteQuantity,
         quantity: deletingItem.quantity
       }, {
         headers: { Authorization: `Bearer ${userToken}` }
       });
 
       if (result.data.status === "ok") {
-        setFridgeFood(prev =>
-          prev.map(item =>
-            item.id === deletingItem.id
-              ? { ...item, quantity: item.quantity - deleteQuantity }
-              : item
-          ).filter(item => item.quantity > 0)
-        );
-
         Toast.show({ type: "success", text1: "Item updated successfully", useModal: false });
         setShowDeleteModal(false);
+        fetchFridgeFood(userToken); // <-- refresh
       } else {
         Toast.show({ type: "error", text1: result.data.data, useModal: false });
       }
@@ -92,8 +102,66 @@ const Fridge = () => {
       console.error(err);
       Toast.show({ type: "error", text1: "Delete failed", useModal: false });
     }
-  }
+  };
 
+  // Edit confirmation
+  const handleEditConfirm = async () => {
+    if (!editingItem) return;
+
+    const newFood = {
+      name: editName.trim(),
+      quantity: parseInt(editQuantity.trim()),
+      id: editingItem.id
+    };
+
+    try {
+      const res = await axios.post(`${API_BASE_URL}/editFridgeFood`, { newFood }, {
+        headers: { Authorization: `Bearer ${userToken}` }
+      });
+
+      if (res.data.status === "ok") {
+        Toast.show({ type: "success", text1: res.data.data, useModal: false });
+        setShowEditModal(false);
+        fetchFridgeFood(userToken); // <-- refresh
+      } else {
+        Toast.show({ type: "error", text1: res.data.data, useModal: false });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Edit failed", useModal: false });
+    }
+  };
+
+  // Donation confirmation
+  const handleDonateConfirm = async () => {
+    if (selectedItems.length === 0) {
+      Toast.show({ type: "info", text1: "No items selected", useModal: false });
+      return;
+    }
+
+    try {
+      const donationData = selectedItems.map(({ id, name, donateQty }) => ({
+        id, name, quantity: donateQty
+      }));
+
+      const result = await axios.post(`${API_BASE_URL}/donate`, { items: donationData }, {
+        headers: { Authorization: `Bearer ${userToken}` }
+      });
+
+      if (result.data.status === "ok") {
+        Toast.show({ type: "success", text1: "Donation recorded successfully!", useModal: false });
+        setShowDonateModal(false);
+        setSelectedItems([]);
+        fetchFridgeFood(userToken); // <-- refresh
+        router.replace("/dashboard/donateHub");
+      } else {
+        Toast.show({ type: "error", text1: result.data.data, useModal: false });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Donation failed", useModal: false });
+    }
+  };
 
   const openEditModal = (item) => {
     setEditingItem(item);
@@ -126,69 +194,6 @@ const Fridge = () => {
     );
   };
 
-  const handleDonateConfirm = async () => {
-    if (selectedItems.length === 0) {
-      Toast.show({ type: "info", text1: "No items selected", useModal: false });
-      return;
-    }
-    try {
-      const donationData = selectedItems.map(({ id, name, donateQty }) => ({
-        id, name, quantity: donateQty
-      }));
-
-      const result = await axios.post(
-        `${baseUrl}/donate`,
-        { items: donationData },
-        { headers: { Authorization: `Bearer ${userToken}` } }
-      );
-
-      if (result.data.status === "ok") {
-        Toast.show({ type: "success", text1: "Donation recorded successfully!", useModal: false });
-        setShowDonateModal(false);
-        setSelectedItems([]);
-        router.replace("/dashboard/donateHub");
-      } else {
-        Toast.show({ type: "error", text1: result.data.data, useModal: false });
-      }
-    } catch (err) {
-      console.error(err);
-      Toast.show({ type: "error", text1: "Donation failed", useModal: false });
-    }
-  };
-
-  async function handleEditConfirm() {
-    const newFood = {
-      name: editName.trim(),
-      quantity: parseInt(editQuantity.trim()),
-      id: editingItem.id
-    }
-
-    axios.post(`${API_BASE_URL}/editFridgeFood`, { newFood }).
-      then((res) => {
-        if (res.data.status === "ok") {
-          Toast.show({
-            type: "success",
-            text1: res.data.data,
-            useModal: false
-          });
-        }
-        else {
-          Toast.show({
-            type: "error",
-            text1: res.data.data,
-            useModal: false
-          });
-        }
-      }).catch(err => {
-        Toast.show({
-          type: "error",
-          text1: "Edit failed",
-          useModal: false
-        });
-        console.error(err);
-      })
-  }
-
   // Split items into rows
   const rows = [];
   for (let i = 0; i < fridgeFood.length; i += itemsPerRow) {
@@ -209,12 +214,12 @@ const Fridge = () => {
                     <TouchableOpacity onPress={() => {
                       openEditModal(item)
                     }}>
-                      <View key={item.id} style={styles.foodItem}>
+                      <View key={item.id} style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                         <Image source={{ uri: convertFilePathtoUri(item.photo) }} style={styles.img} />
                         <ThemedText>{item.name}</ThemedText>
                         <ThemedText>Qty: {item.quantity}</ThemedText>
 
-                        <View style={{ flexDirection: "row" }}>
+                        <View style={styles.buttonRow}>
                           <ThemedButton style={[styles.btn, { backgroundColor: "#f28b82" }]} onPress={() => openDeleteModal(item)}>
                             <ThemedText>Eaten</ThemedText>
                           </ThemedButton>
@@ -431,9 +436,15 @@ const styles = StyleSheet.create({
   imgBackground: { width: "100%", height: "100%", ...StyleSheet.absoluteFillObject },
   scrollContainer: { flexGrow: 1, padding: 10, alignItems: "center" },
   row: { flexDirection: 'row', marginBottom: 10 },
-  foodItem: { width: 150, marginRight: 10, padding: 8, borderRadius: 6, backgroundColor: "#fff2", alignItems: "center", justifyContent: "center", marginTop: 50 },
+  foodItem: {
+    width: 140, marginRight: 15, padding: 10, borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#000", shadowOpacity: 0.2, shadowOffset: { width: 3, height: 4 },
+    shadowRadius: 4, elevation: 4,
+  },
   img: { width: 100, height: 100, borderRadius: 6, marginBottom: 4 },
-  btn: { flex: 1, margin: 3, paddingVertical: 6, borderRadius: 8, alignItems: "center" },
+  btn: { flex: 1, margin: 3, paddingVertical: 8, borderRadius: 8, alignItems: "center", height: 50, zIndex: 1 },
+  buttonRow: { flexDirection: "row", justifyContent: "space-between", width: "100%" },
   emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", marginTop: 100 },
   heading: { alignSelf: "center", fontSize: 25 },
 

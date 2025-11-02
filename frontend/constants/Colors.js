@@ -29,19 +29,33 @@ export const Colors = {
         taPlaceholder: "#272607ff",
         forgotPassword: "#ffe600ff",
         background: '#FAF9F6',
-        navBackground: '#008080',
+        navBackground: '#AFE1AF',
         uiBackground: '#ffffffff',
         imageColor: '#9CAFAA',
-        borderColor: '#000080',
-        buttonColor: "#B6D0E2",
+        borderColor: '#454B1B',
+        buttonColor: "#50C878",
         camera: "#1e2631ff",
-        cardColor: "#F0FFFF",
-        drawerActive: "#008080",
+        cardColor: "#B2BEB5",
+        drawerActive: "#228B22",
         drawerActiveTint: "#fff8f4ff",
-        iconColor: "#0F52BA"
+        iconColor: "#5F8575"
     }
 }
-
-// #D6A99D #FBF3D5 #D6DAC8 #9CAFAA
-// #556B2F #8FA31E #C6D870 #EFF5D2
-// #A8BBA3 #F7F4EA #EBD9D1 #B87C4C
+/*
+light: {
+    text: '#241e00ff',
+    title: '#000000ff',
+    taPlaceholder: "#272607ff",
+    forgotPassword: "#ffe600ff",
+    background: '#FAF9F6',
+    navBackground: '#5F9EA0',
+    uiBackground: '#ffffffff',
+    imageColor: '#9CAFAA',
+    borderColor: '#454B1B',
+    buttonColor: "#5F9EA0",
+    camera: "#1e2631ff",
+    cardColor: "#F0FFFF",
+    drawerActive: "#008080",
+    drawerActiveTint: "#fff8f4ff",
+    iconColor: "#5F9EA0"
+}*/

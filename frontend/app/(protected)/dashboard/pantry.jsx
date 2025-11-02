@@ -8,9 +8,10 @@ import {
   Text,
   useWindowDimensions,
   View,
-  TouchableOpacity
+  TouchableOpacity,
+  useColorScheme
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ThemedView from '../../../components/ThemedView';
 import ThemedText from '../../../components/ThemedText';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,11 +20,16 @@ import axios from 'axios';
 import { Toast } from 'toastify-react-native';
 import ThemedButton from '../../../components/ThemedButton';
 import { API_BASE_URL } from "@env";
-import { LinearGradient } from 'expo-linear-gradient'; // Added for gradient overlay
+import { LinearGradient } from 'expo-linear-gradient';
 import ThemedTextInput from '../../../components/ThemedTextInput';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Colors } from '../../../constants/Colors';
+import { useFocusEffect } from "@react-navigation/native";
 
 const Pantry = () => {
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light;
+
   const router = useRouter();
   const [userToken, setUserToken] = useState(null);
   const [pantryFood, setPantryFood] = useState([]);
@@ -47,6 +53,24 @@ const Pantry = () => {
   const [deletingItem, setDeletingItem] = useState(null);
   const [deleteQuantity, setDeleteQuantity] = useState(1);
 
+  // Fetch pantry food
+  const fetchPantryFood = async (token) => {
+    try {
+      const result = await axios.get(`${API_BASE_URL}/getpantryfood`, {
+        withCredentials: true,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPantryFood(result.data.data || []);
+    } catch (err) {
+      console.error(err);
+      Toast.show({
+        type: "error",
+        text1: "Failed to fetch pantry food",
+        useModal: false,
+      });
+    }
+  };
+
   useEffect(() => {
     async function init() {
       try {
@@ -56,12 +80,7 @@ const Pantry = () => {
           return;
         }
         setUserToken(token);
-
-        const result = await axios.get(`${API_BASE_URL}/getpantryfood`, {
-          withCredentials: true,
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setPantryFood(result.data.data || []);
+        fetchPantryFood(token);
       } catch (err) {
         console.error(err);
         Toast.show({
@@ -74,7 +93,26 @@ const Pantry = () => {
     init();
   }, []);
 
-  async function handleDeleteConfirm() {
+  useFocusEffect(
+    useCallback(() => {
+      const handleFocus = async () => {
+        const shouldRefresh = await AsyncStorage.getItem("refreshPage");
+
+        // Always reload when screen gains focus for the first time
+        if (shouldRefresh === "true" || shouldRefresh === null) {
+          if (userToken) {
+            fetchPantryFood(userToken); // <-- refresh pantry list
+          }
+          await AsyncStorage.setItem("refreshPage", "false");
+        }
+      };
+
+      handleFocus();
+    }, [])
+  );
+
+  // Delete item
+  const handleDeleteConfirm = async () => {
     if (!deletingItem) return;
 
     try {
@@ -94,7 +132,6 @@ const Pantry = () => {
               : item
           ).filter(item => item.quantity > 0)
         );
-
         Toast.show({ type: "success", text1: "Item updated successfully", useModal: false });
         setShowDeleteModal(false);
       } else {
@@ -104,19 +141,10 @@ const Pantry = () => {
       console.error(err);
       Toast.show({ type: "error", text1: "Delete failed", useModal: false });
     }
-  }
-
-  const adjustQuantity = (id, delta, maxQty) => {
-    setSelectedItems(prev =>
-      prev.map(item =>
-        item.id === id
-          ? { ...item, donateQty: Math.min(Math.max(1, item.donateQty + delta), maxQty) }
-          : item
-      )
-    );
   };
 
-  async function handleDonateConfirm() {
+  // Confirm donation
+  const handleDonateConfirm = async () => {
     try {
       if (selectedItems.length === 0) {
         Toast.show({ type: "info", text1: "No items selected", useModal: false });
@@ -145,41 +173,34 @@ const Pantry = () => {
       console.error(err);
       Toast.show({ type: "error", text1: "Donation failed", useModal: false });
     }
-  }
+  };
 
-  async function handleEditConfirm() {
-    const newFood = {
-      name: editName.trim(),
-      quantity: parseInt(editQuantity.trim()),
-      expiry_date: editExpiry,
-      id: editingItem.id
+  // Edit item
+  const handleEditConfirm = async () => {
+    try {
+      const newFood = {
+        name: editName.trim(),
+        quantity: parseInt(editQuantity.trim()),
+        expiry_date: editExpiry,
+        id: editingItem.id
+      };
+
+      const res = await axios.post(`${API_BASE_URL}/editPantryFood`, { newFood }, {
+        headers: { Authorization: `Bearer ${userToken}` }
+      });
+
+      if (res.data.status === "ok") {
+        Toast.show({ type: "success", text1: res.data.data, useModal: false });
+        setShowEditModal(false);
+        fetchPantryFood(userToken); // Refresh pantry list
+      } else {
+        Toast.show({ type: "error", text1: res.data.data, useModal: false });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Edit failed", useModal: false });
     }
-
-    axios.post(`${API_BASE_URL}/editPantryFood`, { newFood }).
-      then((res) => {
-        if (res.data.status === "ok") {
-          Toast.show({
-            type: "success",
-            text1: res.data.data,
-            useModal: false
-          });
-        }
-        else {
-          Toast.show({
-            type: "error",
-            text1: res.data.data,
-            useModal: false
-          });
-        }
-      }).catch(err => {
-        Toast.show({
-          type: "error",
-          text1: "Edit failed",
-          useModal: false
-        });
-        console.error(err);
-      })
-  }
+  };
 
   const openDeleteModal = (item) => {
     setDeletingItem(item);
@@ -198,11 +219,8 @@ const Pantry = () => {
   const toggleSelectItem = (item) => {
     setSelectedItems(prev => {
       const exists = prev.find(i => i.id === item.id);
-      if (exists) {
-        return prev.filter(i => i.id !== item.id);
-      } else {
-        return [...prev, { ...item, donateQty: 1 }];
-      }
+      if (exists) return prev.filter(i => i.id !== item.id);
+      return [...prev, { ...item, donateQty: 1 }];
     });
   };
 
@@ -211,19 +229,27 @@ const Pantry = () => {
     rows.push(pantryFood.slice(i, i + itemsPerRow));
   }
 
+  // Adjust donation quantity
+  const adjustQuantity = (id, delta, maxQty) => {
+    setSelectedItems(prev =>
+      prev.map(item =>
+        item.id === id
+          ? { ...item, donateQty: Math.min(Math.max(1, item.donateQty + delta), maxQty) }
+          : item
+      )
+    );
+  };
   return (
     <ImageBackground
       style={styles.imgBackground}
       source={require("../../../assets/foodxp/pantry bg.jpg")}
       resizeMode="cover"
     >
-      {/* Gradient Overlay */}
       <LinearGradient
         colors={['rgba(255,255,255,0.1)', 'rgba(0,0,0,0.8)']}
         style={StyleSheet.absoluteFill}
       />
 
-      {/* All your content goes here */}
       <View style={styles.container}>
         {rows.length > 0 ? (
           <View style={{ flex: 1 }}>
@@ -231,8 +257,8 @@ const Pantry = () => {
               {rows.map((row, rowIndex) => (
                 <View key={rowIndex} style={styles.shelf}>
                   {row.map(item => (
-                    <TouchableOpacity onPress={() => openEditModal(item)}>
-                      <View key={item.id} style={styles.foodItem}>
+                    <TouchableOpacity key={item.id} onPress={() => openEditModal(item)}>
+                      <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                         <Image
                           source={{ uri: convertFilePathtoUri(item.photo) }}
                           style={styles.img}
@@ -267,8 +293,7 @@ const Pantry = () => {
           <ThemedView style={styles.emptyContainer}>
             <ThemedText style={styles.heading}>No food added yet</ThemedText>
           </ThemedView>
-        )
-        }
+        )}
 
         {/* Modal code for donating */}
         <Modal
@@ -457,9 +482,8 @@ const Pantry = () => {
             </View>
           </View>
         </Modal>
-
       </View>
-    </ImageBackground >
+    </ImageBackground>
   );
 };
 
@@ -477,7 +501,7 @@ const styles = StyleSheet.create({
   shelf: { flexDirection: "row", marginBottom: 20, justifyContent: "flex-start", alignItems: "flex-start" },
   foodItem: {
     width: 140, marginRight: 15, padding: 10, borderRadius: 12,
-    backgroundColor: "#fff9", alignItems: "center",
+    alignItems: "center",
     shadowColor: "#000", shadowOpacity: 0.2, shadowOffset: { width: 3, height: 4 },
     shadowRadius: 4, elevation: 4,
   },
@@ -488,35 +512,16 @@ const styles = StyleSheet.create({
   btn: { flex: 1, margin: 3, paddingVertical: 8, borderRadius: 8, alignItems: "center", height: 50, zIndex: 1 },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   heading: { fontSize: 24, fontWeight: "bold", color: "#4a2c0a" },
-
   modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.6)" },
   modalContent: { width: "90%", maxHeight: "80%", backgroundColor: "#fff", borderRadius: 16, padding: 15 },
   modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 10, textAlign: "center", color: "#4a2c0a" },
-  modalItem: {
-    flexDirection: "row", alignItems: "center", padding: 10, marginBottom: 10,
-    borderRadius: 10, backgroundColor: "#f9f9f9", borderWidth: 1, borderColor: "#ddd",
-  },
+  modalItem: { flexDirection: "row", alignItems: "center", padding: 10, marginBottom: 10, borderRadius: 10, backgroundColor: "#f9f9f9", borderWidth: 1, borderColor: "#ddd" },
   selectedItem: { backgroundColor: "#e0f7e9", borderColor: "#34a853" },
   modalImg: { width: 60, height: 60, borderRadius: 8, marginRight: 10 },
   modalButtons: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
-  qtyControl: {
-    flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#aaa",
-    borderRadius: 6, paddingHorizontal: 6,
-  },
+  qtyControl: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#aaa", borderRadius: 6, paddingHorizontal: 6 },
   qtyBtn: { fontSize: 20, fontWeight: "bold", color: "#34a853", paddingHorizontal: 6 },
   qtyValue: { fontSize: 16, fontWeight: "bold", marginHorizontal: 4 },
-  dateBox: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  dateText: {
-    fontSize: 16,
-    color: '#333',
-  },
+  dateBox: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 15, width: '100%', alignItems: 'center', marginBottom: 10 },
+  dateText: { fontSize: 16, color: '#333' },
 });

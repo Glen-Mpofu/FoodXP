@@ -62,6 +62,7 @@ const Index = () => {
                 if (res.data.status === "ok") {
                     Toast.show({ type: "success", text1: res.data.data, useModal: false })
                     await AsyncStorage.setItem("userToken", res.data.token)
+                    await AsyncStorage.setItem("refreshPage", "false")
 
                     router.replace("/dashboard/");
                 }
@@ -145,20 +146,21 @@ const Index = () => {
                 </Modal>
             </ThemedView>
             <LinearGradient
-                colors={[theme.navBackground, theme.uiBackground]} // fade from transparent to background
+                colors={[theme.background, theme.navBackground, theme.uiBackground, theme.uiBackground]} // modern warm blend
                 style={[styles.footer, { width: width }]}
                 start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
+                end={{ x: 1, y: 1 }}
             >
-                <ThemedText style={styles.footerText}>
-                    An absurd amount of the food produced in the world today – as much as a third – goes to waste across the supply chain.
-                    A third of all edible food in South Africa is never consumed and ends up in landfill, adding pressure to an already over-extended waste system.
-                    Meanwhile, millions don’t have enough to eat.
-                </ThemedText>
-                <ThemedText style={styles.footerText}>
-                    © Paballo Thekiso of WWF
-                </ThemedText>
+                <View style={styles.footerCard}>
+                    <ThemedText style={styles.footerHeading}>Did You Know?</ThemedText>
+                    <ThemedText style={styles.footerText}>
+                        An absurd amount of food produced globally — nearly a third — is wasted before it’s ever eaten.
+                        In South Africa, millions go hungry while edible food ends up in landfills.
+                    </ThemedText>
+                    <ThemedText style={styles.footerCredit}>© Paballo Thekiso, WWF</ThemedText>
+                </View>
             </LinearGradient>
+
         </ThemedView >
     )
 }
@@ -175,7 +177,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center" // optional: center content vertically
     },
-    wHeading: { fontSize: 28, fontWeight: '600', marginBottom: 5 },
+    wHeading: { fontSize: 28, fontWeight: '600', marginBottom: 5, fontFamily: "Raleway" },
     topGradient: {
         width: "100%",
         paddingVertical: 40,  // controls the vertical space of the gradient
@@ -200,22 +202,52 @@ const styles = StyleSheet.create({
     passwordContainer: { height: 70, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center" },
     footer: {
         width: "100%",
-        height: 150, // fixed height or adjust
+        height: 180,
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#FFDD59",
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        overflow: "hidden",
         shadowColor: "#000",
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.25,
         shadowOffset: { width: 0, height: -3 },
-        shadowRadius: 5,
-        elevation: 5,
-        alignContent: "center",
+        shadowRadius: 6,
+        elevation: 6,
     },
+
+    footerCard: {
+        backgroundColor: "rgba(255, 255, 255, 0.15)",
+        padding: 15,
+        marginHorizontal: 20,
+        borderRadius: 16,
+        backdropFilter: "blur(10px)",
+        alignItems: "center",
+        justifyContent: "center",
+    },
+
+    footerHeading: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#fff",
+        marginBottom: 5,
+        textTransform: "uppercase",
+        letterSpacing: 1,
+    },
+
     footerText: {
-        fontSize: 12,
-        fontWeight: "600",
-        textAlign: "center"
-    }
+        fontSize: 13,
+        fontWeight: "500",
+        color: "#fff",
+        textAlign: "center",
+        lineHeight: 18,
+        marginBottom: 8,
+    },
+
+    footerCredit: {
+        fontSize: 11,
+        color: "#fff",
+        opacity: 0.8,
+        textAlign: "center",
+    },
+
 })

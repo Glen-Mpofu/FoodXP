@@ -114,9 +114,10 @@ const UploadFood = () => {
     console.log({ name, quantity, date, photo, prediction })
 
     //const baseURL = Platform.OS === "web" ? `http://localhost:5001/save${prediction}food` : `http://192.168.137.1:5001/save${prediction}food`
-    axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData })
-      .then((res) => {
+    await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData })
+      .then(async (res) => {
         if (res.data.status === "ok") {
+          await AsyncStorage.setItem("refreshPage", "true");
           Toast.show({ type: "success", text1: res.data.data, useModal: false })
         } else {
           Toast.show({ type: "error", text1: res.data.data, useModal: false })

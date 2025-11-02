@@ -186,9 +186,10 @@ export default function CameraScreen() {
 
     // Here you can send data to your backend
     console.log({ name, quantity, date, photo, prediction })
-    axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }, { withCredentials: true, headers: { Authorization: `Bearer ${userToken}` } })
-      .then((res) => {
+    await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }, { withCredentials: true, headers: { Authorization: `Bearer ${userToken}` } })
+      .then(async (res) => {
         if (res.data.status === "ok") {
+          await AsyncStorage.setItem("refreshPage", "true");
           Toast.show({ type: "success", text1: res.data.data, useModal: false })
         } else {
           Toast.show({ type: "error", text1: res.data.data, useModal: false })

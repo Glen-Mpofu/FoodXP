@@ -44,14 +44,13 @@ const Settings = () => {
       if (!token) return router.replace('/');
       setUserToken(token);
 
-      axios
+      await axios
         .get(`${API_BASE_URL}/session`, {
           withCredentials: true,
           headers: { Authorization: `Bearer ${token}` },
         })
         .then((res) => {
           if (res.data.status === 'ok') {
-            Toast.show({ type: 'success', text1: 'Session active' });
             setFoodie(res.data.data);
           } else {
             Toast.show({ type: 'error', text1: 'Session expired' });
@@ -66,7 +65,7 @@ const Settings = () => {
   // --- Change Handlers ---
   async function nameChange() {
     const foodieData = { email: foodie?.email, name };
-    axios
+    await axios
       .post(`${API_BASE_URL}/namechange`, foodieData, { withCredentials: true })
       .then((res) => {
         Toast.show({
@@ -85,7 +84,7 @@ const Settings = () => {
 
   async function passwordChange() {
     const foodieData = { email: foodie?.email, password };
-    axios
+    await axios
       .post(`${API_BASE_URL}/passwordchange`, foodieData, { withCredentials: true })
       .then((res) => {
         Toast.show({
@@ -106,7 +105,7 @@ const Settings = () => {
     if (value === 'no') return closeModal();
 
     const foodieData = { email: foodie?.email };
-    axios
+    await axios
       .post(`${API_BASE_URL}/deleteaccount`, foodieData, { withCredentials: true })
       .then((res) => {
         Toast.show({

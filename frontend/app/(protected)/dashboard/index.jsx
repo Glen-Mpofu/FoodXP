@@ -5,94 +5,106 @@ import ThemedText from '../../../components/ThemedText';
 import { useColorScheme } from 'react-native';
 import { Colors } from '../../../constants/Colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
-import axios, { Axios } from "axios"
-import { Toast } from 'toastify-react-native';
+import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
-import { API_BASE_URL } from "@env"
-import ThemedButton from '../../../components/ThemedButton';
+import { API_BASE_URL } from "@env";
+import { useFocusEffect } from "@react-navigation/native";
 
 export default function Dashboard() {
   const router = useRouter();
-  const [userToken, setUserToken] = React.useState(null)
-  const [pantryFood, onPantryFoodChange] = React.useState([])
-  const [fridgeFood, onFridgeFoodChange] = React.useState([])
-
-  const [recipes, setRecipes] = React.useState([])
-
-  const screenWidth = Dimensions.get("window").width;
-  const itemWidth = 120; // width per item
-  const maxItems = Math.floor(screenWidth / itemWidth) // calculation of how many items can fit
-
-  useEffect(() => {
-    //alert()
-    const init = async () => {
-      const token = await AsyncStorage.getItem("userToken");
-      if (!token) {
-        router.replace("/")
-        return;
-      }
-      setUserToken(token);
-
-      const baseUrl = API_BASE_URL
-
-      //pantry food
-      const result = await axios.get(`${baseUrl}/getpantryfood`, { headers: { Authorization: `Bearer ${token}` } })
-      onPantryFoodChange(result.data.data)
-
-      //fridge food
-      const resultFridge = await axios.get(`${baseUrl}/getfridgefood`, { headers: { Authorization: `Bearer ${token}` } })
-      onFridgeFoodChange(resultFridge.data.data)
-      if (recipes.length === 0) {
-        // recipes
-        const recipeResults = await axios.get(`${API_BASE_URL}/get-recipes`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setRecipes(recipeResults.data.data);
-        //alert(JSON.stringify(recipeResults.data, null, 2));
-      }
-    };
-
-    init();
-  }, [])
+  const [userToken, setUserToken] = useState(null);
+  const [pantryFood, setPantryFood] = useState([]);
+  const [fridgeFood, setFridgeFood] = useState([]);
+  const [recipes, setRecipes] = useState([]);
 
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme] ?? Colors.light
+  const theme = Colors[colorScheme] ?? Colors.light;
+  const screenWidth = Dimensions.get("window").width;
+  const itemWidth = 120;
+  const maxItems = Math.floor(screenWidth / itemWidth);
+
+  // --- Function to load all data ---
+  const loadData = async () => {
+    const token = await AsyncStorage.getItem("userToken");
+    if (!token) {
+      router.replace("/");
+      return;
+    }
+    setUserToken(token);
+
+    const baseUrl = API_BASE_URL;
+
+    try {
+      // pantry food
+      const pantryRes = await axios.get(`${baseUrl}/getpantryfood`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setPantryFood(pantryRes.data.data);
+
+      // fridge food
+      const fridgeRes = await axios.get(`${baseUrl}/getfridgefood`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setFridgeFood(fridgeRes.data.data);
+
+      // recipes (only load once if empty)
+      if (recipes.length === 0) {
+        const recipeRes = await axios.get(`${baseUrl}/get-recipes`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setRecipes(recipeRes.data.data);
+      }
+    } catch (error) {
+      console.error("Failed to load dashboard data:", error.message);
+    }
+  };
+
+  // --- Run once on mount ---
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // --- Listen for focus + refresh flag ---
+  useFocusEffect(
+    useCallback(() => {
+      const handleFocus = async () => {
+        const shouldRefresh = await AsyncStorage.getItem("refreshPage");
+
+        // Always reload when screen gains focus for the first time
+        if (shouldRefresh === "true" || shouldRefresh === null) {
+          await loadData();
+          await AsyncStorage.setItem("refreshPage", "false");
+        }
+      };
+
+      handleFocus();
+    }, [])
+  );
 
   return (
     <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground }]}>
       <View style={styles.rowFoodContainer}>
         <ThemedView style={[styles.foodContainer]}>
-
-          {/*Pantry Food Items */}
+          {/* Pantry Food */}
           <ThemedText style={styles.heading}>Pantry foods</ThemedText>
-
           <FlatList
             horizontal
-            data={[
-              ...pantryFood.slice(0, maxItems - 1),
-              { id: "show_all", type: "show_all" }
-            ]}
+            data={[...pantryFood.slice(0, maxItems - 1), { id: "show_all", type: "show_all" }]}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => {
-              if (item.type === "show_all") {
-                return (
-                  <TouchableOpacity
-                    onPress={() => router.replace("/dashboard/pantry")}
-                    style={[styles.foodItem, styles.showAllCard]}
-                  >
-                    <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
-                      Show All
-                    </ThemedText>
-                    <Ionicons name='arrow-forward' size={15} />
-                  </TouchableOpacity>
-                );
-              }
-
-              return (
+            renderItem={({ item }) =>
+              item.type === "show_all" ? (
+                <TouchableOpacity
+                  onPress={() => router.replace("/dashboard/pantry")}
+                  style={[styles.foodItem, styles.showAllCard]}
+                >
+                  <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
+                    Show All
+                  </ThemedText>
+                  <Ionicons name="arrow-forward" size={15} />
+                </TouchableOpacity>
+              ) : (
                 <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                   <Image
                     source={{ uri: convertFilePathtoUri(item.photo) }}
@@ -102,39 +114,30 @@ export default function Dashboard() {
                   <ThemedText style={styles.qty}>Qty: {item.quantity}</ThemedText>
                 </View>
               )
-            }}
+            }
             showsHorizontalScrollIndicator={false}
           />
-
         </ThemedView>
 
-        {/* Fridge food */}
+        {/* Fridge Food */}
         <ThemedView style={styles.foodContainer}>
           <ThemedText style={styles.heading}>Fridge foods</ThemedText>
-
           <FlatList
             horizontal
-            data={[
-              ...fridgeFood.slice(0, maxItems - 1),
-              { id: "show_all", type: "show_all" }
-            ]}
+            data={[...fridgeFood.slice(0, maxItems - 1), { id: "show_all", type: "show_all" }]}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => {
-              if (item.type === "show_all") {
-                return (
-                  <TouchableOpacity
-                    onPress={() => router.replace("/dashboard/fridge")}
-                    style={[styles.foodItem, styles.showAllCard]}
-                  >
-                    <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
-                      Show All
-                    </ThemedText>
-                    <Ionicons name='arrow-forward' size={15} />
-                  </TouchableOpacity>
-                );
-              }
-
-              return (
+            renderItem={({ item }) =>
+              item.type === "show_all" ? (
+                <TouchableOpacity
+                  onPress={() => router.replace("/dashboard/fridge")}
+                  style={[styles.foodItem, styles.showAllCard]}
+                >
+                  <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
+                    Show All
+                  </ThemedText>
+                  <Ionicons name="arrow-forward" size={15} />
+                </TouchableOpacity>
+              ) : (
                 <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                   <Image
                     source={{ uri: convertFilePathtoUri(item.photo) }}
@@ -144,13 +147,13 @@ export default function Dashboard() {
                   <ThemedText style={styles.qty}>Qty: {item.quantity}</ThemedText>
                 </View>
               )
-            }}
+            }
             showsHorizontalScrollIndicator={false}
           />
         </ThemedView>
       </View>
 
-      {/* RECIPE CONTAINER */}
+      {/* Recipes */}
       <View style={styles.rowFoodContainer}>
         <ThemedView style={styles.recipeContainer}>
           <ThemedText style={styles.heading}>Recipes</ThemedText>
@@ -158,60 +161,63 @@ export default function Dashboard() {
             <FlatList
               data={[...recipes.slice(0, maxItems - 1), { id: "show_all", type: "show_all" }]}
               keyExtractor={(item) => item.idMeals || item.id}
-              renderItem={({ item }) => {
-                if (item.type === "show_all") {
-                  return (
-                    <TouchableOpacity
-                      onPress={() => router.replace("/dashboard/recipes")}
-                      style={[styles.foodItem, styles.showAllCard]}
-                    >
-                      <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
-                        Show All
-                      </ThemedText>
-                      <Ionicons name='arrow-forward' size={15} />
-                    </TouchableOpacity>
-                  );
-                }
-
-                return (
+              renderItem={({ item }) =>
+                item.type === "show_all" ? (
+                  <TouchableOpacity
+                    onPress={() => router.replace("/dashboard/recipes")}
+                    style={[styles.foodItem, styles.showAllCard]}
+                  >
+                    <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
+                      Show All
+                    </ThemedText>
+                    <Ionicons name="arrow-forward" size={15} />
+                  </TouchableOpacity>
+                ) : (
                   <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                     <Image source={{ uri: item.strMealThumb }} style={styles.img} />
-                    <ThemedText numberOfLines={2} style={[styles.nameTxt, { textAlign: "center" }]}>
+                    <ThemedText
+                      numberOfLines={2}
+                      style={[styles.nameTxt, { textAlign: "center" }]}
+                    >
                       {item.strMeal}
                     </ThemedText>
                   </View>
-                );
-              }}
+                )
+              }
               horizontal
               showsHorizontalScrollIndicator={false}
             />
           ) : (
-            <ThemedText style={{ marginTop: 20 }}>Please add items to get recipes</ThemedText>
+            <ThemedText style={{ marginTop: 20 }}>
+              Please add items to get recipes
+            </ThemedText>
           )}
-
         </ThemedView>
       </View>
 
-      <View style={styles.foodContainer}>
-        <ThemedText>
-          An absurd amount of the food produced in the world today – as much as a third – goes to waste across the supply chain.
-          A third of all edible food in South Africa is never consumed and ends up in landfill, adding pressure to an already over-extended waste system.
-          Meanwhile, millions don’t have enough to eat.
-        </ThemedText>
-        <ThemedText>
-          © Paballo Thekiso of WWF
-        </ThemedText>
-      </View>
+      {/* Fun Fact */}
+      <ThemedText style={styles.funFactText}>
+        In South Africa, 10 million tonnes of food go to waste every year.
+        This accounts for a third of the 31 million tonnes that are produced annually in South Africa.
+        Together, fruits, vegetables and cereals account for 70% of the wastage and loss.
+        This wastage and loss primarily occur early in the food supply chain.
+        As the South African diet continues to shift towards one that is higher in processed foods and lower in fruit and vegetables,
+        malnutrition will increase as well. Reducing food waste in South Africa can improve the health and well-being of the majority of
+        South Africans
+      </ThemedText>
+      <ThemedText style={styles.funFactText}>WWF</ThemedText>
+
     </ThemedView>
   );
 }
 
+// Helper
 function convertFilePathtoUri(filePath) {
   const fileName = filePath.split("\\").pop();
-
-  return `${API_BASE_URL}/uploads/${fileName}`
+  return `${API_BASE_URL}/uploads/${fileName}`;
 }
 
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -293,5 +299,9 @@ const styles = StyleSheet.create({
   },
   nameTxt: {
     fontSize: 15
+  },
+  funFactText: {
+    textAlign: "center",
+    padding: 10
   }
 });

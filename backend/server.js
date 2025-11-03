@@ -436,9 +436,10 @@ app.post("/savepantryfood", async (req, res) => {
         //console.log(foodData)
         const pantryFood = {
             name: foodData.name,
-            quantity: foodData.quantity,
+            amount: foodData.amount,
             date: foodData.date,
             photo: foodData.photo,
+            unitOfMeasure: foodData.unitOfMeasure
         };
 
         if (!pantryFood.photo) {
@@ -476,10 +477,10 @@ app.post("/savepantryfood", async (req, res) => {
         // --- Save pantry food to DB ---
         const result = await pool.query(
             `
-        INSERT INTO PANTRY_FOOD (NAME, QUANTITY, EXPIRY_DATE, FOODIE_ID, PHOTO, PUBLIC_ID)
-        VALUES ($1, $2, $3, $4, $5, $6);
+        INSERT INTO PANTRY_FOOD (NAME, AMOUNT, EXPIRY_DATE, FOODIE_ID, PHOTO, PUBLIC_ID, unitOfMeasure)
+        VALUES ($1, $2, $3, $4, $5, $6, $7);
       `,
-            [pantryFood.name, pantryFood.quantity, pantryFood.date, foodie.data.id, photoUrl, public_id]
+            [pantryFood.name, pantryFood.amount, pantryFood.date, foodie.data.id, photoUrl, public_id, pantryFood.unitOfMeasure]
         );
 
         if (result.rowCount <= 0) {
@@ -521,10 +522,10 @@ app.post("/deletepantryfood", async (req, res) => {
     const id = req.body.id
     const public_id = req.body.public_id
     const photoPath = req.body.photo
-    const quantity = req.body.quantity
-    const deleteQuantity = req.body.deleteQuantity
-    const dbQuantity = quantity - deleteQuantity
-    if (dbQuantity === 0) {
+    const amount = req.body.amount
+    const deleteAmount = req.body.deleteAmount
+    const dbAmount = amount - deleteAmount
+    if (dbAmount === 0) {
         try {
             //deleting from the fridge_food table
             const result = await pool.query(
@@ -547,21 +548,21 @@ app.post("/deletepantryfood", async (req, res) => {
             res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
         }
     }
-    //update if the user wants to reduce the quantity
+    //update if the user wants to reduce the amount
     else {
         await pool.query(`
             UPDATE PANTRY_FOOD
-            SET QUANTITY = $1
+            SET AMOUNT = $1
             WHERE ID = $2;
-        `, [dbQuantity, id]).then((result) => {
+        `, [dbAmount, id]).then((result) => {
             if (result.rowCount > 0) {
-                res.send({ status: "ok", data: "Pantry food quantity updated successfully" })
+                res.send({ status: "ok", data: "Pantry food amount updated successfully" })
             } else {
-                res.send({ status: "error", data: "Something went wrong while updating Pantry food quantity." })
+                res.send({ status: "error", data: "Something went wrong while updating Pantry food amount." })
             }
         }).catch(err => {
             console.error(error)
-            res.send({ status: "error", data: "Something went wrong while updating Pantry food quantity." })
+            res.send({ status: "error", data: "Something went wrong while updating Pantry food amount." })
         })
     }
 })
@@ -573,9 +574,9 @@ app.post("/editPantryFood", async (req, res) => {
     await pool.query(
         `
             UPDATE PANTRY_FOOD 
-            SET name = $1, quantity = $2, expiry_date = $3
+            SET name = $1, amount = $2, expiry_date = $3
             WHERE id = $4;
-        `, [newFood.name, newFood.quantity, newFood.expiry_date, newFood.id]
+        `, [newFood.name, newFood.amount, newFood.expiry_date, newFood.id]
     ).then((result) => {
         if (result.rowCount <= 0) {
             res.send({ status: "error", data: "Failed to update food item" })
@@ -634,8 +635,9 @@ app.post("/savefridgefood", async (req, res) => {
 
         const fridgeFood = {
             name: foodData.name,
-            quantity: foodData.quantity,
+            amount: foodData.amount,
             photo: foodData.photo,
+            unitOfMeasure: foodData.unitOfMeasure
         }
         if (!fridgeFood.photo) {
             return res.send({ status: "error", data: "No photo sent" })
@@ -668,10 +670,10 @@ app.post("/savefridgefood", async (req, res) => {
 
         await pool.query(
             `
-                INSERT INTO FRIDGE_FOOD (NAME, QUANTITY, ISFRESH, FOODIE_ID, PHOTO, PUBLIC_ID)
-                VALUES($1, $2, $3, $4, $5, $6)
+                INSERT INTO FRIDGE_FOOD (NAME, AMOUNT, ISFRESH, FOODIE_ID, PHOTO, PUBLIC_ID, unitOfMeasure)
+                VALUES($1, $2, $3, $4, $5, $6, $7)
             `,
-            [fridgeFood.name, fridgeFood.quantity, true, foodie.data.id, photoUrl, public_id]
+            [fridgeFood.name, fridgeFood.amount, true, foodie.data.id, photoUrl, public_id, fridgeFood.unitOfMeasure]
         ).then((result) => {
             if (result.rowCount != 1) {
                 return res.send({ status: "error", data: "Failed to add the food" })
@@ -720,11 +722,11 @@ app.post("/deletefridgefood", async (req, res) => {
     const public_id = req.body.public_id
 
     const photoPath = req.body.photo
-    const quantity = req.body.quantity
-    const deleteQuantity = req.body.deleteQuantity
+    const amount = req.body.amount
+    const deleteAmount = req.body.deleteAmount
 
-    const dbQuantity = quantity - deleteQuantity
-    if (dbQuantity === 0) {
+    const dbAmount = amount - deleteAmount
+    if (dbAmount === 0) {
         try {
             //deleting from the fridge_food table
             const result = await pool.query(
@@ -747,21 +749,21 @@ app.post("/deletefridgefood", async (req, res) => {
             res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
         }
     }
-    //update if the user wants to reduce the quantity
+    //update if the user wants to reduce the amount
     else {
         await pool.query(`
             UPDATE FRIDGE_FOOD
-            SET QUANTITY = $1
+            SET AMOUNT = $1
             WHERE ID = $2;
-        `, [dbQuantity, id]).then((result) => {
+        `, [dbAmount, id]).then((result) => {
             if (result.rowCount > 0) {
-                res.send({ status: "ok", data: "Fridge food quantity updated successfully" })
+                res.send({ status: "ok", data: "Fridge food amount updated successfully" })
             } else {
-                res.send({ status: "error", data: "Something went wrong while updating Fridge food quantity." })
+                res.send({ status: "error", data: "Something went wrong while updating Fridge food amount." })
             }
         }).catch(err => {
             console.error(error)
-            res.send({ status: "error", data: "Something went wrong while updating Fridge food quantity." })
+            res.send({ status: "error", data: "Something went wrong while updating Fridge food amount." })
         })
     }
 })
@@ -773,9 +775,9 @@ app.post("/editFridgeFood", async (req, res) => {
     await pool.query(
         `
             UPDATE FRIDGE_FOOD 
-            SET name = $1, quantity = $2
+            SET name = $1, amount = $2
             WHERE id = $3;
-        `, [newFood.name, newFood.quantity, newFood.id]
+        `, [newFood.name, newFood.amount, newFood.id]
     ).then((result) => {
         if (result.rowCount <= 0) {
             res.send({ status: "error", data: "Failed to update food item" })

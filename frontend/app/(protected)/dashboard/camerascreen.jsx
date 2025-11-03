@@ -50,7 +50,7 @@ export default function CameraScreen() {
   let response = useState(null)
 
   const [name, onNameChange] = useState("")
-  const [quantity, onQuantityChange] = useState("")
+  const [amount, onAmountChange] = useState("")
   const [date, setDate] = useState(new Date())
   const [show, setShow] = useState(false)
 
@@ -172,8 +172,8 @@ export default function CameraScreen() {
     if (!name.trim()) {
       return Toast.show({ type: "error", text1: "Please enter the food's name", useModal: false })
     }
-    if (!quantity.trim()) {
-      return Toast.show({ type: "error", text1: "Please enter the food's quantity", useModal: false })
+    if (!amount.trim()) {
+      return Toast.show({ type: "error", text1: "Please enter the food's amount", useModal: false })
     }
     if (!date && prediction === "pantry") {
       return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false })
@@ -181,14 +181,14 @@ export default function CameraScreen() {
 
     const foodData = {
       name: name.trim(),
-      quantity: quantity.trim(),
+      amount: amount.trim(),
       photo: photo.trim(),
       token: userToken,
       ...(prediction === "pantry" && { date })
     }
 
     // Here you can send data to your backend
-    console.log({ name, quantity, date, photo, prediction })
+    console.log({ name, amount, date, photo, prediction })
     await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }, { withCredentials: true, headers: { Authorization: `Bearer ${userToken}` } })
       .then(async (res) => {
         if (res.data.status === "ok") {
@@ -307,7 +307,7 @@ export default function CameraScreen() {
             <Image source={{ uri: photo }} style={styles.imagePreview} />
 
             <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
-            <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} keyboardType="numeric" />
+            <ThemedTextInput placeholder="Amount" value={amount} onChangeText={onAmountChange} keyboardType="numeric" />
 
             {prediction === "pantry" && (
               <React.Fragment>

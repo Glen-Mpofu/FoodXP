@@ -20,8 +20,9 @@ async function initialiseTables(pool) {
         (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             name VARCHAR(20) NOT NULL,
-            quantity DOUBLE PRECISION DEFAULT 1,
+            amount DOUBLE PRECISION DEFAULT 1,
             expiry_date DATE,
+            unitOfMeasure VARCHAR(10),
             foodie_id UUID REFERENCES FOODIE(id),
             photo VARCHAR(150),
             public_id VARCHAR(100) NOT NULL UNIQUE
@@ -38,7 +39,8 @@ async function initialiseTables(pool) {
         (
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             name VARCHAR(20) NOT NULL,
-            quantity DOUBLE PRECISION DEFAULT 1,
+            amount DOUBLE PRECISION DEFAULT 1,
+            unitOfMeasure VARCHAR(10),
             isFresh BOOLEAN, 
             foodie_id UUID REFERENCES FOODIE(id),
             photo VARCHAR(150),
@@ -55,7 +57,8 @@ async function initialiseTables(pool) {
         CREATE TABLE IF NOT EXISTS DONATION(
             donation_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             photo VARCHAR(150),
-            quantity INT,
+            amount DOUBLE PRECISION DEFAULT 1,
+            unitOfMeasure VARCHAR(10),
             isPerishable BOOLEAN,
             expiry_date DATE,
             foodie_id uuid REFERENCES FOODIE(id)

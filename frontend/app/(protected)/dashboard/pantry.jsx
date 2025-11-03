@@ -39,7 +39,7 @@ const Pantry = () => {
 
   const [editingItem, setEditingItem] = useState(null);
   const [editName, setEditName] = useState('');
-  const [editQuantity, setEditQuantity] = useState('');
+  const [editAmount, setEditAmount] = useState('');
   const [editExpiry, setEditExpiry] = useState(new Date());
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -51,7 +51,7 @@ const Pantry = () => {
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingItem, setDeletingItem] = useState(null);
-  const [deleteQuantity, setDeleteQuantity] = useState(1);
+  const [deleteAmount, setDeleteAmount] = useState(1);
 
   // Fetch pantry food
   const fetchPantryFood = async (token) => {
@@ -118,8 +118,8 @@ const Pantry = () => {
     try {
       const result = await axios.post(`${API_BASE_URL}/deletepantryfood`, {
         id: deletingItem.id,
-        deleteQuantity: deleteQuantity,
-        quantity: deletingItem.quantity,
+        deleteAmount: deleteAmount,
+        amount: deletingItem.amount,
         public_id: deletingItem.public_id
       }, {
         headers: { Authorization: `Bearer ${userToken}` }
@@ -129,9 +129,9 @@ const Pantry = () => {
         setPantryFood(prev =>
           prev.map(item =>
             item.id === deletingItem.id
-              ? { ...item, quantity: item.quantity - deleteQuantity }
+              ? { ...item, amount: item.amount - deleteAmount }
               : item
-          ).filter(item => item.quantity > 0)
+          ).filter(item => item.amount > 0)
         );
         Toast.show({ type: "success", text1: "Item updated successfully", useModal: false });
         setShowDeleteModal(false);
@@ -153,7 +153,7 @@ const Pantry = () => {
       }
 
       const donationData = selectedItems.map(({ id, name, donateQty }) => ({
-        id, name, quantity: donateQty
+        id, name, amount: donateQty
       }));
 
       const result = await axios.post(
@@ -181,7 +181,7 @@ const Pantry = () => {
     try {
       const newFood = {
         name: editName.trim(),
-        quantity: parseInt(editQuantity.trim()),
+        amount: parseInt(editAmount.trim()),
         expiry_date: editExpiry,
         id: editingItem.id
       };
@@ -205,14 +205,14 @@ const Pantry = () => {
 
   const openDeleteModal = (item) => {
     setDeletingItem(item);
-    setDeleteQuantity(1);
+    setDeleteAmount(1);
     setShowDeleteModal(true);
   };
 
   const openEditModal = (item) => {
     setEditingItem(item);
     setEditName(item.name);
-    setEditQuantity(item.quantity.toString());
+    setEditAmount(item.amount.toString());
     setEditExpiry(item.expiry_date ? new Date(item.expiry_date) : new Date());
     setShowEditModal(true);
   };
@@ -230,8 +230,8 @@ const Pantry = () => {
     rows.push(pantryFood.slice(i, i + itemsPerRow));
   }
 
-  // Adjust donation quantity
-  const adjustQuantity = (id, delta, maxQty) => {
+  // Adjust donation amount
+  const adjustAmount = (id, delta, maxQty) => {
     setSelectedItems(prev =>
       prev.map(item =>
         item.id === id
@@ -265,7 +265,7 @@ const Pantry = () => {
                           style={styles.img}
                         />
                         <ThemedText style={styles.foodName}>{item.name}</ThemedText>
-                        <ThemedText style={styles.qty}>Qty: {item.quantity}</ThemedText>
+                        <ThemedText style={styles.qty}>{item.amount} {item.unitofmeasure}</ThemedText>
                         <View style={styles.buttonRow}>
                           <ThemedButton
                             style={[styles.btn, { backgroundColor: "#f28b82" }]}
@@ -322,16 +322,16 @@ const Pantry = () => {
                       />
                       <View style={{ flex: 1 }}>
                         <ThemedText style={styles.foodName}>{item.name}</ThemedText>
-                        <ThemedText style={styles.qty}>Available: {item.quantity}</ThemedText>
+                        <ThemedText style={styles.qty}>Available: {item.amount}</ThemedText>
                       </View>
 
                       {selected && (
                         <View style={styles.qtyControl}>
-                          <TouchableOpacity onPress={() => adjustQuantity(item.id, -1, item.quantity)}>
+                          <TouchableOpacity onPress={() => adjustAmount(item.id, -1, item.amount)}>
                             <ThemedText style={styles.qtyBtn}>−</ThemedText>
                           </TouchableOpacity>
                           <ThemedText style={styles.qtyValue}>{selected.donateQty}</ThemedText>
-                          <TouchableOpacity onPress={() => adjustQuantity(item.id, 1, item.quantity)}>
+                          <TouchableOpacity onPress={() => adjustAmount(item.id, 1, item.amount)}>
                             <ThemedText style={styles.qtyBtn}>＋</ThemedText>
                           </TouchableOpacity>
                         </View>
@@ -372,12 +372,12 @@ const Pantry = () => {
                   placeholder="Food Name"
                 />
 
-                <ThemedText>Quantity</ThemedText>
-                {/* Quantity + / - Controls */}
+                <ThemedText>Amount</ThemedText>
+                {/* Amount + / - Controls */}
                 <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
                   <TouchableOpacity
                     onPress={() =>
-                      setEditQuantity(prev => {
+                      setEditAmount(prev => {
                         const value = parseInt(prev || "0");
                         return Math.max(1, value - 1).toString();
                       })
@@ -386,11 +386,11 @@ const Pantry = () => {
                     <ThemedText style={styles.qtyBtn}>−</ThemedText>
                   </TouchableOpacity>
 
-                  <ThemedText style={styles.qtyValue}>{editQuantity}</ThemedText>
+                  <ThemedText style={styles.qtyValue}>{editAmount}</ThemedText>
 
                   <TouchableOpacity
                     onPress={() =>
-                      setEditQuantity(prev => {
+                      setEditAmount(prev => {
                         const value = parseInt(prev || "0");
                         return (value + 1).toString();
                       })
@@ -451,14 +451,14 @@ const Pantry = () => {
                     {deletingItem.name}
                   </ThemedText>
 
-                  <ThemedText style={{ textAlign: "center" }}>Select quantity to remove</ThemedText>
+                  <ThemedText style={{ textAlign: "center" }}>Select amount to remove</ThemedText>
 
                   <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
-                    <TouchableOpacity onPress={() => setDeleteQuantity(q => Math.max(1, q - 1))}>
+                    <TouchableOpacity onPress={() => setDeleteAmount(q => Math.max(1, q - 1))}>
                       <ThemedText style={styles.qtyBtn}>−</ThemedText>
                     </TouchableOpacity>
-                    <ThemedText style={styles.qtyValue}>{deleteQuantity}</ThemedText>
-                    <TouchableOpacity onPress={() => setDeleteQuantity(q => Math.min(deletingItem.quantity, q + 1))}>
+                    <ThemedText style={styles.qtyValue}>{deleteAmount}</ThemedText>
+                    <TouchableOpacity onPress={() => setDeleteAmount(q => Math.min(deletingItem.amount, q + 1))}>
                       <ThemedText style={styles.qtyBtn}>＋</ThemedText>
                     </TouchableOpacity>
                   </View>

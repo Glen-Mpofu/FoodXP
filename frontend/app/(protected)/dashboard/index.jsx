@@ -121,7 +121,7 @@ export default function Dashboard() {
                     style={styles.img}
                   />
                   <ThemedText style={styles.nameTxt}>{item.name}</ThemedText>
-                  <ThemedText style={styles.qty}>Qty: {item.quantity}</ThemedText>
+                  <ThemedText style={styles.qty}>Qty: {item.amount}</ThemedText>
                 </View>
               )
             }
@@ -154,7 +154,7 @@ export default function Dashboard() {
                     style={styles.img}
                   />
                   <ThemedText style={styles.nameTxt}>{item.name}</ThemedText>
-                  <ThemedText style={styles.qty}>Qty: {item.quantity}</ThemedText>
+                  <ThemedText style={styles.qty}>Qty: {item.amount}</ThemedText>
                 </View>
               )
             }

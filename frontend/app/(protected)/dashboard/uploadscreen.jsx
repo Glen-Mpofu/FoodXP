@@ -14,6 +14,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_BASE_URL } from "@env"
 import { Colors } from '../../../constants/Colors';
+import FoodUnits from "../../../components/UnitsOfMeasure"
+import { Picker } from '@react-native-picker/picker';
 
 const UploadFood = () => {
   const colorScheme = useColorScheme();
@@ -21,10 +23,11 @@ const UploadFood = () => {
   const [photo, setPhoto] = useState(null)
   const [prediction, setPrediction] = useState(null)
   const [name, onNameChange] = useState("")
-  const [quantity, onQuantityChange] = useState("")
+  const [amount, onAmountChange] = useState("")
   const [date, setDate] = useState(new Date())
   const [show, setShow] = useState(false)
   const [userToken, setUserToken] = useState(null)
+  const [selectedUnit, setSelectedUnit] = useState("unit");
 
   useEffect(() => {
     const init = async () => {
@@ -103,18 +106,19 @@ const UploadFood = () => {
 
   const saveFood = async () => {
     if (!name.trim()) return Toast.show({ type: "error", text1: "Please enter the food's name", useModal: false })
-    if (!quantity.trim()) return Toast.show({ type: "error", text1: "Please enter the food's quantity", useModal: false })
+    if (!amount.trim()) return Toast.show({ type: "error", text1: "Please enter the food's amount", useModal: false })
     if (!date && prediction === "pantry") return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false })
 
     const foodData = {
       name: name.trim(),
-      quantity: quantity.trim(),
+      amount: amount.trim(),
       photo: photo.trim(),
       token: userToken,
-      ...(prediction === "pantry" && { date })
+      ...(prediction === "pantry" && { date }),
+      unitOfMeasure: selectedUnit
     }
 
-    console.log({ name, quantity, date, photo, prediction })
+    console.log({ name, amount, date, photo, prediction })
 
     //const baseURL = Platform.OS === "web" ? `http://localhost:5001/save${prediction}food` : `http://192.168.137.1:5001/save${prediction}food`
     await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData })
@@ -156,7 +160,45 @@ const UploadFood = () => {
             <ThemedText>Image Captured</ThemedText>
             <Image source={{ uri: photo }} style={styles.imagePreview} />
             <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
-            <ThemedTextInput placeholder="Quantity" value={quantity} onChangeText={onQuantityChange} keyboardType="numeric" />
+            <ThemedTextInput placeholder="Amount" value={amount} onChangeText={onAmountChange} keyboardType="numeric" />
+
+            <View style={{
+              borderWidth: 1,
+              borderColor: theme.border,
+              borderRadius: 8,
+              paddingHorizontal: 8,
+              paddingVertical: Platform.OS === "web" ? 6 : 2,
+              backgroundColor: theme.inputBackground,
+              margin: 10
+            }}>
+              {Platform.OS === "web" ? (
+                <select
+                  style={{
+                    backgroundColor: "transparent",
+                    borderWidth: 0,
+                    color: theme.text,
+                    outline: "none",
+                  }}
+                  defaultValue="unit"
+                  onChange={(e) => setSelectedUnit(e.target.value)}
+                >
+                  {FoodUnits.map((unit, index) => (
+                    <option key={index} value={unit}>{unit}</option>
+                  ))}
+
+                </select>
+              ) : (
+                <Picker
+                  selectedValue={selectedUnit}
+                  style={{ height: 40, width: 100, color: theme.text }}
+                  onValueChange={(itemValue) => setSelectedUnit(itemValue)}
+                >
+                  {FoodUnits.map((unit, index) => (
+                    <Picker.Item key={index} label={unit} value={unit} />
+                  ))}
+                </Picker>
+              )}
+            </View>
 
             {prediction === "pantry" && (
               <>

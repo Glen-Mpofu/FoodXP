@@ -42,10 +42,10 @@ const Fridge = () => {
 
   const [editingItem, setEditingItem] = useState(null);
   const [editName, setEditName] = useState('');
-  const [editQuantity, setEditQuantity] = useState('');
+  const [editAmount, setEditAmount] = useState('');
 
   const [deletingItem, setDeletingItem] = useState(null);
-  const [deleteQuantity, setDeleteQuantity] = useState(1);
+  const [deleteAmount, setDeleteAmount] = useState(1);
 
   // --- Inside your Fridge component ---
 
@@ -104,8 +104,8 @@ const Fridge = () => {
     try {
       const result = await axios.post(`${API_BASE_URL}/deletefridgefood`, {
         id: deletingItem.id,
-        deleteQuantity,
-        quantity: deletingItem.quantity,
+        deleteAmount,
+        amount: deletingItem.amount,
         public_id: deletingItem.public_id
       }, {
         headers: { Authorization: `Bearer ${userToken}` }
@@ -130,7 +130,7 @@ const Fridge = () => {
 
     const newFood = {
       name: editName.trim(),
-      quantity: parseInt(editQuantity.trim()),
+      amount: parseInt(editAmount.trim()),
       id: editingItem.id
     };
 
@@ -161,7 +161,7 @@ const Fridge = () => {
 
     try {
       const donationData = selectedItems.map(({ id, name, donateQty }) => ({
-        id, name, quantity: donateQty
+        id, name, amount: donateQty
       }));
 
       const result = await axios.post(`${API_BASE_URL}/donate`, { items: donationData }, {
@@ -186,13 +186,13 @@ const Fridge = () => {
   const openEditModal = (item) => {
     setEditingItem(item);
     setEditName(item.name);
-    setEditQuantity(item.quantity.toString());
+    setEditAmount(item.amount.toString());
     setShowEditModal(true);
   };
 
   const openDeleteModal = (item) => {
     setDeletingItem(item);
-    setDeleteQuantity(1);
+    setDeleteAmount(1);
     setShowDeleteModal(true);
   };
 
@@ -204,7 +204,7 @@ const Fridge = () => {
     });
   };
 
-  const adjustQuantity = (id, delta, maxQty) => {
+  const adjustAmount = (id, delta, maxQty) => {
     setSelectedItems(prev =>
       prev.map(item =>
         item.id === id
@@ -237,7 +237,7 @@ const Fridge = () => {
                       <View key={item.id} style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                         <Image source={{ uri: item.photo }} style={styles.img} />
                         <ThemedText>{item.name}</ThemedText>
-                        <ThemedText>Qty: {item.quantity}</ThemedText>
+                        <ThemedText>{item.amount} {item.unitofmeasure}</ThemedText>
 
                         <View style={styles.buttonRow}>
                           <ThemedButton style={[styles.btn, { backgroundColor: "#f28b82" }]} onPress={() => openDeleteModal(item)}>
@@ -286,16 +286,16 @@ const Fridge = () => {
                       <Image source={{ uri: item.photo }} style={styles.modalImg} />
                       <View style={{ flex: 1 }}>
                         <ThemedText>{item.name}</ThemedText>
-                        <ThemedText>Available: {item.quantity}</ThemedText>
+                        <ThemedText>Available: {item.amount}</ThemedText>
                       </View>
 
                       {selected && (
                         <View style={styles.qtyControl}>
-                          <TouchableOpacity onPress={() => adjustQuantity(item.id, -1, item.quantity)}>
+                          <TouchableOpacity onPress={() => adjustAmount(item.id, -1, item.amount)}>
                             <ThemedText style={styles.qtyBtn}>−</ThemedText>
                           </TouchableOpacity>
                           <ThemedText style={styles.qtyValue}>{selected.donateQty}</ThemedText>
-                          <TouchableOpacity onPress={() => adjustQuantity(item.id, 1, item.quantity)}>
+                          <TouchableOpacity onPress={() => adjustAmount(item.id, 1, item.amount)}>
                             <ThemedText style={styles.qtyBtn}>＋</ThemedText>
                           </TouchableOpacity>
                         </View>
@@ -338,13 +338,13 @@ const Fridge = () => {
                       placeholder="Food Name"
                     />
 
-                    <ThemedText style={{ marginTop: 10 }}>Quantity</ThemedText>
+                    <ThemedText style={{ marginTop: 10 }}>Amount</ThemedText>
 
-                    {/* Quantity + / - Controls */}
+                    {/* Amount + / - Controls */}
                     <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
                       <TouchableOpacity
                         onPress={() =>
-                          setEditQuantity(prev => {
+                          setEditAmount(prev => {
                             const value = parseInt(prev || "0");
                             return Math.max(1, value - 1).toString();
                           })
@@ -353,11 +353,11 @@ const Fridge = () => {
                         <ThemedText style={styles.qtyBtn}>−</ThemedText>
                       </TouchableOpacity>
 
-                      <ThemedText style={styles.qtyValue}>{editQuantity}</ThemedText>
+                      <ThemedText style={styles.qtyValue}>{editAmount}</ThemedText>
 
                       <TouchableOpacity
                         onPress={() =>
-                          setEditQuantity(prev => {
+                          setEditAmount(prev => {
                             const value = parseInt(prev || "0");
                             return (value + 1).toString();
                           })
@@ -406,14 +406,14 @@ const Fridge = () => {
                     {deletingItem.name}
                   </ThemedText>
 
-                  <ThemedText style={{ textAlign: "center" }}>Select quantity to remove</ThemedText>
+                  <ThemedText style={{ textAlign: "center" }}>Select amount to remove</ThemedText>
 
                   <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
-                    <TouchableOpacity onPress={() => setDeleteQuantity(q => Math.max(1, q - 1))}>
+                    <TouchableOpacity onPress={() => setDeleteAmount(q => Math.max(1, q - 1))}>
                       <ThemedText style={styles.qtyBtn}>−</ThemedText>
                     </TouchableOpacity>
-                    <ThemedText style={styles.qtyValue}>{deleteQuantity}</ThemedText>
-                    <TouchableOpacity onPress={() => setDeleteQuantity(q => Math.min(deletingItem.quantity, q + 1))}>
+                    <ThemedText style={styles.qtyValue}>{deleteAmount}</ThemedText>
+                    <TouchableOpacity onPress={() => setDeleteAmount(q => Math.min(deletingItem.amount, q + 1))}>
                       <ThemedText style={styles.qtyBtn}>＋</ThemedText>
                     </TouchableOpacity>
                   </View>

@@ -10,7 +10,7 @@ import {
   Modal,
   useColorScheme
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ThemedView from '../../../components/ThemedView';
 import ThemedText from '../../../components/ThemedText';
 import ThemedButton from '../../../components/ThemedButton';
@@ -22,6 +22,7 @@ import { API_BASE_URL } from "@env";
 import { LinearGradient } from 'expo-linear-gradient';
 import ThemedTextInput from '../../../components/ThemedTextInput';
 import { Colors } from '../../../constants/Colors';
+import { useFocusEffect } from "@react-navigation/native";
 
 const Fridge = () => {
   const colorScheme = useColorScheme();
@@ -77,6 +78,24 @@ const Fridge = () => {
     }
     init();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const handleFocus = async () => {
+        const shouldRefresh = await AsyncStorage.getItem("refreshFridge");
+
+        // Always reload when screen gains focus for the first time
+        if (shouldRefresh === "true" || shouldRefresh === null) {
+          if (userToken) {
+            fetchFridgeFood(userToken); // <-- refresh pantry list
+          }
+          await AsyncStorage.setItem("refreshFridge", "false")
+        }
+      };
+
+      handleFocus();
+    }, [userToken])
+  );
 
   // Delete confirmation
   const handleDeleteConfirm = async () => {

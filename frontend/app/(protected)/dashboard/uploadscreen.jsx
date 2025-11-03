@@ -117,7 +117,12 @@ const UploadFood = () => {
     await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData })
       .then(async (res) => {
         if (res.data.status === "ok") {
-          await AsyncStorage.setItem("refreshPage", "true");
+          await AsyncStorage.setItem("refreshKitchen", "true");
+          if (prediction === "pantry") {
+            await AsyncStorage.setItem("refreshPantry", "true");
+          } else {
+            await AsyncStorage.setItem("refreshFridge", "true");
+          }
           Toast.show({ type: "success", text1: res.data.data, useModal: false })
         } else {
           Toast.show({ type: "error", text1: res.data.data, useModal: false })

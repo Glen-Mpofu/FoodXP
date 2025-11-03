@@ -96,19 +96,19 @@ const Pantry = () => {
   useFocusEffect(
     useCallback(() => {
       const handleFocus = async () => {
-        const shouldRefresh = await AsyncStorage.getItem("refreshPage");
+        const shouldRefresh = await AsyncStorage.getItem("refreshPantry");
 
         // Always reload when screen gains focus for the first time
         if (shouldRefresh === "true" || shouldRefresh === null) {
           if (userToken) {
             fetchPantryFood(userToken); // <-- refresh pantry list
           }
-          await AsyncStorage.setItem("refreshPage", "false");
+          await AsyncStorage.setItem("refreshPantry", "false")
         }
       };
 
       handleFocus();
-    }, [])
+    }, [userToken])
   );
 
   // Delete item

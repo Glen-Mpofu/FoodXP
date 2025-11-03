@@ -62,7 +62,10 @@ const Index = () => {
                 if (res.data.status === "ok") {
                     Toast.show({ type: "success", text1: res.data.data, useModal: false })
                     await AsyncStorage.setItem("userToken", res.data.token)
-                    await AsyncStorage.setItem("refreshPage", "false")
+
+                    await AsyncStorage.setItem("refreshKitchen", "false")
+                    await AsyncStorage.setItem("refreshPantry", "false")
+                    await AsyncStorage.setItem("refreshFridge", "false")
 
                     router.replace("/dashboard/");
                 }
@@ -193,7 +196,7 @@ const styles = StyleSheet.create({
     forgotPassword: { fontSize: 12, marginBottom: Platform.OS === 'android' ? 5 : 30, alignSelf: 'flex-end' },
     inputView: { marginTop: 20, marginBottom: Platform.OS === "android" ? 0 : 20, width: "100%" },
     input: { width: '100%' },
-    links: { flex: 0, alignContent: "center", alignItems: "stretch", marginTop: 10 },
+    links: { flex: 0, alignContent: "center", alignItems: "stretch", marginTop: 10, margin: Platform.OS === "web" ? 50 : 0 },
     registerLink: { alignSelf: 'center', marginTop: 5 },
     button: { paddingVertical: 15, borderRadius: 10, marginBottom: 10 },
     modalOverlay: { flex: 1, backgroundColor: "rgba(30, 38, 49, 0.6)", justifyContent: "center", alignItems: "center" },

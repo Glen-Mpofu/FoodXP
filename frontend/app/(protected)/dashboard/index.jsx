@@ -70,12 +70,12 @@ export default function Dashboard() {
   useFocusEffect(
     useCallback(() => {
       const handleFocus = async () => {
-        const shouldRefresh = await AsyncStorage.getItem("refreshPage");
+        const shouldRefresh = await AsyncStorage.getItem("refreshKitchen");
 
         // Always reload when screen gains focus for the first time
         if (shouldRefresh === "true" || shouldRefresh === null) {
           await loadData();
-          await AsyncStorage.setItem("refreshPage", "false");
+          await AsyncStorage.setItem("refreshKitchen", "false");
         }
       };
 
@@ -302,6 +302,8 @@ const styles = StyleSheet.create({
   },
   funFactText: {
     textAlign: "center",
-    padding: 10
+    padding: 10,
+    height: "100%",
+    width: "100%"
   }
 });

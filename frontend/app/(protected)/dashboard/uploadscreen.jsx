@@ -142,17 +142,17 @@ const UploadFood = () => {
 
       <View style={{ flexDirection: "row", marginTop: 20 }}>
         <TouchableOpacity onPress={() => router.push("/dashboard/")}>
-          <Ionicons name="home-outline" size={30} />
+          <Ionicons name="home-outline" size={30} color={theme.iconColor} />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={uploadImage} style={{ marginLeft: 20 }}>
-          <Ionicons name="cloud-upload" size={30} />
+          <Ionicons name="cloud-upload" size={30} color={theme.iconColor} />
         </TouchableOpacity>
       </View>
 
       {photo && (
         <Modal visible={true} style={styles.modal} transparent={true}>
-          <ThemedView style={[styles.uploadContainer, { backgroundColor: theme.navBackground }]}>
+          <ThemedView style={[styles.uploadContainer, { backgroundColor: theme.uiBackground }]}>
             <ThemedText>Image Captured</ThemedText>
             <Image source={{ uri: photo }} style={styles.imagePreview} />
             <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />

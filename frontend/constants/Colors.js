@@ -13,14 +13,16 @@ export const Colors = {
         background: 'black',
         navBackground: 'black',
         uiBackground: '#36454F',
-        imageColor: '#9CAFAA',
+        selected: '#36454F',
         borderColor: '#1e2401ff',
         buttonColor: "#191970",
-        camera: "#1e2631ff",
+        camera: "#5F9EA0",
         cardColor: "#36454F",
-        drawerActive: "black",
-        drawerActiveTint: "#fff8f4ff",
-        iconColor: "#191970"
+        drawerActive: "#5F9EA0",
+        drawerActiveTint: "white",
+        drawerInActiveTint: "white",
+        iconColor: "#5F9EA0",
+        showAll: "grey"
     },
     light: {
         text: '#241e00ff',
@@ -30,14 +32,16 @@ export const Colors = {
         background: '#FAF9F6',
         navBackground: '#AFE1AF',
         uiBackground: '#ffffffff',
-        imageColor: '#9CAFAA',
+        selected: '#e0f7e9',
         borderColor: '#454B1B',
         buttonColor: "#50C878",
         camera: "#1e2631ff",
         cardColor: "#B2BEB5",
         drawerActive: "#228B22",
         drawerActiveTint: "#fff8f4ff",
-        iconColor: "#5F8575"
+        drawerInActiveTint: "#241e00ff",
+        iconColor: "#5F8575",
+        showAll: "#C1E1C1"
     }
 }
 /*

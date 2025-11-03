@@ -717,6 +717,8 @@ app.get("/getfridgefood", async (req, res) => {
 app.post("/deletefridgefood", async (req, res) => {
     console.log(req.body)
     const id = req.body.id
+    const public_id = req.body.public_id
+
     const photoPath = req.body.photo
     const quantity = req.body.quantity
     const deleteQuantity = req.body.deleteQuantity
@@ -736,7 +738,8 @@ app.post("/deletefridgefood", async (req, res) => {
                 return res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
             }
 
-            await execAsync(`del "${photoPath}"`)
+            await cloudinary.uploader.destroy(public_id, { resource_type: "image" });
+            console.log(`Deleted Cloudinary image: ${public_id}`);
 
             res.send({ status: "ok", data: "Fridge food deleted successfully" })
         } catch (error) {

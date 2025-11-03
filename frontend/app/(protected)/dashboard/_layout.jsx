@@ -25,7 +25,9 @@ export default function DashboardLayout() {
           fontFamily: "AlanSans"
         },
         drawerActiveBackgroundColor: theme.drawerActive,
-        drawerActiveTintColor: theme.uiBackground,
+        drawerInactiveBackgroundColor: theme.uiBackground,
+        drawerActiveTintColor: theme.drawerActiveTint,
+        drawerInactiveTintColor: theme.drawerInActiveTint,
         headerStyle: {
           backgroundColor: theme.navBackground,
         },

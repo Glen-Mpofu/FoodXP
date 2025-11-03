@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform, ImageBackground, Alert, ScrollView, Modal, Dimensions } from "react-native";
+import { StyleSheet, Text, View, Button, Image, TouchableOpacity, Platform, ImageBackground, Alert, ScrollView, Modal, Dimensions, useColorScheme } from "react-native";
 
 //camera
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -24,11 +24,14 @@ import axios from "axios"
 import { router, useRouter } from "expo-router";
 import ThemedTextInput from "../../../components/ThemedTextInput";
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { Colors } from "../../../constants/Colors";
 
 export default function CameraScreen() {
   const [facing, setFacing] = useState("back");
   const [permission, requestPermission] = useCameraPermissions();
 
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light;
   const cameraRef = useRef(null)
   const [photo, setPhoto] = useState(null)
   const [hasMediaLibraryPermission, requestMediaLibraryPermission] = MediaLibrary.usePermissions();
@@ -126,7 +129,7 @@ export default function CameraScreen() {
   if (!permission.granted) {
     // Camera permission not granted yet
     return (
-      <ThemedView style={styles.container}>
+      <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground }]}>
         <ThemedText style={{ textAlign: "center" }}>
           We need your permission to show the camera
         </ThemedText>
@@ -252,29 +255,41 @@ export default function CameraScreen() {
           ref={cameraRef}
           mute={true}
         >
+          <ThemedButton onPress={() => {
+            router.push("dashboard")
+          }} style={{ width: 50, margin: 10 }}>
+            <Ionicons
+              name={"arrow-back"} size={40}
+              accessibilityLabel="Back Button"
+              color={theme.camera}
+            />
+          </ThemedButton>
           <ThemedView style={styles.buttonContainer}>
 
-            <ThemedButton onPress={toggleCameraFacing} style={{ background: "transparent", width: 50 }}>
+            <ThemedButton onPress={toggleCameraFacing} style={{ width: 50 }}>
               <Ionicons
                 name="camera-reverse"
                 size={30}
                 accessibilityLabel="Camera Face"
+                color={theme.camera}
               />
             </ThemedButton>
 
-            <ThemedButton onPress={captureImage} style={{ background: "transparent", width: 50, margin: 10 }}>
+            <ThemedButton onPress={captureImage} style={{ width: 50, margin: 10 }}>
               <Ionicons
                 name="camera-sharp"
                 size={30}
                 accessibilityLabel="Capture Image"
+                color={theme.camera}
               />
             </ThemedButton>
 
-            <ThemedButton onPress={toggleCameraTorch} style={{ background: "transparent", width: 50, marginRight: 10 }}>
+            <ThemedButton onPress={toggleCameraTorch} style={{ width: 50, marginRight: 10 }}>
               <Ionicons
                 name={torchIcon}
                 size={30}
                 accessibilityLabel="Torch"
+                color={theme.camera}
               />
             </ThemedButton>
           </ThemedView>
@@ -286,7 +301,7 @@ export default function CameraScreen() {
           style={styles.modal}
           transparent={true}
         >
-          <ThemedView style={styles.uploadContainer}>
+          <ThemedView style={[styles.uploadContainer, { backgroundColor: theme.uiBackground }]}>
             <ThemedText>Image Captured</ThemedText>
 
             <Image source={{ uri: photo }} style={styles.imagePreview} />

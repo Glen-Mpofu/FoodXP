@@ -105,7 +105,8 @@ const Fridge = () => {
       const result = await axios.post(`${API_BASE_URL}/deletefridgefood`, {
         id: deletingItem.id,
         deleteQuantity,
-        quantity: deletingItem.quantity
+        quantity: deletingItem.quantity,
+        public_id: deletingItem.public_id
       }, {
         headers: { Authorization: `Bearer ${userToken}` }
       });
@@ -270,7 +271,7 @@ const Fridge = () => {
           onRequestClose={() => setShowDonateModal(false)}
         >
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
               <ThemedText style={styles.modalTitle}>Select Food to Donate</ThemedText>
 
               <ScrollView contentContainerStyle={{ paddingVertical: 10 }}>
@@ -279,7 +280,7 @@ const Fridge = () => {
                   return (
                     <TouchableOpacity
                       key={item.id}
-                      style={[styles.modalItem, selected && styles.selectedItem]}
+                      style={[styles.modalItem, selected && { backgroundColor: theme.selected, borderColor: "#34a853" }]}
                       onPress={() => toggleSelectItem(item)}
                     >
                       <Image source={{ uri: item.photo }} style={styles.modalImg} />
@@ -308,7 +309,7 @@ const Fridge = () => {
                 <ThemedButton style={[styles.btn, { backgroundColor: "#81c995" }]} onPress={handleDonateConfirm}>
                   <ThemedText>Confirm Donation</ThemedText>
                 </ThemedButton>
-                <ThemedButton style={[styles.btn, { backgroundColor: "#ccc" }]} onPress={() => setShowDonateModal(false)}>
+                <ThemedButton style={[styles.btn, { backgroundColor: theme.cardColor }]} onPress={() => setShowDonateModal(false)}>
                   <ThemedText>Cancel</ThemedText>
                 </ThemedButton>
               </View>
@@ -324,7 +325,7 @@ const Fridge = () => {
           onRequestClose={() => setShowEditModal(false)}
         >
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
               <ThemedText style={styles.modalTitle}>Edit Food</ThemedText>
 
               {editingItem && (
@@ -378,7 +379,7 @@ const Fridge = () => {
                 </ThemedButton>
 
                 <ThemedButton
-                  style={[styles.btn, { backgroundColor: "#ccc" }]}
+                  style={[styles.btn, { backgroundColor: theme.cardColor }]}
                   onPress={() => setShowEditModal(false)}
                 >
                   <ThemedText>Cancel</ThemedText>
@@ -396,7 +397,7 @@ const Fridge = () => {
           onRequestClose={() => setShowDeleteModal(false)}
         >
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
               <ThemedText style={styles.modalTitle}>Remove Some Food</ThemedText>
 
               {deletingItem && (
@@ -428,7 +429,7 @@ const Fridge = () => {
                 </ThemedButton>
 
                 <ThemedButton
-                  style={[styles.btn, { backgroundColor: "#ccc" }]}
+                  style={[styles.btn, { backgroundColor: theme.cardColor }]}
                   onPress={() => setShowDeleteModal(false)}
                 >
                   <ThemedText>Cancel</ThemedText>
@@ -466,8 +467,7 @@ const styles = StyleSheet.create({
   modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.6)" },
   modalContent: { width: "90%", maxHeight: "80%", backgroundColor: "#fff", borderRadius: 16, padding: 15 },
   modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 10, textAlign: "center" },
-  modalItem: { flexDirection: "row", alignItems: "center", padding: 10, marginBottom: 10, borderRadius: 10, backgroundColor: "#f9f9f9", borderWidth: 1, borderColor: "#ddd" },
-  selectedItem: { backgroundColor: "#e0f7e9", borderColor: "#34a853" },
+  modalItem: { flexDirection: "row", alignItems: "center", padding: 10, marginBottom: 10, borderRadius: 10, borderWidth: 1, borderColor: "#ddd" },
   modalImg: { width: 60, height: 60, borderRadius: 8, marginRight: 10 },
   modalButtons: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
   qtyControl: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#aaa", borderRadius: 6, paddingHorizontal: 6 },

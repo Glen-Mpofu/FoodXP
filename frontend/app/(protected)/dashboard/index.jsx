@@ -107,7 +107,7 @@ export default function Dashboard() {
               item.type === "show_all" ? (
                 <TouchableOpacity
                   onPress={() => router.replace("/dashboard/pantry")}
-                  style={[styles.foodItem, styles.showAllCard]}
+                  style={[styles.foodItem, styles.showAllCard, , { backgroundColor: theme.showAll }]}
                 >
                   <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
                     Show All
@@ -140,7 +140,7 @@ export default function Dashboard() {
               item.type === "show_all" ? (
                 <TouchableOpacity
                   onPress={() => router.replace("/dashboard/fridge")}
-                  style={[styles.foodItem, styles.showAllCard]}
+                  style={[styles.foodItem, styles.showAllCard, , { backgroundColor: theme.showAll }]}
                 >
                   <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
                     Show All
@@ -175,7 +175,7 @@ export default function Dashboard() {
                 item.type === "show_all" ? (
                   <TouchableOpacity
                     onPress={() => router.replace("/dashboard/recipes")}
-                    style={[styles.foodItem, styles.showAllCard]}
+                    style={[styles.foodItem, styles.showAllCard, { backgroundColor: theme.showAll }]}
                   >
                     <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
                       Show All
@@ -284,7 +284,6 @@ const styles = StyleSheet.create({
     marginBottom: 4
   },
   showAllCard: {
-    backgroundColor: 'grey',
     justifyContent: 'center',
     width: 110, // ✅ same as foodItem width
     height: 150, // optional for uniform look

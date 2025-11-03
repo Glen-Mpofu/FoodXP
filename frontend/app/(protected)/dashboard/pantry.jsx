@@ -261,7 +261,7 @@ const Pantry = () => {
                     <TouchableOpacity key={item.id} onPress={() => openEditModal(item)}>
                       <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                         <Image
-                          source={{ uri: item.photo}}
+                          source={{ uri: item.photo }}
                           style={styles.img}
                         />
                         <ThemedText style={styles.foodName}>{item.name}</ThemedText>
@@ -304,7 +304,7 @@ const Pantry = () => {
           onRequestClose={() => setShowDonateModal(false)}
         >
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
               <ThemedText style={styles.modalTitle}>Select Food to Donate</ThemedText>
 
               <ScrollView contentContainerStyle={{ paddingVertical: 10 }}>
@@ -313,7 +313,7 @@ const Pantry = () => {
                   return (
                     <TouchableOpacity
                       key={item.id}
-                      style={[styles.modalItem, selected && styles.selectedItem]}
+                      style={[styles.modalItem, selected && { backgroundColor: theme.selected, borderColor: "#34a853" }]}
                       onPress={() => toggleSelectItem(item)}
                     >
                       <Image
@@ -345,7 +345,7 @@ const Pantry = () => {
                 <ThemedButton style={[styles.btn, { backgroundColor: "#81c995" }]} onPress={handleDonateConfirm}>
                   <ThemedText>Confirm Donation</ThemedText>
                 </ThemedButton>
-                <ThemedButton style={[styles.btn, { backgroundColor: "#ccc" }]} onPress={() => setShowDonateModal(false)}>
+                <ThemedButton style={[styles.btn, { backgroundColor: theme.cardColor }]} onPress={() => setShowDonateModal(false)}>
                   <ThemedText>Cancel</ThemedText>
                 </ThemedButton>
               </View>
@@ -361,7 +361,7 @@ const Pantry = () => {
           onRequestClose={() => setShowEditModal(false)}
         >
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
               <ThemedText style={styles.modalTitle}>Edit Food</ThemedText>
 
               <ScrollView contentContainerStyle={{ alignItems: "center" }}>
@@ -426,7 +426,7 @@ const Pantry = () => {
                 <ThemedButton style={[styles.btn, { backgroundColor: "#81c995" }]} onPress={() => { handleEditConfirm() }}>
                   <ThemedText>Save Changes</ThemedText>
                 </ThemedButton>
-                <ThemedButton style={[styles.btn, { backgroundColor: "#ccc" }]} onPress={() => setShowEditModal(false)}>
+                <ThemedButton style={[styles.btn, { backgroundColor: theme.cardColor }]} onPress={() => setShowEditModal(false)}>
                   <ThemedText>Cancel</ThemedText>
                 </ThemedButton>
               </View>
@@ -442,7 +442,7 @@ const Pantry = () => {
           onRequestClose={() => setShowDeleteModal(false)}
         >
           <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
               <ThemedText style={styles.modalTitle}>Remove Some Food</ThemedText>
 
               {deletingItem && (
@@ -474,7 +474,7 @@ const Pantry = () => {
                 </ThemedButton>
 
                 <ThemedButton
-                  style={[styles.btn, { backgroundColor: "#ccc" }]}
+                  style={[styles.btn, { backgroundColor: theme.cardColor }]}
                   onPress={() => setShowDeleteModal(false)}
                 >
                   <ThemedText>Cancel</ThemedText>
@@ -506,13 +506,13 @@ const styles = StyleSheet.create({
   qty: { fontSize: 13, color: "#5a3c1a", marginBottom: 6 },
   buttonRow: { flexDirection: "row", justifyContent: "space-between", width: "100%" },
   btn: { flex: 1, margin: 3, paddingVertical: 8, borderRadius: 8, alignItems: "center", height: 50, zIndex: 1 },
-  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyContainer: { flex: 1, justifyContent: "", alignItems: "center", padding: 20 },
   heading: { fontSize: 24, fontWeight: "bold", color: "#4a2c0a" },
   modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.6)" },
-  modalContent: { width: "90%", maxHeight: "80%", backgroundColor: "#fff", borderRadius: 16, padding: 15 },
+  modalContent: { width: "90%", maxHeight: "80%", borderRadius: 16, padding: 15 },
   modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 10, textAlign: "center", color: "#4a2c0a" },
-  modalItem: { flexDirection: "row", alignItems: "center", padding: 10, marginBottom: 10, borderRadius: 10, backgroundColor: "#f9f9f9", borderWidth: 1, borderColor: "#ddd" },
-  selectedItem: { backgroundColor: "#e0f7e9", borderColor: "#34a853" },
+  modalItem: { flexDirection: "row", alignItems: "center", padding: 10, marginBottom: 10, borderRadius: 10, borderWidth: 1, borderColor: "#ddd" },
+  selectedItem: { borderColor: "#34a853" },
   modalImg: { width: 60, height: 60, borderRadius: 8, marginRight: 10 },
   modalButtons: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
   qtyControl: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#aaa", borderRadius: 6, paddingHorizontal: 6 },

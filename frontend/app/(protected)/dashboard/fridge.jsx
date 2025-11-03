@@ -234,7 +234,7 @@ const Fridge = () => {
                       openEditModal(item)
                     }}>
                       <View key={item.id} style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
-                        <Image source={{ uri: convertFilePathtoUri(item.photo) }} style={styles.img} />
+                        <Image source={{ uri: item.photo }} style={styles.img} />
                         <ThemedText>{item.name}</ThemedText>
                         <ThemedText>Qty: {item.quantity}</ThemedText>
 
@@ -282,7 +282,7 @@ const Fridge = () => {
                       style={[styles.modalItem, selected && styles.selectedItem]}
                       onPress={() => toggleSelectItem(item)}
                     >
-                      <Image source={{ uri: convertFilePathtoUri(item.photo) }} style={styles.modalImg} />
+                      <Image source={{ uri: item.photo }} style={styles.modalImg} />
                       <View style={{ flex: 1 }}>
                         <ThemedText>{item.name}</ThemedText>
                         <ThemedText>Available: {item.quantity}</ThemedText>
@@ -444,11 +444,6 @@ const Fridge = () => {
 };
 
 export default Fridge;
-
-function convertFilePathtoUri(filePath) {
-  const fileName = filePath.split("\\").pop();
-  return `${API_BASE_URL}/uploads/${fileName}`;
-}
 
 const styles = StyleSheet.create({
   container: { flex: 1, width: "100%", height: "100%", },

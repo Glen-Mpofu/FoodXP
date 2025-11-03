@@ -5,18 +5,17 @@ export const Colors = {
     accent: '#161b22',
     success: '#9CAFAA',
 
-
     dark: {
         text: 'white',
         title: 'white',
-        taPlaceholder: "#272607ff",
+        taPlaceholder: "white",
         forgotPassword: "#ffe600ff",
         background: 'black',
         navBackground: 'black',
         uiBackground: '#36454F',
         imageColor: '#9CAFAA',
         borderColor: '#1e2401ff',
-        buttonColor: "#ADD8E6",
+        buttonColor: "#191970",
         camera: "#1e2631ff",
         cardColor: "#36454F",
         drawerActive: "black",

@@ -56,14 +56,14 @@ const Recipes = () => {
   }
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: " theme.uiBackground", width: screenWidth }]}>
+    <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground, width: screenWidth }]}>
       {rows.length > 0 ? (
-        <ScrollView showsHorizontalScrollIndicator={false} style={[styles.scrollContainer, { width: screenWidth }]}
+        <ScrollView style={[styles.scrollContainer, { width: screenWidth }]}
           contentContainerStyle={{
             flexGrow: 1,
             width: screenWidth,
           }}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
         >
           {rows.map((row, rowIndex) => (
             <View key={rowIndex} style={{ width: "100%" }}>
@@ -88,7 +88,7 @@ const Recipes = () => {
 
                     {/* Ingredients */}
                     <ScrollView
-                      style={{ padding: 8, marginLeft: 10, backgroundColor: theme.uiBackground, borderRadius: 8 }}
+                      style={{ padding: 8, marginLeft: 10, backgroundColor: theme.optionBackground, borderRadius: 8 }}
                       contentContainerStyle={{ flexGrow: 1 }}
                     >
                       {Array.from({ length: 20 }, (_, i) => {

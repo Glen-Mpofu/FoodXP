@@ -1,4 +1,4 @@
-import { Image, Modal, Platform, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { Image, Modal, Platform, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import ThemedView from '../../../components/ThemedView'
 import ThemedText from '../../../components/ThemedText'
@@ -13,8 +13,11 @@ import ThemedTextInput from '../../../components/ThemedTextInput';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_BASE_URL } from "@env"
+import { Colors } from '../../../constants/Colors';
 
 const UploadFood = () => {
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light;
   const [photo, setPhoto] = useState(null)
   const [prediction, setPrediction] = useState(null)
   const [name, onNameChange] = useState("")
@@ -123,9 +126,9 @@ const UploadFood = () => {
           } else {
             await AsyncStorage.setItem("refreshFridge", "true");
           }
-          Toast.show({ type: "success", text1: res.data.data, useModal: false })
+          Toast.show({ type: "success", text1: res.data.data, })
         } else {
-          Toast.show({ type: "error", text1: res.data.data, useModal: false })
+          Toast.show({ type: "error", text1: res.data.data, })
         }
       }).catch(err => {
         console.error("Something went wrong", err)
@@ -134,8 +137,8 @@ const UploadFood = () => {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.heading}>Upload Food</ThemedText>
+    <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground }]}>
+      <ThemedText style={[styles.heading, { color: theme.text }]}>Upload Food</ThemedText>
 
       <View style={{ flexDirection: "row", marginTop: 20 }}>
         <TouchableOpacity onPress={() => router.push("/dashboard/")}>
@@ -149,7 +152,7 @@ const UploadFood = () => {
 
       {photo && (
         <Modal visible={true} style={styles.modal} transparent={true}>
-          <ThemedView style={styles.uploadContainer}>
+          <ThemedView style={[styles.uploadContainer, { backgroundColor: theme.navBackground }]}>
             <ThemedText>Image Captured</ThemedText>
             <Image source={{ uri: photo }} style={styles.imagePreview} />
             <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
@@ -180,11 +183,11 @@ const UploadFood = () => {
 
             <View style={{ flexDirection: "row", padding: 10 }}>
               <TouchableOpacity onPress={() => setPhoto(null)} style={{ margin: 5, marginRight: 15 }}>
-                <Ionicons name="close-outline" size={50} />
+                <Ionicons name="close-outline" size={50} color={theme.iconColor} />
               </TouchableOpacity>
 
               <TouchableOpacity onPress={saveFood} style={{ margin: 5, marginLeft: 15 }}>
-                <Ionicons name="checkmark" size={50} />
+                <Ionicons name="checkmark" size={50} color={theme.iconColor} />
               </TouchableOpacity>
             </View>
           </ThemedView>
@@ -197,9 +200,9 @@ const UploadFood = () => {
 export default UploadFood
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", width: "100%", marginTop: 50 },
+  container: { flex: 1, alignItems: "center", width: "100%", },
   heading: { fontSize: 24, fontWeight: "bold" },
-  uploadContainer: { width: "100%", flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(255, 255, 255, 0.9)", borderRadius: 90 },
+  uploadContainer: { width: "100%", flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 90 },
   modal: { flex: 1, width: "100%" },
   imagePreview: { width: 300, height: 300, borderRadius: 10, marginVertical: 10 },
 })

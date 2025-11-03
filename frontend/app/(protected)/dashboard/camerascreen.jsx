@@ -189,7 +189,7 @@ export default function CameraScreen() {
     await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }, { withCredentials: true, headers: { Authorization: `Bearer ${userToken}` } })
       .then(async (res) => {
         if (res.data.status === "ok") {
-          await AsyncStorage.setItem("refreshKitchen", "true");
+          await AsyncStorage.setItem("refreshRecipes", "true");
           if (prediction === "pantry") {
             await AsyncStorage.setItem("refreshPantry", "true");
           } else {

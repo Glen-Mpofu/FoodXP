@@ -63,7 +63,7 @@ const Index = () => {
                     Toast.show({ type: "success", text1: res.data.data, useModal: false })
                     await AsyncStorage.setItem("userToken", res.data.token)
 
-                    await AsyncStorage.setItem("refreshKitchen", "false")
+                    await AsyncStorage.setItem("refreshRecipes", "false")
                     await AsyncStorage.setItem("refreshPantry", "false")
                     await AsyncStorage.setItem("refreshFridge", "false")
 

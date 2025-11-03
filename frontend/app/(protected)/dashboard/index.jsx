@@ -25,41 +25,41 @@ export default function Dashboard() {
   const itemWidth = 120;
   const maxItems = Math.floor(screenWidth / itemWidth);
 
-  // --- Function to load all data ---
+  const loadPantry = async (token) => {
+    const res = await axios.get(`${API_BASE_URL}/getpantryfood`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setPantryFood(res.data.data);
+  };
+
+  const loadFridge = async (token) => {
+    const res = await axios.get(`${API_BASE_URL}/getfridgefood`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setFridgeFood(res.data.data);
+  };
+
+  const loadRecipes = async (token) => {
+    const res = await axios.get(`${API_BASE_URL}/get-recipes`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setRecipes(res.data.data);
+  };
+
+  // Master function
   const loadData = async () => {
     const token = await AsyncStorage.getItem("userToken");
-    if (!token) {
-      router.replace("/");
-      return;
-    }
+    if (!token) return router.replace("/");
+
     setUserToken(token);
 
-    const baseUrl = API_BASE_URL;
-
-    try {
-      // pantry food
-      const pantryRes = await axios.get(`${baseUrl}/getpantryfood`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setPantryFood(pantryRes.data.data);
-
-      // fridge food
-      const fridgeRes = await axios.get(`${baseUrl}/getfridgefood`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setFridgeFood(fridgeRes.data.data);
-
-      // recipes (only load once if empty)
-      if (recipes.length === 0) {
-        const recipeRes = await axios.get(`${baseUrl}/get-recipes`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setRecipes(recipeRes.data.data);
-      }
-    } catch (error) {
-      console.error("Failed to load dashboard data:", error.message);
-    }
+    await Promise.all([
+      loadPantry(token),
+      loadFridge(token),
+      loadRecipes(token)
+    ]);
   };
+
 
   // --- Run once on mount ---
   useEffect(() => {
@@ -70,12 +70,20 @@ export default function Dashboard() {
   useFocusEffect(
     useCallback(() => {
       const handleFocus = async () => {
-        const shouldRefresh = await AsyncStorage.getItem("refreshKitchen");
+        const shouldRefresh = await AsyncStorage.getItem("refreshRecipes");
+        const shouldRefreshPantry = await AsyncStorage.getItem("refreshPantry");
+        const shouldRefreshFridge = await AsyncStorage.getItem("refreshFridge");
 
         // Always reload when screen gains focus for the first time
         if (shouldRefresh === "true" || shouldRefresh === null) {
           await loadData();
-          await AsyncStorage.setItem("refreshKitchen", "false");
+          await AsyncStorage.setItem("refreshRecipes", "false");
+        }
+        if (shouldRefreshPantry === "true" || shouldRefresh === null) {
+          await loadPantry(userToken);
+        }
+        if (shouldRefreshFridge === "true" || shouldRefresh === null) {
+          await loadFridge(userToken);
         }
       };
 

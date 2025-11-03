@@ -34,6 +34,7 @@ export default function Dashboard() {
 
   const loadFridge = async (token) => {
     const res = await axios.get(`${API_BASE_URL}/getfridgefood`, {
+      withCredentials: true,
       headers: { Authorization: `Bearer ${token}` },
     });
     setFridgeFood(res.data.data);
@@ -41,6 +42,7 @@ export default function Dashboard() {
 
   const loadRecipes = async (token) => {
     const res = await axios.get(`${API_BASE_URL}/get-recipes`, {
+      withCredentials: true,
       headers: { Authorization: `Bearer ${token}` },
     });
     setRecipes(res.data.data);
@@ -94,7 +96,7 @@ export default function Dashboard() {
   return (
     <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground }]}>
       <View style={styles.rowFoodContainer}>
-        <ThemedView style={[styles.foodContainer]}>
+        <ThemedView style={[styles.foodContainer, {backgroundColor: theme.background}]}>
           {/* Pantry Food */}
           <ThemedText style={styles.heading}>Pantry foods</ThemedText>
           <FlatList
@@ -115,7 +117,7 @@ export default function Dashboard() {
               ) : (
                 <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                   <Image
-                    source={{ uri: convertFilePathtoUri(item.photo) }}
+                    source={{ uri: item.photo}}
                     style={styles.img}
                   />
                   <ThemedText style={styles.nameTxt}>{item.name}</ThemedText>
@@ -128,7 +130,7 @@ export default function Dashboard() {
         </ThemedView>
 
         {/* Fridge Food */}
-        <ThemedView style={styles.foodContainer}>
+        <ThemedView style={[styles.foodContainer, {backgroundColor: theme.background}]}>
           <ThemedText style={styles.heading}>Fridge foods</ThemedText>
           <FlatList
             horizontal
@@ -163,7 +165,7 @@ export default function Dashboard() {
 
       {/* Recipes */}
       <View style={styles.rowFoodContainer}>
-        <ThemedView style={styles.recipeContainer}>
+        <ThemedView style={[styles.recipeContainer, {backgroundColor: theme.background}]}>
           <ThemedText style={styles.heading}>Recipes</ThemedText>
           {recipes && recipes.length > 0 ? (
             <FlatList
@@ -204,7 +206,7 @@ export default function Dashboard() {
       </View>
 
       {/* Fun Fact */}
-      <ThemedText style={styles.funFactText}>
+      <ThemedText style={[styles.funFactText, {backgroundColor: theme.background}]}>
         In South Africa, 10 million tonnes of food go to waste every year.
         This accounts for a third of the 31 million tonnes that are produced annually in South Africa.
         Together, fruits, vegetables and cereals account for 70% of the wastage and loss.
@@ -240,7 +242,6 @@ const styles = StyleSheet.create({
     padding: 10,
     width: "100%",
     paddingHorizontal: 0,
-    backgroundColor: "#ffffffff",
     borderRadius: 30,
     margin: 5,
     shadowColor: "#000",

@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
         paddingVertical: 40,  // controls the vertical space of the gradient
         alignItems: "center",
         justifyContent: "flex-end",
-        height: 230,
+        flex: 0.3
     },
     heading: {
         fontSize: 40,
@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
     passwordContainer: { height: 70, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center" },
     footer: {
         width: "100%",
-        height: 180,
+        flex: 0.3,
         justifyContent: "center",
         alignItems: "center",
         borderTopLeftRadius: 25,

@@ -3,6 +3,13 @@ const express = require("express");
 const session = require("express-session") // npm install express-session
 const axios = require("axios")
 const jwt = require("jsonwebtoken") // creating a token for the pages of the app. prevents access to pages without login
+const cloudinary = require('cloudinary').v2;
+
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 //database table
 const { initialiseTables } = require("./schemas/tableSetup")
@@ -47,7 +54,7 @@ const cors = require("cors");
 const { type } = require("os");
 const { title } = require("process");
 app.use(cors({
-    origin: ["http://localhost:8081", "http://192.168.101.240:8081"],
+    origin: ["http://localhost:8081", "http://192.168.137.1:8081"],
     credentials: true
 }))
 
@@ -264,12 +271,11 @@ const classifyModelFile = path.join(__dirname, "model", "pantry_frigde_model.py"
 app.post("/classifyfood", async (req, res) => {
     try {
         const { photo } = req.body;
-        console.log("Base64 length:", photo)
         if (!photo) return res.status(400).json({ error: "No image provided" });
-        console.log("Base64 length:", photo.length)
+        console.log("Photo URL:", photo)
 
         //sending the photo to flask
-        const response = await axios.post("http://192.168.101.240:5002/predict", { photo });
+        const response = await axios.post("http://192.168.137.1:5002/predict", { photo });
 
         console.log("Python result: ", response.data)
         res.json(response.data)
@@ -423,57 +429,72 @@ app.get("/loadshedding/:areaId", async (req, res) => {
     }
 });
 
-// pantry
-// saving
+//saving
 app.post("/savepantryfood", async (req, res) => {
-    try {
-        const { foodData } = req.body
-        console.log(foodData)
+  try {
+    const { foodData } = req.body;
 
-        const pantryFood = {
-            name: foodData.name,
-            quantity: foodData.quantity,
-            date: foodData.date,
-            photo: foodData.photo,
-        }
+    const pantryFood = {
+      name: foodData.name,
+      quantity: foodData.quantity,
+      date: foodData.date,
+      photo: foodData.photo,
+    };
 
-        if (!pantryFood.photo) res.send({ status: "error", data: "no photo provided" });
-
-        //file name
-        const filename = `food_${Date.now()}.jpg`;
-        const filePath = path.join(uploadDir, filename)
-
-        const base64Data = pantryFood.photo.replace(/^data:image\/\w+;base64,/, "");
-        console.log("Base64 length:", base64Data.length);
-
-        fs.writeFileSync(filePath, base64Data, "base64")
-        console.log("Image saved to: ", filePath)
-
-        //getting email from token
-        const token = foodData.token
-        const decoded = jwt.verify(token, "SECRET_KEY")
-        const email = decoded.email
-
-        const foodie = await getFoodie(email)
-        //console.log(foodie)
-        //here save pantry food infor to the db
-        await pool.query(
-            `
-                    INSERT INTO PANTRY_FOOD (NAME, QUANTITY, EXPIRY_DATE, FOODIE_ID, PHOTO)
-                    Values($1, $2, $3, $4, $5);
-                `, [pantryFood.name, pantryFood.quantity, pantryFood.date, foodie.data.id, filePath]
-        ).then((result) => {
-            if (result.rowCount <= 0) {
-                return res.send({ status: "error", data: "Failed to add food" })
-            }
-
-            res.send({ status: "ok", data: "Pantry food added" })
-        })
-    } catch (error) {
-        console.error("Something went wrong", error)
+    if (!pantryFood.photo) {
+      return res.send({ status: "error", data: "No photo provided" });
     }
 
-})
+    // --- Upload to Cloudinary ---
+    let photoUrl, publicId;
+    try {
+      const formData = new FormData();
+      formData.append("file", pantryFood.photo);
+      formData.append("upload_preset", process.env.UPLOAD_PRESET);
+
+      const response = await axios.post(
+        `https://api.cloudinary.com/v1_1/${process.env.CLOUD_NAME}/image/upload`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      photoUrl = response.data.secure_url;
+      publicId = response.data.public_id; // <-- store this for deletion later
+      console.log("Uploaded to Cloudinary:", photoUrl, publicId);
+    } catch (error) {
+      console.error("Cloudinary upload failed:", error.response?.data || error.message);
+      return res.send({ status: "error", data: "Cloudinary upload failed" });
+    }
+
+    // --- Verify token & get foodie ---
+    const token = foodData.token;
+    const decoded = jwt.verify(token, "SECRET_KEY");
+    const email = decoded.email;
+
+    const foodie = await getFoodie(email);
+
+    // --- Save pantry food to DB ---
+    const result = await pool.query(
+      `
+        INSERT INTO PANTRY_FOOD (NAME, QUANTITY, EXPIRY_DATE, FOODIE_ID, PHOTO, PUBLIC_ID)
+        VALUES ($1, $2, $3, $4, $5, $6);
+      `,
+      [pantryFood.name, pantryFood.quantity, pantryFood.date, foodie.data.id, photoUrl, publicId]
+    );
+
+    if (result.rowCount <= 0) {
+      return res.send({ status: "error", data: "Failed to add food" });
+    }
+
+    res.send({ status: "ok", data: "Pantry food added" });
+
+  } catch (error) {
+    console.error("❌ Something went wrong:", error);
+    res.status(500).send({ status: "error", data: "Server error" });
+  }
+});
+
+
 
 // retrieving all 
 app.get("/getpantryfood", async (req, res) => {
@@ -500,6 +521,7 @@ app.get("/getpantryfood", async (req, res) => {
 app.post("/deletepantryfood", async (req, res) => {
     console.log(req.body)
     const id = req.body.id
+    const public_id = req.body.public_id
     const photoPath = req.body.photo
     const quantity = req.body.quantity
     const deleteQuantity = req.body.deleteQuantity
@@ -509,8 +531,8 @@ app.post("/deletepantryfood", async (req, res) => {
             //deleting from the fridge_food table
             const result = await pool.query(
                 `
-                        DELETE FROM PANTRY_FOOD WHERE ID = $1
-                    `,
+                DELETE FROM PANTRY_FOOD WHERE ID = $1
+            `,
                 [id]
             )
 
@@ -518,8 +540,9 @@ app.post("/deletepantryfood", async (req, res) => {
                 return res.send({ status: "error", data: "Something went wrong while deleting. Wrong food id maybe!" })
             }
 
-            await execAsync(`del "${photoPath}"`)
-            console.log(photoPath)
+            await cloudinary.uploader.destroy(public_id,  { resource_type: "image" });
+            console.log(`Deleted Cloudinary image: ${public_id}`);
+
             res.send({ status: "ok", data: "Pantry food deleted successfully" })
         } catch (error) {
             console.error(error)
@@ -814,8 +837,39 @@ app.get("/get-recipes", async (req, res) => {
                 }
 
             }
-            console.log("Meals fetched:", meals)
+            console.log("Individual ingredients Meals fetched:", meals)
 
+            //Multi ingredient code 
+            // Multi ingredient code
+            if (allIngredients.length > 1) {
+                const multiIngredientMeals = [];
+                
+                // Decide how many ingredients per query (random between 2 and 4, for example)
+                const maxGroupSize = Math.min(4, allIngredients.length);
+
+                // Shuffle ingredients array to randomize grouping
+                const shuffledIngredients = allIngredients.sort(() => 0.5 - Math.random());
+
+                for (let groupSize = 2; groupSize <= maxGroupSize; groupSize++) {
+                    for (let i = 0; i <= shuffledIngredients.length - groupSize; i++) {
+                        const ingredientGroup = shuffledIngredients.slice(i, i + groupSize);
+                        const groupQuery = encodeURIComponent(ingredientGroup.join(","));
+                        try {
+                            const response = await axios.get(
+                                `https://www.themealdb.com/api/json/v2/65232507/filter.php?i=${groupQuery}`
+                            );
+                            if (response.data.meals != null) {
+                                multiIngredientMeals.push(...response.data.meals);
+                            }
+                        } catch (err) {
+                            console.error("Error fetching multi-ingredient meals:", err.message);
+                        }
+                    }
+                }
+
+                // Merge the multi-ingredient meals with the single-ingredient meals
+                meals.push(...multiIngredientMeals);
+            }
             const mealInstruct = []
             // getting the ingredients and instructions for every meal
             for (let index = 0; index < meals.length; index++) {

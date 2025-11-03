@@ -119,7 +119,8 @@ const Pantry = () => {
       const result = await axios.post(`${API_BASE_URL}/deletepantryfood`, {
         id: deletingItem.id,
         deleteQuantity: deleteQuantity,
-        quantity: deletingItem.quantity
+        quantity: deletingItem.quantity,
+        public_id: deletingItem.public_id
       }, {
         headers: { Authorization: `Bearer ${userToken}` }
       });
@@ -260,7 +261,7 @@ const Pantry = () => {
                     <TouchableOpacity key={item.id} onPress={() => openEditModal(item)}>
                       <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                         <Image
-                          source={{ uri: convertFilePathtoUri(item.photo) }}
+                          source={{ uri: item.photo}}
                           style={styles.img}
                         />
                         <ThemedText style={styles.foodName}>{item.name}</ThemedText>
@@ -316,7 +317,7 @@ const Pantry = () => {
                       onPress={() => toggleSelectItem(item)}
                     >
                       <Image
-                        source={{ uri: convertFilePathtoUri(item.photo) }}
+                        source={{ uri: item.photo }}
                         style={styles.modalImg}
                       />
                       <View style={{ flex: 1 }}>
@@ -488,11 +489,6 @@ const Pantry = () => {
 };
 
 export default Pantry;
-
-function convertFilePathtoUri(filePath) {
-  const fileName = filePath.split("\\").pop();
-  return `${API_BASE_URL}/uploads/${fileName}`;
-}
 
 const styles = StyleSheet.create({
   container: { flex: 1, width: "100%", height: "100%" },

@@ -23,7 +23,8 @@ async function initialiseTables(pool) {
             quantity DOUBLE PRECISION DEFAULT 1,
             expiry_date DATE,
             foodie_id UUID REFERENCES FOODIE(id),
-            photo VARCHAR(150)
+            photo VARCHAR(150),
+            public_id VARCHAR(100) NOT NULL UNIQUE
         );
     `).then((res) => {
         console.log("Pantry_Food Table Ready")
@@ -40,7 +41,8 @@ async function initialiseTables(pool) {
             quantity DOUBLE PRECISION DEFAULT 1,
             isFresh BOOLEAN, 
             foodie_id UUID REFERENCES FOODIE(id),
-            photo VARCHAR(150)
+            photo VARCHAR(150),
+            public_id VARCHAR(100) NOT NULL UNIQUE
         );
     `).then((res) => {
         console.log("Fridge_Food Table Ready")

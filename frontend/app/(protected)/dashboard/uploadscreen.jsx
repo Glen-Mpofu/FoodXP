@@ -1,4 +1,4 @@
-import { Image, Modal, Platform, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { Image, Modal, Platform, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import ThemedView from '../../../components/ThemedView'
 import ThemedText from '../../../components/ThemedText'
@@ -13,8 +13,11 @@ import ThemedTextInput from '../../../components/ThemedTextInput';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_BASE_URL } from "@env"
+import { Colors } from '../../../constants/Colors';
 
-const UploadFood = () => {
+const UploadFood = () => {  
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme] ?? Colors.light;
   const [photo, setPhoto] = useState(null)
   const [prediction, setPrediction] = useState(null)
   const [name, onNameChange] = useState("")
@@ -134,8 +137,8 @@ const UploadFood = () => {
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.heading}>Upload Food</ThemedText>
+    <ThemedView style={[styles.container, {backgroundColor: theme.uiBackground}]}>
+      <ThemedText style={[styles.heading, {color: theme.text}]}>Upload Food</ThemedText>
 
       <View style={{ flexDirection: "row", marginTop: 20 }}>
         <TouchableOpacity onPress={() => router.push("/dashboard/")}>
@@ -197,7 +200,7 @@ const UploadFood = () => {
 export default UploadFood
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", width: "100%", marginTop: 50 },
+  container: { flex: 1, alignItems: "center", width: "100%",},
   heading: { fontSize: 24, fontWeight: "bold" },
   uploadContainer: { width: "100%", flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(255, 255, 255, 0.9)", borderRadius: 90 },
   modal: { flex: 1, width: "100%" },

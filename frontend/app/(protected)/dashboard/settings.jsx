@@ -139,7 +139,7 @@ const Settings = () => {
   const closeModal = () => setModalVisible(false);
 
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, {backgroundColor: theme.background}]}>
       <ScrollView contentContainerStyle={{ alignItems: 'center', paddingVertical: 20 }}>
         <Ionicons name="person-circle-outline" size={100} color={theme.iconColor} />
         <ThemedText style={styles.heading}>Account Settings</ThemedText>
@@ -155,11 +155,11 @@ const Settings = () => {
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={[styles.section, {backgroundColor: theme.navBackground}]}>
           <ThemedText style={styles.sectionHeading}>Security</ThemedText>
 
           <TouchableOpacity
-            style={styles.optionButton}
+            style={[styles.optionButton, {backgroundColor: theme.optionBackground}]}
             onPress={() => {
               openModal();
               setSelectedOption('Password');
@@ -169,7 +169,7 @@ const Settings = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.optionButton}
+            style={[styles.optionButton, {backgroundColor: theme.optionBackground}]}
             onPress={() => {
               openModal();
               setSelectedOption('Name');
@@ -179,7 +179,7 @@ const Settings = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.optionButton, { backgroundColor: '#fff0f0' }]}
+            style={[styles.optionButton, {backgroundColor: theme.optionBackground}]}
             onPress={() => {
               openModal();
               setSelectedOption('Delete');
@@ -190,8 +190,8 @@ const Settings = () => {
             </ThemedText>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: theme.buttonColor }]} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color="#fff" />
+          <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: "red" }]} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={20} color={"white"} />
             <ThemedText style={styles.logoutText}>Logout</ThemedText>
           </TouchableOpacity>
         </View>
@@ -204,7 +204,7 @@ const Settings = () => {
       {/* MODAL */}
       <Modal transparent animationType="slide" visible={modalVisible} style={{ flex: 1 }}>
         <View style={styles.modalOverlay}>
-          <ThemedView style={styles.modalContainer}>
+          <ThemedView style={[styles.modalContainer, {backgroundColor: theme.navBackground}]}>
             <ThemedText style={styles.modalTitle}>Change {selectedOption}</ThemedText>
 
             {selectedOption !== 'Delete' && (
@@ -270,7 +270,6 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     width: '95%',
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 15,
     marginBottom: 20,
@@ -290,7 +289,6 @@ const styles = StyleSheet.create({
   },
   section: {
     width: '95%',
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 15,
     shadowColor: '#000',
@@ -306,7 +304,6 @@ const styles = StyleSheet.create({
   optionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f8f8',
     padding: 10,
     borderRadius: 8,
     marginVertical: 6,
@@ -324,9 +321,9 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   logoutText: {
-    color: '#fff',
     fontWeight: 'bold',
     marginLeft: 6,
+    color: "#ddd"
   },
   footerText: {
     marginTop: 25,
@@ -342,7 +339,6 @@ const styles = StyleSheet.create({
 
   modalContainer: {
     width: '80%',
-    backgroundColor: '#fff',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',

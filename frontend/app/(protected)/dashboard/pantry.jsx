@@ -154,8 +154,8 @@ const Pantry = () => {
         return;
       }
 
-      const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id }) => ({
-        id, name, amount: donateQty, photo, foodie_id
+      const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id, actualQuantity }) => ({
+        id, name, amount: donateQty, photo, foodie_id, actualQuantity
       }));
 
       const result = await axios.post(
@@ -225,7 +225,7 @@ const Pantry = () => {
     setSelectedItems(prev => {
       const exists = prev.find(i => i.id === item.id);
       if (exists) return prev.filter(i => i.id !== item.id);
-      return [...prev, { ...item, donateQty: 1 }];
+      return [...prev, { ...item, donateQty: 1, actualQuantity: item.amount, from: "pantry" }];
     });
   };
 

@@ -163,8 +163,9 @@ const Fridge = () => {
     }
 
     try {
-      const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id }) => ({
-        id, name, amount: donateQty, photo, foodie_id
+
+      const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id, actualQuantity, from }) => ({
+        id, name, amount: donateQty, photo, foodie_id, actualQuantity, from
       }));
 
       const result = await axios.post(`${API_BASE_URL}/donate`, { items: donationData }, {
@@ -203,7 +204,7 @@ const Fridge = () => {
     setSelectedItems(prev => {
       const exists = prev.find(i => i.id === item.id);
       if (exists) return prev.filter(i => i.id !== item.id);
-      return [...prev, { ...item, donateQty: 1 }];
+      return [...prev, { ...item, donateQty: 1, actualQuantity: item.amount, from: "fridge" }];
     });
   };
 

@@ -893,6 +893,7 @@ app.get("/", async (req, res) => {
 
 app.post("/donate", async (req, res) => {
     const donations = req.body.items
+    console.log(donations)
 
     for (let index = 0; index < donations.length; index++) {
         const donation = donations[index];
@@ -904,6 +905,39 @@ app.post("/donate", async (req, res) => {
             `,
             [donation.photo, donation.amount, donation.foodie_id, donation.name]
         )
+        const actQuantity = donation.actualQuantity
+        const donateAmount = donation.amount
+
+        const amtLeft = actQuantity - donateAmount
+        if (donation.from === "fridge") {
+            if (amtLeft === 0) {
+                await pool.query(
+                    `
+                        DELETE FROM FRIDGE_FOOD WHERE ID = $1
+                    `, [donation.id]
+                )
+            } else {
+                await pool.query(
+                    `
+                        UPDATE FRIDGE_FOOD SET AMOUNT = $1 WHERE ID = $2
+                    `, [amtLeft, donation.id]
+                )
+            }
+        } else {
+            if (amtLeft === 0) {
+                await pool.query(
+                    `
+                        DELETE FROM PANTRY_FOOD WHERE ID = $1
+                    `, [donation.id]
+                )
+            } else {
+                await pool.query(
+                    `
+                        UPDATE PANTRY_FOOD SET AMOUNT = $1 WHERE ID = $2
+                    `, [amtLeft, donation.id]
+                )
+            }
+        }
 
     }
 

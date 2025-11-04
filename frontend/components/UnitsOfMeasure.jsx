@@ -1,5 +1,6 @@
 const FoodUnits = [
     // General
+    "quantity",
     "piece",
     "serving",
     "portion",
@@ -29,7 +30,7 @@ const FoodUnits = [
 
     // Small cooking measures
     "pinch",
-    "dash"
+    "dash",
 ];
 
 export default FoodUnits

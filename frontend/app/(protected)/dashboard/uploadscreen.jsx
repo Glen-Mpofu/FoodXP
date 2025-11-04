@@ -10,6 +10,7 @@ import ThemedButton from '../../../components/ThemedButton';
 import { Toast } from 'toastify-react-native';
 import * as FileSystem from "expo-file-system/legacy";
 import ThemedTextInput from '../../../components/ThemedTextInput';
+import UnitDropDown from '../../../components/UnitDropDown';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_BASE_URL } from "@env"
@@ -85,6 +86,39 @@ const UploadFood = () => {
     }
   }
 
+  const uploadToCloudinary = async (photoUri) => {
+    const data = new FormData();
+
+    if (Platform.OS === "web") {
+      // Web uses File or Blob directly
+      const response = await fetch(photoUri);
+      const blob = await response.blob();
+      data.append("file", blob);
+    } else {
+      // Native uses { uri, type, name }
+      data.append("file", {
+        uri: photoUri,
+        type: "image/jpeg",
+        name: "upload.jpg",
+      });
+    }
+
+    data.append("upload_preset", "FoodXPUpload");
+
+    const response = await axios.post(
+      `https://api.cloudinary.com/v1_1/dsudzp5uy/image/upload`,
+      data,
+      {
+        // ❌ Remove manual Content-Type, let Axios handle it!
+        headers: { "Content-Type": "multipart/form-data" },
+      }
+    );
+    return {
+      url: response.data.secure_url,
+      public_id: response.data.public_id,
+    };
+  };
+
   const classifyFood = async (photoData) => {
     if (!photoData) return Toast.show({ type: "error", text1: "No photo selected" })
 
@@ -109,16 +143,20 @@ const UploadFood = () => {
     if (!amount.trim()) return Toast.show({ type: "error", text1: "Please enter the food's amount", useModal: false })
     if (!date && prediction === "pantry") return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false })
 
+    //uploading the image to cloudinary 
+    const { url: url, public_id: public_id } = await uploadToCloudinary(photo)
+    console.log(selectedUnit)
     const foodData = {
       name: name.trim(),
       amount: amount.trim(),
-      photo: photo.trim(),
+      photo: url,
+      public_id: public_id,
       token: userToken,
       ...(prediction === "pantry" && { date }),
       unitOfMeasure: selectedUnit
     }
 
-    console.log({ name, amount, date, photo, prediction })
+    //console.log({ name, amount, date, photo, prediction })
 
     //const baseURL = Platform.OS === "web" ? `http://localhost:5001/save${prediction}food` : `http://192.168.137.1:5001/save${prediction}food`
     await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData })
@@ -162,43 +200,11 @@ const UploadFood = () => {
             <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
             <ThemedTextInput placeholder="Amount" value={amount} onChangeText={onAmountChange} keyboardType="numeric" />
 
-            <View style={{
-              borderWidth: 1,
-              borderColor: theme.border,
-              borderRadius: 8,
-              paddingHorizontal: 8,
-              paddingVertical: Platform.OS === "web" ? 6 : 2,
-              backgroundColor: theme.inputBackground,
-              margin: 10
-            }}>
-              {Platform.OS === "web" ? (
-                <select
-                  style={{
-                    backgroundColor: "transparent",
-                    borderWidth: 0,
-                    color: theme.text,
-                    outline: "none",
-                  }}
-                  defaultValue="unit"
-                  onChange={(e) => setSelectedUnit(e.target.value)}
-                >
-                  {FoodUnits.map((unit, index) => (
-                    <option key={index} value={unit}>{unit}</option>
-                  ))}
-
-                </select>
-              ) : (
-                <Picker
-                  selectedValue={selectedUnit}
-                  style={{ height: 40, width: 100, color: theme.text }}
-                  onValueChange={(itemValue) => setSelectedUnit(itemValue)}
-                >
-                  {FoodUnits.map((unit, index) => (
-                    <Picker.Item key={index} label={unit} value={unit} />
-                  ))}
-                </Picker>
-              )}
-            </View>
+            <UnitDropDown
+              selectedUnit={selectedUnit}
+              setSelectedUnit={setSelectedUnit}
+              options={FoodUnits}
+            />
 
             {prediction === "pantry" && (
               <>
@@ -244,7 +250,7 @@ export default UploadFood
 const styles = StyleSheet.create({
   container: { flex: 1, alignItems: "center", width: "100%", },
   heading: { fontSize: 24, fontWeight: "bold" },
-  uploadContainer: { width: "100%", flex: 1, justifyContent: "center", alignItems: "center", borderRadius: 90 },
+  uploadContainer: { width: "100%", justifyContent: "center", alignItems: "center", borderRadius: 90 },
   modal: { flex: 1, width: "100%" },
   imagePreview: { width: 300, height: 300, borderRadius: 10, marginVertical: 10 },
 })

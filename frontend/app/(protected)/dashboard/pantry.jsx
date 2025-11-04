@@ -134,6 +134,8 @@ const Pantry = () => {
           ).filter(item => item.amount > 0)
         );
         Toast.show({ type: "success", text1: "Item updated successfully", useModal: false });
+        await AsyncStorage.setItem("refreshPantry", "true");
+        await AsyncStorage.setItem("refreshRecipes", "true");
         setShowDeleteModal(false);
       } else {
         Toast.show({ type: "error", text1: result.data.data, useModal: false });
@@ -152,8 +154,8 @@ const Pantry = () => {
         return;
       }
 
-      const donationData = selectedItems.map(({ id, name, donateQty }) => ({
-        id, name, amount: donateQty
+      const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id }) => ({
+        id, name, amount: donateQty, photo, foodie_id
       }));
 
       const result = await axios.post(
@@ -164,9 +166,10 @@ const Pantry = () => {
 
       if (result.data.status === "ok") {
         Toast.show({ type: "success", text1: "Donation recorded successfully!", useModal: false });
+        await AsyncStorage.setItem("refreshPantry", "true");
         setShowDonateModal(false);
         setSelectedItems([]);
-        router.replace("/dashboard/donateHub");
+        //router.replace("/dashboard/donateHub");
       } else {
         Toast.show({ type: "error", text1: result.data.data, useModal: false });
       }
@@ -192,6 +195,7 @@ const Pantry = () => {
 
       if (res.data.status === "ok") {
         Toast.show({ type: "success", text1: res.data.data, useModal: false });
+        await AsyncStorage.setItem("refreshPantry", "true");
         setShowEditModal(false);
         fetchPantryFood(userToken); // Refresh pantry list
       } else {

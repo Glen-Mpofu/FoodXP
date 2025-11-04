@@ -61,7 +61,8 @@ async function initialiseTables(pool) {
             unitOfMeasure VARCHAR(10),
             isPerishable BOOLEAN,
             expiry_date DATE,
-            foodie_id uuid REFERENCES FOODIE(id)
+            foodie_id uuid REFERENCES FOODIE(id),
+            Name varchar(20)
         )
     `).then((res) => {
         console.log("DONATION Table Ready")

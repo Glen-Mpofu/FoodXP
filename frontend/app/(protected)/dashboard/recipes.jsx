@@ -96,7 +96,7 @@ const Recipes = () => {
                         const measure = item[`strMeasure${i + 1}`];
                         if (!ingredient) return null;
                         return (
-                          <ThemedText key={i} style={{ marginBottom: 4 }}>
+                          <ThemedText key={`${item.idMeal}-ingredient-${i}`} style={{ marginBottom: 4 }}>
                             • {ingredient} - <ThemedText style={{ fontStyle: "italic" }}>({measure})</ThemedText>
                           </ThemedText>
                         );

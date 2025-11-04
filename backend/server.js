@@ -48,7 +48,7 @@ const cors = require("cors");
 const { type } = require("os");
 const { title } = require("process");
 app.use(cors({
-    origin: ["http://localhost:8081", "http://192.168.137.1:8081"],
+    origin: ["http://localhost:8081", "http://192.168.101.137:8081"],
     credentials: true
 }))
 
@@ -176,7 +176,7 @@ async function sendNotification(message) {
 }
 
 async function getIdFromHeader(req) {
-    const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
+    const authHeader = await req.headers.authorization; // client sends 'Bearer <token>'
     if (!authHeader) throw new Error("No token sent");
 
     const token = authHeader.split(" ")[1];
@@ -275,7 +275,7 @@ app.post("/classifyfood", async (req, res) => {
         console.log("Photo URL:", photo)
 
         //sending the photo to flask
-        const response = await axios.post("http://192.168.101.240:5002/predict", { photo });
+        const response = await axios.post("http://192.168.101.137:5002/predict", { photo });
 
         console.log("Python result: ", response.data)
         res.json(response.data)
@@ -439,32 +439,12 @@ app.post("/savepantryfood", async (req, res) => {
             amount: foodData.amount,
             date: foodData.date,
             photo: foodData.photo,
-            unitOfMeasure: foodData.unitOfMeasure
+            unitOfMeasure: foodData.unitOfMeasure,
+            public_id: foodData.public_id
         };
 
         if (!pantryFood.photo) {
             return res.send({ status: "error", data: "No photo provided" });
-        }
-
-        // --- Upload to Cloudinary ---
-        let photoUrl, public_id;
-        try {
-            const formData = new FormData();
-            formData.append("file", pantryFood.photo);
-            formData.append("upload_preset", process.env.UPLOAD_PRESET);
-
-            const response = await axios.post(
-                `https://api.cloudinary.com/v1_1/${process.env.CLOUD_NAME}/image/upload`,
-                formData,
-                { headers: { "Content-Type": "multipart/form-data" } }
-            );
-
-            photoUrl = response.data.secure_url;
-            public_id = response.data.public_id; // <-- store this for deletion later
-            console.log("Uploaded to Cloudinary:", photoUrl, public_id);
-        } catch (error) {
-            console.error("Cloudinary upload failed:", error.response?.data || error.message);
-            return res.send({ status: "error", data: "Cloudinary upload failed" });
         }
 
         // --- Verify token & get foodie ---
@@ -480,7 +460,7 @@ app.post("/savepantryfood", async (req, res) => {
         INSERT INTO PANTRY_FOOD (NAME, AMOUNT, EXPIRY_DATE, FOODIE_ID, PHOTO, PUBLIC_ID, unitOfMeasure)
         VALUES ($1, $2, $3, $4, $5, $6, $7);
       `,
-            [pantryFood.name, pantryFood.amount, pantryFood.date, foodie.data.id, photoUrl, public_id, pantryFood.unitOfMeasure]
+            [pantryFood.name, pantryFood.amount, pantryFood.date, foodie.data.id, pantryFood.photo, pantryFood.public_id, pantryFood.unitOfMeasure]
         );
 
         if (result.rowCount <= 0) {
@@ -637,31 +617,11 @@ app.post("/savefridgefood", async (req, res) => {
             name: foodData.name,
             amount: foodData.amount,
             photo: foodData.photo,
-            unitOfMeasure: foodData.unitOfMeasure
+            unitOfMeasure: foodData.unitOfMeasure,
+            public_id: foodData.public_id
         }
         if (!fridgeFood.photo) {
             return res.send({ status: "error", data: "No photo sent" })
-        }
-
-        let photoUrl, public_id;
-        try {
-            const formData = new FormData();
-            formData.append("file", fridgeFood.photo);
-            formData.append("upload_preset", process.env.UPLOAD_PRESET);
-
-            const response = await axios.post(
-                `https://api.cloudinary.com/v1_1/${process.env.CLOUD_NAME}/image/upload`,
-                formData,
-                { headers: { "Content-Type": "multipart/form-data" } }
-            );
-
-            photoUrl = response.data.secure_url;
-            public_id = response.data.public_id; // <-- store this for deletion later
-
-            console.log("Uploaded to Cloudinary:", photoUrl, public_id);
-        } catch (error) {
-            console.error("Cloudinary upload failed:", error.response?.data || error.message);
-            return res.send({ status: "error", data: "Cloudinary upload failed" });
         }
 
         const email = getFoodieEmailFromToken(foodData.token)
@@ -673,7 +633,7 @@ app.post("/savefridgefood", async (req, res) => {
                 INSERT INTO FRIDGE_FOOD (NAME, AMOUNT, ISFRESH, FOODIE_ID, PHOTO, PUBLIC_ID, unitOfMeasure)
                 VALUES($1, $2, $3, $4, $5, $6, $7)
             `,
-            [fridgeFood.name, fridgeFood.amount, true, foodie.data.id, photoUrl, public_id, fridgeFood.unitOfMeasure]
+            [fridgeFood.name, fridgeFood.amount, true, foodie.data.id, fridgeFood.photo, fridgeFood.public_id, fridgeFood.unitOfMeasure]
         ).then((result) => {
             if (result.rowCount != 1) {
                 return res.send({ status: "error", data: "Failed to add the food" })
@@ -932,9 +892,38 @@ app.get("/", async (req, res) => {
 })
 
 app.post("/donate", async (req, res) => {
-    res.send({ status: "ok", data: "Server is up" })
-    console.log("Donation items " + req.body.selectedItems)
+    const donations = req.body.items
+
+    for (let index = 0; index < donations.length; index++) {
+        const donation = donations[index];
+
+        const result = await pool.query(
+            `
+                INSERT INTO DONATION (photo, amount, foodie_id, name)
+                values($1, $2, $3, $4)
+            `,
+            [donation.photo, donation.amount, donation.foodie_id, donation.name]
+        )
+
+    }
+
+    res.send({ status: "ok", data: "Item(s) are up for Donation" })
 })
 
+//donations
+app.get("/getDonations", async (req, res) => {
+    const id = await getIdFromHeader(req)
+    console.log(id)
+    const result = await pool.query(
+        `
+            SELECT d.name, donation_id, photo, amount, id, email, f.name AS fname
+            FROM DONATION d, FOODIE f 
+            where d.foodie_id = f.id
+            and f.id != $1;
+        `, [id]
+    )
 
-
+    const donation = result.rows
+    console.log(donation)
+    res.send({ status: "ok", data: donation })
+})

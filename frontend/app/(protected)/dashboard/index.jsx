@@ -102,7 +102,7 @@ export default function Dashboard() {
           <FlatList
             horizontal
             data={[...pantryFood.slice(0, maxItems - 1), { id: "show_all", type: "show_all" }]}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.type === "show_all" ? "pantry-show_all" : item.id}
             renderItem={({ item }) =>
               item.type === "show_all" ? (
                 <TouchableOpacity
@@ -135,7 +135,7 @@ export default function Dashboard() {
           <FlatList
             horizontal
             data={[...fridgeFood.slice(0, maxItems - 1), { id: "show_all", type: "show_all" }]}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => item.type === "show_all" ? "fridge-show_all" : item.id}
             renderItem={({ item }) =>
               item.type === "show_all" ? (
                 <TouchableOpacity
@@ -170,7 +170,11 @@ export default function Dashboard() {
           {recipes && recipes.length > 0 ? (
             <FlatList
               data={[...recipes.slice(0, maxItems - 1), { id: "show_all", type: "show_all" }]}
-              keyExtractor={(item) => item.idMeals || item.id}
+              keyExtractor={(item) =>
+                item.type === "show_all"
+                  ? "recipes-show_all"
+                  : item.idMeals || item.id
+              }
               renderItem={({ item }) =>
                 item.type === "show_all" ? (
                   <TouchableOpacity

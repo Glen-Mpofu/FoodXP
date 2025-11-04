@@ -113,6 +113,8 @@ const Fridge = () => {
 
       if (result.data.status === "ok") {
         Toast.show({ type: "success", text1: "Item updated successfully", useModal: false });
+        await AsyncStorage.setItem("refreshRecipes", "true");
+        await AsyncStorage.setItem("refreshFridge", "true");
         setShowDeleteModal(false);
         fetchFridgeFood(userToken); // <-- refresh
       } else {
@@ -141,6 +143,7 @@ const Fridge = () => {
 
       if (res.data.status === "ok") {
         Toast.show({ type: "success", text1: res.data.data, useModal: false });
+        await AsyncStorage.setItem("refreshFridge", "true");
         setShowEditModal(false);
         fetchFridgeFood(userToken); // <-- refresh
       } else {
@@ -160,8 +163,8 @@ const Fridge = () => {
     }
 
     try {
-      const donationData = selectedItems.map(({ id, name, donateQty }) => ({
-        id, name, amount: donateQty
+      const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id }) => ({
+        id, name, amount: donateQty, photo, foodie_id
       }));
 
       const result = await axios.post(`${API_BASE_URL}/donate`, { items: donationData }, {
@@ -170,10 +173,10 @@ const Fridge = () => {
 
       if (result.data.status === "ok") {
         Toast.show({ type: "success", text1: "Donation recorded successfully!", useModal: false });
+        await AsyncStorage.setItem("refreshFridge", "true");
         setShowDonateModal(false);
         setSelectedItems([]);
-        fetchFridgeFood(userToken); // <-- refresh
-        router.replace("/dashboard/donateHub");
+        //fetchFridgeFood(userToken); // <-- refresh
       } else {
         Toast.show({ type: "error", text1: result.data.data, useModal: false });
       }

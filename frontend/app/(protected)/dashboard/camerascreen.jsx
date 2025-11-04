@@ -167,46 +167,64 @@ export default function CameraScreen() {
     }
   }
 
-  //function for saving the food image in the db
-  const saveFood = async () => {
-    if (!name.trim()) {
-      return Toast.show({ type: "error", text1: "Please enter the food's name", useModal: false })
-    }
-    if (!amount.trim()) {
-      return Toast.show({ type: "error", text1: "Please enter the food's amount", useModal: false })
-    }
-    if (!date && prediction === "pantry") {
-      return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false })
+  const uploadToCloudinary = async (photoUri) => {
+    const data = new FormData();
+
+    if (Platform.OS === "web") {
+      // Web uses File or Blob directly
+      const response = await fetch(photoUri);
+      const blob = await response.blob();
+      data.append("file", blob);
+    } else {
+      // Native uses { uri, type, name }
+      data.append("file", {
+        uri: photoUri,
+        type: "image/jpeg",
+        name: "upload.jpg",
+      });
     }
 
+    data.append("upload_preset", "FoodXPUpload");
+
+    const response = await axios.post(
+      `https://api.cloudinary.com/v1_1/dsudzp5uy/image/upload`,
+      data,
+      {
+        // ❌ Remove manual Content-Type, let Axios handle it!
+        headers: { "Content-Type": "multipart/form-data" },
+      }
+    );
+
+    return {
+      url: response.data.secure_url,
+      public_id: response.data.public_id,
+    };
+  };
+
+  const saveFood = async () => {
+    if (!name.trim() || !amount.trim()) return;
+
+    // 1️⃣ Upload to Cloudinary first
+    const { url: url, public_id: public_id } = await uploadToCloudinary(photo);
+
+    // 2️⃣ Then send the secure URL to backend
     const foodData = {
       name: name.trim(),
       amount: amount.trim(),
-      photo: photo.trim(),
+      photo: url,
+      public_id: public_id,// use Cloudinary URL
       token: userToken,
       ...(prediction === "pantry" && { date })
-    }
-
-    // Here you can send data to your backend
-    console.log({ name, amount, date, photo, prediction })
-    await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }, { withCredentials: true, headers: { Authorization: `Bearer ${userToken}` } })
-      .then(async (res) => {
-        if (res.data.status === "ok") {
-          await AsyncStorage.setItem("refreshRecipes", "true");
-          if (prediction === "pantry") {
-            await AsyncStorage.setItem("refreshPantry", "true");
-          } else {
-            await AsyncStorage.setItem("refreshFridge", "true");
-          }
-          Toast.show({ type: "success", text1: res.data.data, useModal: false })
-        } else {
-          Toast.show({ type: "error", text1: res.data.data, useModal: false })
-        }
-      }).catch(err => {
-        console.error("Something went wrong", err)
-        Toast.show({ type: "error", text1: "Something went wrong", useModal: false })
-      })
-  }
+    };
+    alert(url + " " + public_id)
+    await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }).then((res) => {
+      if (res.data.status === "ok") {
+        Toast.show({ type: "success", text1: res.data.data, })
+      } else {
+        Toast.show({ type: "error", text1: res.data.data, })
+      }
+    });
+  };
 
   const classifyFood = async (photoUri) => {
     if (!photoUri) {
@@ -234,7 +252,7 @@ export default function CameraScreen() {
 
       if (Prediction) {
         setPrediction(Prediction)
-        Toast.show({ type: "success", text1: `${Prediction} item added` })
+        Toast.show({ type: "success", text1: `${Prediction} item added`, })
       } else {
         Toast.show({ type: "error", text1: "Prediction failed" })
       }
@@ -257,7 +275,7 @@ export default function CameraScreen() {
         >
           <ThemedButton onPress={() => {
             router.push("dashboard")
-          }} style={{ width: 50, margin: 10 }}>
+          }} style={{ width: 50, margin: 10, marginTop: 50 }}>
             <Ionicons
               name={"arrow-back"} size={40}
               accessibilityLabel="Back Button"

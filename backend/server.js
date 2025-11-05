@@ -48,7 +48,7 @@ const cors = require("cors");
 const { type } = require("os");
 const { title } = require("process");
 app.use(cors({
-    origin: ["http://localhost:8081", "http://192.168.101.137:8081"],
+    origin: ["http://localhost:8081", "http://10.0.0.104:8081"],
     credentials: true
 }))
 
@@ -275,7 +275,7 @@ app.post("/classifyfood", async (req, res) => {
         console.log("Photo URL:", photo)
 
         //sending the photo to flask
-        const response = await axios.post("http://192.168.101.137:5002/predict", { photo });
+        const response = await axios.post("http://10.0.0.104:5002/predict", { photo });
 
         console.log("Python result: ", response.data)
         res.json(response.data)
@@ -893,7 +893,8 @@ app.get("/", async (req, res) => {
 
 app.post("/donate", async (req, res) => {
     const donations = req.body.items
-    console.log(donations)
+    const { street, province, postalCode, city} = req.body
+    console.log(city)
 
     for (let index = 0; index < donations.length; index++) {
         const donation = donations[index];
@@ -902,9 +903,20 @@ app.post("/donate", async (req, res) => {
             `
                 INSERT INTO DONATION (photo, amount, foodie_id, name)
                 values($1, $2, $3, $4)
+                RETURNING donation_id
             `,
             [donation.photo, donation.amount, donation.foodie_id, donation.name]
         )
+
+        const donationId = result.rows[0].donation_id;
+        console.log("Inserted Donation ID:", donationId);
+
+        // INSERTING INTO THE DONATION_PICKUP
+        const pickupTableResult = await pool.query(`
+            INSERT INTO DONATION_PICKUP(donation_id, street, city, province, postal_code)    
+            VALUES($1, $2, $3, $4, $5)
+        `, [donationId, street, city, province, postalCode])
+
         const actQuantity = donation.actualQuantity
         const donateAmount = donation.amount
 
@@ -945,19 +957,31 @@ app.post("/donate", async (req, res) => {
 })
 
 //donations
-app.get("/getDonations", async (req, res) => {
-    const id = await getIdFromHeader(req)
-    console.log(id)
-    const result = await pool.query(
-        `
-            SELECT d.name, donation_id, photo, amount, id, email, f.name AS fname
-            FROM DONATION d, FOODIE f 
-            where d.foodie_id = f.id
-            and f.id != $1;
-        `, [id]
-    )
 
-    const donation = result.rows
-    console.log(donation)
-    res.send({ status: "ok", data: donation })
+//Getting
+    app.get("/getDonations", async (req, res) => {
+        const id = await getIdFromHeader(req)
+        console.log(id)
+        const result = await pool.query(
+            `
+                SELECT d.name, d.donation_id, photo, amount, f.id, email, f.name AS fname, email, street, city, province, postal_code
+                FROM DONATION d, FOODIE f, DONATION_PICKUP p
+                where d.foodie_id = f.id
+                and d.donation_id = p.donation_id 
+                and f.id != $1
+            `, [id]
+        )
+
+        const donation = result.rows
+        console.log(donation)
+        res.send({ status: "ok", data: donation })
+    })
+
+// CLAIMING THE DONATION
+
+app.post("/claimDonation", async (req, res) => {
+    const donation = req.body.donation
+    const token = req.baseUrl.token
+
+
 })

@@ -5,7 +5,7 @@ const UnitDropDown = ({ selectedUnit, setSelectedUnit, options }) => {
     const [open, setOpen] = useState(false);
 
     return (
-        <>
+        <View style={{padding: 10}}>
             <TouchableOpacity
                 onPress={() => setOpen(!open)}
                 style={styles.button}
@@ -34,7 +34,7 @@ const UnitDropDown = ({ selectedUnit, setSelectedUnit, options }) => {
                     />
                 </View>
             )}
-        </>
+        </View>
     );
 };
 

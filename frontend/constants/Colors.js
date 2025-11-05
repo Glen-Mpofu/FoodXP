@@ -2,7 +2,7 @@ export const Colors = {
     //constant colors regarless of theme 
     primary: '#A8BBA3',
     error: '#8f0000ff',
-    accent: '#161b22',
+    accent: '#cfdff5ff',
     success: '#9CAFAA',
 
     dark: {

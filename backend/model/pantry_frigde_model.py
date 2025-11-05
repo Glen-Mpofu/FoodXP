@@ -12,7 +12,7 @@ import json
 import base64, io
 from PIL import Image
 
-model = load_model(r"C:\Projects Programming\Wil Project\FoodXP\backend\model\fridge_pantry_model.keras")
+model = load_model(r"C:\Projects\FoodXP\backend\model\fridge_pantry_model.keras")
 class_labels = ['fridge', 'pantry']
 
 def classify(imageUri):  
@@ -52,4 +52,4 @@ def predict():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="192.168.101.137", port=5002, threaded = True)
+    app.run(host="10.0.0.104", port=5002, threaded = True)

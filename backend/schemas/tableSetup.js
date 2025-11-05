@@ -23,7 +23,7 @@ async function initialiseTables(pool) {
             amount DOUBLE PRECISION DEFAULT 1,
             expiry_date DATE,
             unitOfMeasure VARCHAR(10),
-            foodie_id UUID REFERENCES FOODIE(id),
+            foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
             photo VARCHAR(150),
             public_id VARCHAR(100) NOT NULL UNIQUE
         );
@@ -42,7 +42,7 @@ async function initialiseTables(pool) {
             amount DOUBLE PRECISION DEFAULT 1,
             unitOfMeasure VARCHAR(10),
             isFresh BOOLEAN, 
-            foodie_id UUID REFERENCES FOODIE(id),
+            foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
             photo VARCHAR(150),
             public_id VARCHAR(100) NOT NULL UNIQUE
         );
@@ -61,7 +61,7 @@ async function initialiseTables(pool) {
             unitOfMeasure VARCHAR(10),
             isPerishable BOOLEAN,
             expiry_date DATE,
-            foodie_id uuid REFERENCES FOODIE(id),
+            foodie_id uuid REFERENCES FOODIE(id) ON DELETE CASCADE,
             Name varchar(20)
         )
     `).then((res) => {
@@ -69,6 +69,40 @@ async function initialiseTables(pool) {
     }).catch(error => {
         console.error("Something went wrong when creating DONATION table", error)
     });
+
+    // DONATION_PICKUP TABLE
+    await pool.query(
+        `
+            CREATE TABLE IF NOT EXISTS DONATION_PICKUP (
+                pickup_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                donation_id UUID REFERENCES DONATION(donation_id) ON DELETE CASCADE,
+                street VARCHAR(255) NOT NULL,
+                city VARCHAR(100),
+                province VARCHAR(100),
+                postal_code VARCHAR(10),
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        `
+    ).then((res) => {
+        console.log("DONATION_PICKUP Table Ready")
+    }).catch(error => {
+        console.error("Something went wrong when creating DONATION_PICKUP table", error)
+    });
+
+    await pool.query(
+        `
+            CREATE TABLE IF NOT EXISTS DONATION_CLAIMED(
+                ID UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                donation_id UUID REFERENCES DONATION(donation_id),
+                claimant_id UUID REFERENCES FOODIE(id)
+            )
+        `
+    ).then((res) => {
+        console.log("DONATION_CLAIMED Table Ready")
+    }).catch(error => {
+        console.error("Something went wrong when creating DONATION_CLAIMED table", error)
+    });
+
 }
 
 module.exports = { initialiseTables };

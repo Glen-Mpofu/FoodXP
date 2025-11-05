@@ -120,6 +120,17 @@ export default function DashboardLayout() {
           headerShown: false,
         }}
       />
+      
+      <Drawer.Screen
+        name="donateHub"
+        options={{
+          drawerLabel: "Donate Hub", title: "Donate Hub",
+          drawerIcon: ({ color, size }) => (
+            <MaterialCommunityIcons name="hand-heart-outline" size={size} color={color} />
+          )
+        }}
+      />
+
       <Drawer.Screen
         name="settings"
         options={{
@@ -129,16 +140,6 @@ export default function DashboardLayout() {
           )
         }}
       />
-      <Drawer.Screen
-        name="donateHub"
-        options={{
-          drawerLabel: "Donate Hub", title: "Food Donate Hub",
-          drawerIcon: ({ color, size }) => (
-            <MaterialCommunityIcons name="hand-heart-outline" size={size} color={color} />
-          )
-        }}
-      />
-
     </Drawer >
   );
 }

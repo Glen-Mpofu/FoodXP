@@ -52,6 +52,11 @@ const Pantry = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingItem, setDeletingItem] = useState(null);
   const [deleteAmount, setDeleteAmount] = useState(1);
+  const [showDonationDetailsModal, setShowDonationDetailsModal] = useState(false);
+  const [street, setStreet] = useState('');
+  const [province, setProvince] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [city, setCity] = useState('');
 
   // Fetch pantry food
   const fetchPantryFood = async (token) => {
@@ -160,15 +165,24 @@ const Pantry = () => {
 
       const result = await axios.post(
         `${API_BASE_URL}/donate`,
-        { items: donationData },
+        { 
+          items: donationData,
+          street,
+          province,
+          postalCode,
+          city 
+        },
         { headers: { Authorization: `Bearer ${userToken}` } }
       );
 
       if (result.data.status === "ok") {
         Toast.show({ type: "success", text1: "Donation recorded successfully!", useModal: false });
         await AsyncStorage.setItem("refreshPantry", "true");
-        setShowDonateModal(false);
         setSelectedItems([]);
+        setStreet('')
+        setPostalCode('');
+        setProvince('');
+        setCity('')
         //router.replace("/dashboard/donateHub");
       } else {
         Toast.show({ type: "error", text1: result.data.data, useModal: false });
@@ -346,8 +360,15 @@ const Pantry = () => {
               </ScrollView>
 
               <View style={styles.modalButtons}>
-                <ThemedButton style={[styles.btn, { backgroundColor: "#81c995" }]} onPress={handleDonateConfirm}>
-                  <ThemedText>Confirm Donation</ThemedText>
+                <ThemedButton style={[styles.btn, { backgroundColor: "#81c995" }]} onPress={()=>{
+                  if (selectedItems.length === 0) {
+                    Toast.show({ type: "info", text1: "Please select at least one item", useModal: false });
+                    return;
+                  }
+                  setShowDonateModal(false);
+                  setShowDonationDetailsModal(true);
+                }}>
+                  <ThemedText>Next</ThemedText>
                 </ThemedButton>
                 <ThemedButton style={[styles.btn, { backgroundColor: theme.cardColor }]} onPress={() => setShowDonateModal(false)}>
                   <ThemedText>Cancel</ThemedText>
@@ -487,6 +508,85 @@ const Pantry = () => {
             </View>
           </View>
         </Modal>
+        {/*donation details modal*/ }
+                <Modal
+                  animationType="slide"
+                  transparent={true}
+                  visible={showDonationDetailsModal}
+                  onRequestClose={() => setShowDonationDetailsModal(false)}
+                >
+                  <View style={styles.modalContainer}>
+                    <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+                
+                      <ThemedText style={styles.modalTitle}>Pickup Location Details</ThemedText>
+        
+                      <ScrollView contentContainerStyle={{ paddingVertical: 10, width: "100%" }}>
+                        <ThemedText>Street Address</ThemedText>
+                        <ThemedTextInput
+                          placeholder="Enter street address"
+                          value={street}
+                          onChangeText={setStreet}
+                          style={styles.input}
+                        />
+        
+                        <ThemedText style={{ marginTop: 10 }}>City</ThemedText>
+                        <ThemedTextInput
+                          placeholder="Enter city"
+                          value={city}
+                          onChangeText={setCity}
+                          style={styles.input}
+                        />
+        
+                        <ThemedText style={{ marginTop: 10 }}>Province</ThemedText>
+                        <ThemedTextInput
+                          placeholder="Enter province"
+                          value={province}
+                          onChangeText={setProvince}
+                          style={styles.input}
+                        />                
+        
+                        <ThemedText style={{ marginTop: 10 }}>Postal Code</ThemedText>
+        
+                        <ThemedTextInput
+                          placeholder="Enter postal code"
+                          keyboardType="numeric"
+                          value={postalCode}
+                          onChangeText={setPostalCode}
+                          style={styles.input}
+                        />
+                      </ScrollView>
+                      <View style={styles.modalButtons}>
+                        <ThemedButton
+                          style={[styles.btn, { backgroundColor: "#81c995" }]}
+                          onPress={async () => {
+                            if (!street || !province || !postalCode || !city) {
+                              Toast.show({ type: "info", text1: "Please fill in all details", useModal: false });
+                              return;
+                            }
+                            await handleDonateConfirm(); // calls backend
+                            setShowDonationDetailsModal(false);
+                            setStreet('')
+                            setPostalCode('');
+                            setCity('')
+                            setProvince('');
+                          }}
+                        >
+                          <ThemedText>Submit Donation</ThemedText>
+                        </ThemedButton>
+        
+                        <ThemedButton
+                          style={[styles.btn, { backgroundColor: theme.cardColor }]}
+                          onPress={() => {
+                            setShowDonationDetailsModal(false);
+                            setShowDonateModal(true);
+                          }}
+                        >
+                          <ThemedText>Back</ThemedText>
+                        </ThemedButton>
+                      </View>
+                    </View>
+                  </View>
+                </Modal>
       </View>
     </ImageBackground>
   );
@@ -523,5 +623,6 @@ const styles = StyleSheet.create({
   qtyBtn: { fontSize: 20, fontWeight: "bold", color: "#34a853", paddingHorizontal: 6 },
   qtyValue: { fontSize: 16, fontWeight: "bold", marginHorizontal: 4 },
   dateBox: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 15, width: '100%', alignItems: 'center', marginBottom: 10 },
+  input: {width: "100%", margin: 1},
   dateText: { fontSize: 16, color: '#333' },
 });

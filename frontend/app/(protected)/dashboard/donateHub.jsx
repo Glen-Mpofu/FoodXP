@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, Image, FlatList, TouchableOpacity } from 'react-native'
+import { StyleSheet, Text, View, Image, FlatList, TouchableOpacity, useColorScheme } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import axios from "axios"
 import { API_BASE_URL } from "@env"
@@ -7,12 +7,15 @@ import ThemedText from '../../../components/ThemedText'
 import ThemedButton from '../../../components/ThemedButton'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Toast } from 'toastify-react-native'
+import { Colors } from '../../../constants/Colors'
 
 const DonateMap = () => {
   const [userToken, setUserToken] = useState(null)
   const [availableDonations, setAvailableDonations] = useState([])
   const [selectedDonation, setSelectedDonation] = useState(null)
 
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light;
   useEffect(() => {
     async function init() {
       try {
@@ -34,10 +37,10 @@ const DonateMap = () => {
 
   const claimDonation = async (donation) => {
     try {
-      await axios.post(`${API_BASE_URL}/claimDonation`, { donation_id: donation.donation_id, token: userToken })
+      await axios.post(`${API_BASE_URL}/claimDonation`, { donation, token: userToken })
       Toast.show({ type: "success", text1: `You claimed ${donation.name}!` })
       setSelectedDonation(null)
-      setAvailableDonations(prev => prev.filter(d => d.donation_id !== donation.donation_id))
+      //setAvailableDonations(prev => prev.filter(d => d.donation_id !== donation.donation_id))
     } catch (err) {
       console.error(err)
       Toast.show({ type: "error", text1: "Failed to claim donation" })
@@ -49,48 +52,57 @@ const DonateMap = () => {
   }
 
   const renderDonation = ({ item }) => {
-    const selected = selectedDonation?.donation_id === item.donation_id
-
-    return (
-      <TouchableOpacity
-        key={item.donation_id}
-        style={[styles.donationRow, selected && { borderColor: "#34a853", borderWidth: 2, backgroundColor: "#e6f4ea" }]}
-        onPress={() => toggleSelectDonation(item)}
-      >
-        {/* Donation Info */}
-        <View style={styles.donationColumn}>
-          <Image source={{ uri: item.photo }} style={styles.donationImage} />
-          <View style={styles.donationDetails}>
-            <ThemedText style={styles.donationName}>{item.name}</ThemedText>
-            <ThemedText>Available: {item.amount} {item.unitofmeasure ?? ""}</ThemedText>
-          </View>
-        </View>
-
-        {/* Donor Info */}
-        <View style={styles.column}>
-          {item.fname && <ThemedText>Donor: {item.fname}</ThemedText>}
-          {item.email && <ThemedText>Email: {item.email}</ThemedText>}
-        </View>
-
-        {selected && (
-          <ThemedButton style={styles.claimBtn} onPress={() => claimDonation(item)}>
-            <ThemedText>Claim Donation</ThemedText>
-          </ThemedButton>
-        )}
-      </TouchableOpacity>
-    )
-  }
+  const selected = selectedDonation?.donation_id === item.donation_id;
 
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText style={styles.heading}>Available Donations</ThemedText>
+    <TouchableOpacity
+      key={item.donation_id}
+      style={[
+        styles.donationRow, {backgroundColor: theme.cardColor},
+        selected && { borderColor: "#34a853", borderWidth: 2, backgroundColor: theme.selected }
+      ]}
+      onPress={() => toggleSelectDonation(item)}
+    >
+      {/* Donation Info */}
+      <View style={styles.donationInfo}>
+        <Image source={{ uri: item.photo }} style={styles.donationImage} />
+        <ThemedText style={styles.donationName}>{item.name}</ThemedText>
+        <ThemedText style={styles.donationAmount}>
+          Available: {item.amount} {item.unitofmeasure ?? ""}
+        </ThemedText>
+      </View>
 
-      <FlatList
-        data={availableDonations}
-        keyExtractor={item => item.donation_id}
-        renderItem={renderDonation}
-        contentContainerStyle={{ padding: 10 }}
-      />
+      {/* Donor Info */}
+      <View style={styles.donorInfo}>
+        {item.fname && <ThemedText>Donor: {item.fname}</ThemedText>}
+        {item.email && <ThemedText>Email: {item.email}</ThemedText>}
+      </View>
+
+      {selected && (
+        <ThemedButton style={styles.claimBtn} onPress={() => claimDonation(item)}>
+          <ThemedText>Claim</ThemedText>
+        </ThemedButton>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+  return (
+    <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground }]}>
+      <ThemedText style={styles.heading}>Available Donations</ThemedText>
+        {availableDonations.length === 0 ? (
+          <ThemedText style={{textAlign: "center"}}>
+            No Donations yet
+          </ThemedText>
+        ) : (
+          <FlatList
+          data={availableDonations}
+          keyExtractor={item => item.donation_id}
+          renderItem={renderDonation}
+          contentContainerStyle={{ padding: 10 }}
+        />
+        )}
+        
     </ThemedView>
   )
 }
@@ -101,6 +113,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: "100%",
+    justifyContent: ""
   },
   heading: {
     alignSelf: "center",
@@ -111,37 +124,42 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#f7f7f7",
     padding: 10,
-    marginVertical: 5,
     borderRadius: 10,
+    width: "100%"
   },
-  donationColumn: {
-    flexDirection: "row",
+  donationInfo: {
     flex: 1,
-    marginRight: 10,
     alignItems: "center",
+    justifyContent: "center",
   },
   donationImage: {
-    width: 60,
-    height: 60,
+    width: 80,
+    height: 80,
     borderRadius: 10,
-    marginRight: 10,
-  },
-  donationDetails: {
-    flex: 1,
+    marginBottom: 5,
   },
   donationName: {
     fontWeight: "bold",
     fontSize: 16,
+    textAlign: "center",
   },
-  column: {
+  donationAmount: {
+    fontSize: 14,
+    color: "#555",
+    textAlign: "center",
+  },
+  donorInfo: {
     flex: 1,
+    justifyContent: "center",
   },
   claimBtn: {
     paddingHorizontal: 10,
     paddingVertical: 5,
     backgroundColor: "#34a853",
     borderRadius: 5,
-  }
-})
+    width: "20%",
+    height: "50%",
+  },
+});
+

@@ -1,0 +1,694 @@
+import {
+  Image,
+  ImageBackground,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+  TouchableOpacity,
+  useColorScheme
+} from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import ThemedView from '../../../components/ThemedView';
+import ThemedText from '../../../components/ThemedText';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import axios from 'axios';
+import { Toast } from 'toastify-react-native';
+import ThemedButton from '../../../components/ThemedButton';
+import { API_BASE_URL } from "@env";
+import { LinearGradient } from 'expo-linear-gradient';
+import ThemedTextInput from '../../../components/ThemedTextInput';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { Colors } from '../../../constants/Colors';
+import { useFocusEffect } from "@react-navigation/native";
+import Checkbox from '../../../components/Checkbox';
+
+const Pantry = () => {
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light;
+
+  const [usePreviousLocation, setUsePreviousLocation] = useState(false)
+  const router = useRouter();
+  const [userToken, setUserToken] = useState(null);
+  const [pantryFood, setPantryFood] = useState([]);
+  const [country, setCountry] = useState('South Africa');
+  const [showDonateModal, setShowDonateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [editingItem, setEditingItem] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editExpiry, setEditExpiry] = useState(new Date());
+
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  const { width: screenWidth } = useWindowDimensions();
+  const itemWidth = 150;
+  const itemsPerRow = Math.floor(screenWidth / itemWidth);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingItem, setDeletingItem] = useState(null);
+  const [deleteAmount, setDeleteAmount] = useState(1);
+  const [showDonationDetailsModal, setShowDonationDetailsModal] = useState(false);
+  const [street, setStreet] = useState('');
+  const [province, setProvince] = useState('');
+  const [postalCode, setPostalCode] = useState('');
+  const [city, setCity] = useState('');
+
+  const [location_id, setLocationId] = useState(null)
+  // Fetch pantry food
+  const fetchPantryFood = async (token) => {
+    try {
+      const result = await axios.get(`${API_BASE_URL}/getpantryfood`, {
+        withCredentials: true,
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPantryFood(result.data.data || []);
+    } catch (err) {
+      console.error(err);
+      Toast.show({
+        type: "error",
+        text1: "Failed to fetch pantry food",
+        useModal: false,
+      });
+    }
+  };
+
+  useEffect(() => {
+    async function init() {
+      try {
+        const token = await AsyncStorage.getItem("userToken");
+        if (!token) {
+          router.replace("/");
+          return;
+        }
+        setUserToken(token);
+        fetchPantryFood(token);
+
+      } catch (err) {
+        console.error(err);
+        Toast.show({
+          type: "error",
+          text1: "Something went wrong",
+          useModal: false,
+        });
+      }
+    }
+    init();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const handleFocus = async () => {
+        const shouldRefresh = await AsyncStorage.getItem("refreshPantry");
+
+        // Always reload when screen gains focus for the first time
+        if (shouldRefresh === "true" || shouldRefresh === null) {
+          if (userToken) {
+            fetchPantryFood(userToken); // <-- refresh pantry list
+          }
+          await AsyncStorage.setItem("refreshPantry", "false")
+        }
+      };
+
+      handleFocus();
+    }, [userToken])
+  );
+
+  const handleUsePreviousLocation = async () => {
+    setUsePreviousLocation(prev => !prev); // toggle
+
+    if (!usePreviousLocation) {
+      // fetch previous location
+      try {
+        const res = await axios.get(`${API_BASE_URL}/getLatestLocation`, {
+          headers: { Authorization: `Bearer ${userToken}` }
+        });
+
+        if (res.data.status === "ok" && res.data.data) {
+          const loc = res.data.data;
+          setStreet(loc.street || "");
+          setCity(loc.city || "");
+          setProvince(loc.province || "");
+          setPostalCode(loc.zipcode || "");
+          setLocationId(loc.id || null);
+        } else {
+          Toast.show({ type: "info", text1: "No previous location found", useModal: false });
+          setLocationId(null);
+        }
+      } catch (err) {
+        console.log(err);
+        Toast.show({ type: "error", text1: "Failed to load previous location", useModal: false });
+        setLocationId(null);
+      }
+    } else {
+      // checkbox turned off
+      setLocationId(null)
+      setStreet('')
+      setCity('')
+      setProvince('')
+      setPostalCode('')
+    }
+  };
+
+
+  // Delete item
+  const handleDeleteConfirm = async () => {
+    if (!deletingItem) return;
+
+    try {
+      const result = await axios.post(`${API_BASE_URL}/deletepantryfood`, {
+        id: deletingItem.id,
+        deleteAmount: deleteAmount,
+        amount: deletingItem.amount,
+        public_id: deletingItem.public_id
+      }, {
+        headers: { Authorization: `Bearer ${userToken}` }
+      });
+
+      if (result.data.status === "ok") {
+        setPantryFood(prev =>
+          prev.map(item =>
+            item.id === deletingItem.id
+              ? { ...item, amount: item.amount - deleteAmount }
+              : item
+          ).filter(item => item.amount > 0)
+        );
+        Toast.show({ type: "success", text1: "Item updated successfully", useModal: false });
+        await AsyncStorage.setItem("refreshPantry", "true");
+        await AsyncStorage.setItem("refreshRecipes", "true");
+        setShowDeleteModal(false);
+      } else {
+        Toast.show({ type: "error", text1: result.data.data, useModal: false });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Delete failed", useModal: false });
+    }
+  };
+
+  // Confirm donation
+  const handleDonateConfirm = async () => {
+    try {
+      if (selectedItems.length === 0) {
+        Toast.show({ type: "info", text1: "No items selected", useModal: false });
+        return;
+      }
+
+      const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id, actualQuantity, from, unitofmeasure }) => ({
+        id, name, amount: donateQty, photo, foodie_id, actualQuantity, from, unitofmeasure
+      }));
+
+      const result = await axios.post(
+        `${API_BASE_URL}/donate`,
+        {
+          items: donationData,
+          street,
+          province,
+          postalCode,
+          city,
+          location_id,
+          country
+        },
+        { headers: { Authorization: `Bearer ${userToken}` } }
+      );
+
+      if (result.data.status === "ok") {
+        Toast.show({ type: "success", text1: "Donation recorded successfully!", useModal: false });
+        setSelectedItems([]);
+        setStreet('');
+        setPostalCode('');
+        setProvince('');
+        setCity('');
+        setUsePreviousLocation(false)
+        setLocationId(null)
+        setCountry("South Africa")
+      } else {
+        Toast.show({ type: "error", text1: result.data.data, useModal: false });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Donation failed", useModal: false });
+    }
+  };
+
+  // Edit item
+  const handleEditConfirm = async () => {
+    try {
+      const newFood = {
+        name: editName.trim(),
+        amount: parseInt(editAmount.trim()),
+        expiry_date: editExpiry,
+        id: editingItem.id
+      };
+
+      const res = await axios.post(`${API_BASE_URL}/editPantryFood`, { newFood }, {
+        headers: { Authorization: `Bearer ${userToken}` }
+      });
+
+      if (res.data.status === "ok") {
+        Toast.show({ type: "success", text1: res.data.data, useModal: false });
+        await AsyncStorage.setItem("refreshPantry", "true");
+        setShowEditModal(false);
+        fetchPantryFood(userToken); // Refresh pantry list
+      } else {
+        Toast.show({ type: "error", text1: res.data.data, useModal: false });
+      }
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Edit failed", useModal: false });
+    }
+  };
+
+  const openDeleteModal = (item) => {
+    setDeletingItem(item);
+    setDeleteAmount(1);
+    setShowDeleteModal(true);
+  };
+
+  const openEditModal = (item) => {
+    setEditingItem(item);
+    setEditName(item.name);
+    setEditAmount(item.amount.toString());
+    setEditExpiry(item.expiry_date ? new Date(item.expiry_date) : new Date());
+    setShowEditModal(true);
+  };
+
+  const toggleSelectItem = (item) => {
+    setSelectedItems(prev => {
+      const exists = prev.find(i => i.id === item.id);
+      if (exists) return prev.filter(i => i.id !== item.id);
+      return [...prev, { ...item, donateQty: 1, actualQuantity: item.amount, from: "pantry" }];
+    });
+  };
+
+  const rows = [];
+  for (let i = 0; i < pantryFood.length; i += itemsPerRow) {
+    rows.push(pantryFood.slice(i, i + itemsPerRow));
+  }
+
+  // Adjust donation amount
+  const adjustAmount = (id, delta, maxQty) => {
+    setSelectedItems(prev =>
+      prev.map(item =>
+        item.id === id
+          ? { ...item, donateQty: Math.min(Math.max(1, item.donateQty + delta), maxQty) }
+          : item
+      )
+    );
+  };
+  return (
+    <ImageBackground
+      style={styles.imgBackground}
+      source={require("../../../assets/foodxp/pantry bg.jpg")}
+      resizeMode="cover"
+    >
+      <LinearGradient
+        colors={['rgba(255,255,255,0.1)', 'rgba(0,0,0,0.8)']}
+        style={StyleSheet.absoluteFill}
+      />
+
+      <View style={styles.container}>
+        {rows.length > 0 ? (
+          <View style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
+              {rows.map((row, rowIndex) => (
+                <View key={rowIndex} style={styles.shelf}>
+                  {row.map(item => (
+                    <TouchableOpacity key={item.id} onPress={() => openEditModal(item)}>
+                      <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
+                        <Image
+                          source={{ uri: item.photo }}
+                          style={styles.img}
+                        />
+                        <ThemedText style={styles.foodName}>{item.name}</ThemedText>
+                        <ThemedText style={styles.qty}>{item.amount} {item.unitofmeasure}</ThemedText>
+                        <View style={styles.buttonRow}>
+                          <ThemedButton
+                            style={[styles.btn, { backgroundColor: "#f28b82" }]}
+                            onPress={() => openDeleteModal(item)}
+                          >
+                            <ThemedText>Eaten</ThemedText>
+                          </ThemedButton>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+            </ScrollView>
+
+            <View style={{ justifyContent: "center", alignItems: "center", height: 50, marginBottom: 20 }}>
+              <ThemedButton
+                style={[styles.btn, { backgroundColor: "#81c995", width: 180, zIndex: 1 }]}
+                onPress={() => setShowDonateModal(true)}
+              >
+                <ThemedText>Donate Food</ThemedText>
+              </ThemedButton>
+            </View>
+          </View>
+        ) : (
+          <ThemedView style={styles.emptyContainer}>
+            <ThemedText style={styles.heading}>No food added yet</ThemedText>
+          </ThemedView>
+        )}
+
+        {/* Modal code for donating */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showDonateModal}
+          onRequestClose={() => setShowDonateModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+              <ThemedText style={styles.modalTitle}>Select Food to Donate</ThemedText>
+
+              <ScrollView contentContainerStyle={{ paddingVertical: 10 }}>
+                {pantryFood.map(item => {
+                  const selected = selectedItems.find(i => i.id === item.id);
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.modalItem, selected && { backgroundColor: theme.selected, borderColor: "#34a853" }]}
+                      onPress={() => toggleSelectItem(item)}
+                    >
+                      <Image
+                        source={{ uri: item.photo }}
+                        style={styles.modalImg}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <ThemedText style={styles.foodName}>{item.name}</ThemedText>
+                        <ThemedText style={styles.qty}>Available: {item.amount}</ThemedText>
+                      </View>
+
+                      {selected && (
+                        <View style={styles.qtyControl}>
+                          <TouchableOpacity onPress={() => adjustAmount(item.id, -1, item.amount)}>
+                            <ThemedText style={styles.qtyBtn}>−</ThemedText>
+                          </TouchableOpacity>
+                          <ThemedText style={styles.qtyValue}>{selected.donateQty}</ThemedText>
+                          <TouchableOpacity onPress={() => adjustAmount(item.id, 1, item.amount)}>
+                            <ThemedText style={styles.qtyBtn}>＋</ThemedText>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={styles.modalButtons}>
+                <ThemedButton style={[styles.btn, { backgroundColor: "#81c995" }]} onPress={() => {
+                  if (selectedItems.length === 0) {
+                    Toast.show({ type: "info", text1: "Please select at least one item", useModal: false });
+                    return;
+                  }
+                  setShowDonateModal(false);
+                  setShowDonationDetailsModal(true);
+                }}>
+                  <ThemedText>Next</ThemedText>
+                </ThemedButton>
+                <ThemedButton style={[styles.btn, { backgroundColor: theme.cardColor }]} onPress={() => setShowDonateModal(false)}>
+                  <ThemedText>Cancel</ThemedText>
+                </ThemedButton>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal code for editing */}
+        <Modal
+          animationType='fade'
+          transparent={true}
+          visible={showEditModal}
+          onRequestClose={() => setShowEditModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+              <ThemedText style={styles.modalTitle}>Edit Food</ThemedText>
+
+              <ScrollView contentContainerStyle={{ alignItems: "center" }}>
+                <ThemedText>Name</ThemedText>
+                <ThemedTextInput
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Food Name"
+                />
+
+                <ThemedText>Amount</ThemedText>
+                {/* Amount + / - Controls */}
+                <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
+                  <TouchableOpacity
+                    onPress={() =>
+                      setEditAmount(prev => {
+                        const value = parseInt(prev || "0");
+                        return Math.max(1, value - 1).toString();
+                      })
+                    }
+                  >
+                    <ThemedText style={styles.qtyBtn}>−</ThemedText>
+                  </TouchableOpacity>
+
+                  <ThemedText style={styles.qtyValue}>{editAmount}</ThemedText>
+
+                  <TouchableOpacity
+                    onPress={() =>
+                      setEditAmount(prev => {
+                        const value = parseInt(prev || "0");
+                        return (value + 1).toString();
+                      })
+                    }
+                  >
+                    <ThemedText style={styles.qtyBtn}>＋</ThemedText>
+                  </TouchableOpacity>
+                </View>
+                <ThemedText>Expiry Date</ThemedText>
+                <TouchableOpacity
+                  style={styles.dateBox}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <ThemedText style={styles.dateText}>
+                    {editExpiry ? editExpiry.toDateString() : "Select Expiry Date"}
+                  </ThemedText>
+                </TouchableOpacity>
+
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={editExpiry || new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    onChange={(event, selectedDate) => {
+                      if (Platform.OS === 'android') setShowDatePicker(false);
+                      if (selectedDate) setEditExpiry(selectedDate);
+                    }}
+                  />
+                )}
+              </ScrollView>
+
+              <View style={styles.modalButtons}>
+                <ThemedButton style={[styles.btn, { backgroundColor: "#81c995" }]} onPress={() => { handleEditConfirm() }}>
+                  <ThemedText>Save Changes</ThemedText>
+                </ThemedButton>
+                <ThemedButton style={[styles.btn, { backgroundColor: theme.cardColor }]} onPress={() => setShowEditModal(false)}>
+                  <ThemedText>Cancel</ThemedText>
+                </ThemedButton>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Modal code for deleting */}
+        <Modal
+          animationType='fade'
+          transparent={true}
+          visible={showDeleteModal}
+          onRequestClose={() => setShowDeleteModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+              <ThemedText style={styles.modalTitle}>Remove Some Food</ThemedText>
+
+              {deletingItem && (
+                <>
+                  <ThemedText style={{ textAlign: "center", marginBottom: 10 }}>
+                    {deletingItem.name}
+                  </ThemedText>
+
+                  <ThemedText style={{ textAlign: "center" }}>Select amount to remove</ThemedText>
+
+                  <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
+                    <TouchableOpacity onPress={() => setDeleteAmount(q => Math.max(1, q - 1))}>
+                      <ThemedText style={styles.qtyBtn}>−</ThemedText>
+                    </TouchableOpacity>
+                    <ThemedText style={styles.qtyValue}>{deleteAmount}</ThemedText>
+                    <TouchableOpacity onPress={() => setDeleteAmount(q => Math.min(deletingItem.amount, q + 1))}>
+                      <ThemedText style={styles.qtyBtn}>＋</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+
+              <View style={styles.modalButtons}>
+                <ThemedButton
+                  style={[styles.btn, { backgroundColor: "#f28b82" }]}
+                  onPress={handleDeleteConfirm}
+                >
+                  <ThemedText>Confirm</ThemedText>
+                </ThemedButton>
+
+                <ThemedButton
+                  style={[styles.btn, { backgroundColor: theme.cardColor }]}
+                  onPress={() => setShowDeleteModal(false)}
+                >
+                  <ThemedText>Cancel</ThemedText>
+                </ThemedButton>
+              </View>
+            </View>
+          </View>
+        </Modal>
+        {/*donation details modal*/}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showDonationDetailsModal}
+          onRequestClose={() => setShowDonationDetailsModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+
+              <ThemedText style={styles.modalTitle}>Pickup Location Details</ThemedText>
+              <ScrollView contentContainerStyle={{ paddingVertical: 10, width: "100%" }}>
+                <ThemedText>Street Address</ThemedText>
+                <ThemedTextInput
+                  placeholder="Enter street address"
+                  value={street}
+                  onChangeText={setStreet}
+                  style={styles.input}
+                />
+
+                <ThemedText style={{ marginTop: 10 }}>City</ThemedText>
+                <ThemedTextInput
+                  placeholder="Enter city"
+                  value={city}
+                  onChangeText={setCity}
+                  style={styles.input}
+                />
+
+                <ThemedText style={{ marginTop: 10 }}>Province</ThemedText>
+                <ThemedTextInput
+                  placeholder="Enter province"
+                  value={province}
+                  onChangeText={setProvince}
+                  style={styles.input}
+                />
+
+                <ThemedText style={{ marginTop: 10 }}>Country</ThemedText>
+                <ThemedTextInput
+                  placeholder="Enter country"
+                  value={country}
+                  onChangeText={setCountry}
+                  style={styles.input}
+                />
+
+                <ThemedText style={{ marginTop: 10 }}>Postal Code</ThemedText>
+
+                <ThemedTextInput
+                  placeholder="Enter postal code"
+                  keyboardType="numeric"
+                  value={postalCode}
+                  onChangeText={setPostalCode}
+                  style={styles.input}
+                />
+              </ScrollView>
+              <Checkbox
+                checked={usePreviousLocation}
+                onPress={handleUsePreviousLocation}
+              />
+              <View style={styles.modalButtons}>
+                <ThemedButton
+                  style={[styles.btn, { backgroundColor: "#81c995" }]}
+                  onPress={async () => {
+                    if (usePreviousLocation === true) {
+                      // Skip manual field validation and submit directly
+                      await handleDonateConfirm();
+                      setShowDonationDetailsModal(false);
+                      return;
+                    }
+                    setUsePreviousLocation(false)
+                    // Manual address mode
+                    if (!street || !province || !postalCode || !city) {
+                      Toast.show({ type: "info", text1: "Please fill in all details", useModal: false });
+                      return;
+                    }
+
+                    await handleDonateConfirm();
+                    setShowDonationDetailsModal(false);
+
+                    // reset only manual fields
+                    setStreet('');
+                    setPostalCode('');
+                    setCity('');
+                    setProvince('');
+                  }}
+                >
+                  <ThemedText>Submit Donation</ThemedText>
+                </ThemedButton>
+
+                <ThemedButton
+                  style={[styles.btn, { backgroundColor: theme.cardColor }]}
+                  onPress={() => {
+                    setShowDonationDetailsModal(false);
+                    setShowDonateModal(true);
+                  }}
+                >
+                  <ThemedText>Back</ThemedText>
+                </ThemedButton>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </ImageBackground>
+  );
+};
+
+export default Pantry;
+
+const styles = StyleSheet.create({
+  container: { flex: 1, width: "100%", height: "100%" },
+  imgBackground: { width: "100%", height: "100%", ...StyleSheet.absoluteFillObject },
+  scrollContainer: { flexGrow: 1, padding: 15, alignItems: "center" },
+  shelf: { flexDirection: "row", marginBottom: 20, justifyContent: "flex-start", alignItems: "flex-start" },
+  foodItem: {
+    width: 140, marginRight: 15, padding: 10, borderRadius: 12,
+    alignItems: "center",
+    shadowColor: "#000", shadowOpacity: 0.2, shadowOffset: { width: 3, height: 4 },
+    shadowRadius: 4, elevation: 4,
+  },
+  img: { width: 100, height: 100, borderRadius: 12, marginBottom: 6 },
+  foodName: { fontSize: 16, fontWeight: "bold", color: "#4a2c0a", textAlign: "center" },
+  qty: { fontSize: 13, color: "#5a3c1a", marginBottom: 6 },
+  buttonRow: { flexDirection: "row", justifyContent: "space-between", width: "100%" },
+  btn: { flex: 1, margin: 3, paddingVertical: 8, borderRadius: 8, alignItems: "center", height: 50, zIndex: 1 },
+  emptyContainer: { flex: 1, justifyContent: "", alignItems: "center", padding: 20 },
+  heading: { fontSize: 24, fontWeight: "bold", color: "#4a2c0a" },
+  modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.6)" },
+  modalContent: { width: "90%", maxHeight: "80%", borderRadius: 16, padding: 15 },
+  modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 10, textAlign: "center", color: "#4a2c0a" },
+  modalItem: { flexDirection: "row", alignItems: "center", padding: 10, marginBottom: 10, borderRadius: 10, borderWidth: 1, borderColor: "#ddd" },
+  selectedItem: { borderColor: "#34a853" },
+  modalImg: { width: 60, height: 60, borderRadius: 8, marginRight: 10 },
+  modalButtons: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
+  qtyControl: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#aaa", borderRadius: 6, paddingHorizontal: 6 },
+  qtyBtn: { fontSize: 20, fontWeight: "bold", color: "#34a853", paddingHorizontal: 6 },
+  qtyValue: { fontSize: 16, fontWeight: "bold", marginHorizontal: 4 },
+  dateBox: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 15, width: '100%', alignItems: 'center', marginBottom: 10 },
+  input: { width: "100%", margin: 1 },
+  dateText: { fontSize: 16, color: '#333' },
+});

@@ -1,5 +1,5 @@
 // app/dashboard.js
-import { Image, Platform, StyleSheet, View, Dimensions, FlatList, TouchableOpacity, ScrollView } from 'react-native';
+import { Image, StyleSheet, View, Dimensions, FlatList, TouchableOpacity, ScrollView } from 'react-native';
 import ThemedView from '../../../components/ThemedView';
 import ThemedText from '../../../components/ThemedText';
 import { useColorScheme } from 'react-native';
@@ -48,7 +48,6 @@ export default function Dashboard() {
     setRecipes(res.data.data);
   };
 
-  // Master function
   const loadData = async () => {
     const token = await AsyncStorage.getItem("userToken");
     if (!token) return router.replace("/");
@@ -65,13 +64,10 @@ export default function Dashboard() {
     await AsyncStorage.setItem("refreshPantry", "false");
   };
 
-
-  // --- Run once on mount ---
   useEffect(() => {
     loadData();
   }, []);
 
-  // --- Listen for focus + refresh flag ---
   useFocusEffect(
     useCallback(() => {
       const handleFocus = async () => {
@@ -79,7 +75,6 @@ export default function Dashboard() {
         const shouldRefreshPantry = await AsyncStorage.getItem("refreshPantry");
         const shouldRefreshFridge = await AsyncStorage.getItem("refreshFridge");
 
-        // Always reload when screen gains focus for the first time
         if (shouldRefresh === "true" || shouldRefresh === null) {
           await loadData();
           await AsyncStorage.setItem("refreshRecipes", "false");
@@ -97,35 +92,31 @@ export default function Dashboard() {
   );
 
   return (
-    <ScrollView contentContainerStyle={[{ backgroundColor: theme.uiBackground, height: "100%", width: "100%" }]}
+    <ScrollView
+      contentContainerStyle={{ backgroundColor: theme.uiBackground, height: "100%", width: "100%" }}
       showsVerticalScrollIndicator={false}
     >
       <View style={[styles.container, { backgroundColor: theme.uiBackground }]}>
         <View style={styles.rowFoodContainer}>
+          {/* Pantry Food */}
           <ThemedView style={[styles.foodContainer, { backgroundColor: theme.background }]}>
-            {/* Pantry Food */}
             <ThemedText style={styles.heading}>Pantry foods</ThemedText>
             <FlatList
               horizontal
               data={[...pantryFood.slice(0, maxItems - 1), { id: "show_all", type: "show_all" }]}
-              keyExtractor={(item) => item.type === "show_all" ? "pantry-show_all" : item.id}
-              renderItem={({ item }) =>
+              keyExtractor={(item, index) => item.type === "show_all" ? "pantry-show_all" : item.id ?? `pantry-${index}`}
+              renderItem={({ item, index }) =>
                 item.type === "show_all" ? (
                   <TouchableOpacity
                     onPress={() => router.replace("/dashboard/pantry")}
-                    style={[styles.foodItem, styles.showAllCard, , { backgroundColor: theme.showAll }]}
+                    style={[styles.foodItem, styles.showAllCard, { backgroundColor: theme.showAll }]}
                   >
-                    <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
-                      Show All
-                    </ThemedText>
+                    <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>Show All</ThemedText>
                     <Ionicons name="arrow-forward" size={15} />
                   </TouchableOpacity>
                 ) : (
                   <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
-                    <Image
-                      source={{ uri: item.photo }}
-                      style={styles.img}
-                    />
+                    <Image source={{ uri: item.photo }} style={styles.img} />
                     <ThemedText style={styles.nameTxt}>{item.name}</ThemedText>
                     <ThemedText style={styles.qty}>Qty: {item.amount}</ThemedText>
                   </View>
@@ -141,24 +132,19 @@ export default function Dashboard() {
             <FlatList
               horizontal
               data={[...fridgeFood.slice(0, maxItems - 1), { id: "show_all", type: "show_all" }]}
-              keyExtractor={(item) => item.type === "show_all" ? "fridge-show_all" : item.id}
-              renderItem={({ item }) =>
+              keyExtractor={(item, index) => item.type === "show_all" ? "fridge-show_all" : item.id ?? `fridge-${index}`}
+              renderItem={({ item, index }) =>
                 item.type === "show_all" ? (
                   <TouchableOpacity
                     onPress={() => router.replace("/dashboard/fridge")}
-                    style={[styles.foodItem, styles.showAllCard, , { backgroundColor: theme.showAll }]}
+                    style={[styles.foodItem, styles.showAllCard, { backgroundColor: theme.showAll }]}
                   >
-                    <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
-                      Show All
-                    </ThemedText>
+                    <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>Show All</ThemedText>
                     <Ionicons name="arrow-forward" size={15} />
                   </TouchableOpacity>
                 ) : (
                   <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
-                    <Image
-                      source={{ uri: item.photo }}
-                      style={styles.img}
-                    />
+                    <Image source={{ uri: item.photo }} style={styles.img} />
                     <ThemedText style={styles.nameTxt}>{item.name}</ThemedText>
                     <ThemedText style={styles.qty}>Qty: {item.amount}</ThemedText>
                   </View>
@@ -175,55 +161,45 @@ export default function Dashboard() {
             <ThemedText style={styles.heading}>Recipes</ThemedText>
             {recipes && recipes.length > 0 ? (
               <FlatList
+                horizontal
                 data={[...recipes.slice(0, maxItems - 1), { id: "show_all", type: "show_all" }]}
-                keyExtractor={(item) =>
+                keyExtractor={(item, index) =>
                   item.type === "show_all"
                     ? "recipes-show_all"
-                    : item.idMeals || item.id
+                    : item.idMeal ? item.idMeal.toString() : `recipe-${index}`
                 }
-                renderItem={({ item }) =>
+                renderItem={({ item, index }) =>
                   item.type === "show_all" ? (
                     <TouchableOpacity
                       onPress={() => router.replace("/dashboard/recipes")}
                       style={[styles.foodItem, styles.showAllCard, { backgroundColor: theme.showAll }]}
                     >
-                      <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>
-                        Show All
-                      </ThemedText>
+                      <ThemedText style={{ fontWeight: "bold", textAlign: "center" }}>Show All</ThemedText>
                       <Ionicons name="arrow-forward" size={15} />
                     </TouchableOpacity>
                   ) : (
                     <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                       <Image source={{ uri: item.strMealThumb }} style={styles.img} />
-                      <ThemedText
-                        numberOfLines={2}
-                        style={[styles.nameTxt, { textAlign: "center" }]}
-                      >
+                      <ThemedText numberOfLines={2} style={[styles.nameTxt, { textAlign: "center" }]}>
                         {item.strMeal}
                       </ThemedText>
                     </View>
                   )
                 }
-                horizontal
                 showsHorizontalScrollIndicator={false}
               />
             ) : (
-              <ThemedText style={{ marginTop: 20 }}>
-                Please add items to get recipes
-              </ThemedText>
+              <ThemedText style={{ marginTop: 20 }}>Please add items to get recipes</ThemedText>
             )}
           </ThemedView>
         </View>
 
         {/* Fun Fact */}
         <ThemedText style={[styles.funFactText]}>
-          In South Africa, 10 million tonnes of food go to waste every year.
-          This accounts for a third of the 31 million tonnes that are produced annually in South Africa.
-          Together, fruits, vegetables and cereals account for 70% of the wastage and loss.
-          This wastage and loss primarily occur early in the food supply chain.
+          In South Africa, 10 million tonnes of food go to waste every year. This accounts for a third of the 31 million tonnes that are produced annually in South Africa.
+          Together, fruits, vegetables and cereals account for 70% of the wastage and loss. This wastage and loss primarily occur early in the food supply chain.
           As the South African diet continues to shift towards one that is higher in processed foods and lower in fruit and vegetables,
-          malnutrition will increase as well. Reducing food waste in South Africa can improve the health and well-being of the majority of
-          South Africans
+          malnutrition will increase as well. Reducing food waste in South Africa can improve the health and well-being of the majority of South Africans
         </ThemedText>
         <ThemedText style={styles.funFactText}>WWF</ThemedText>
       </View>
@@ -235,18 +211,14 @@ export default function Dashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "",
     width: "100%",
     paddingHorizontal: 0
   },
   foodContainer: {
     flex: 1,
-    backgroundColor: "",
-    borderRadius: 5,
+    borderRadius: 30,
     padding: 10,
     width: "100%",
-    paddingHorizontal: 0,
-    borderRadius: 30,
     margin: 5,
     shadowColor: "#000",
     shadowOpacity: 0.3,
@@ -255,7 +227,6 @@ const styles = StyleSheet.create({
     paddingStart: 20,
     elevation: 5
   },
-
   heading: {
     fontSize: 18,
     margin: 10
@@ -272,7 +243,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 5 },
-    elevation: 6,
+    elevation: 6
   },
   img: {
     height: 80,
@@ -282,8 +253,8 @@ const styles = StyleSheet.create({
   },
   showAllCard: {
     justifyContent: 'center',
-    width: 110, // ✅ same as foodItem width
-    height: 150, // optional for uniform look
+    width: 110,
+    height: 150
   },
   rowFoodContainer: {
     flexDirection: "row",
@@ -291,10 +262,8 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     width: "100%",
     paddingHorizontal: 10,
-    marginVertical: 10,
+    marginVertical: 10
   },
-
-
   recipeContainer: {
     width: "95%",
     borderRadius: 30,
@@ -304,7 +273,7 @@ const styles = StyleSheet.create({
     elevation: 5,
     shadowColor: "#000",
     shadowOpacity: 0.3,
-    shadowOffset: { width: 4, height: 5 },
+    shadowOffset: { width: 4, height: 5 }
   },
   qty: {
     fontSize: 11

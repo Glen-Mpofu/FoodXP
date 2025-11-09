@@ -194,6 +194,19 @@ async function getIdFromHeader(req) {
 
     return foodie.data.id;
 }
+// Retry helper for async functions
+async function retryOn401(fn, retries = 3, delay = 5000) {
+    try {
+        return await fn();
+    } catch (err) {
+        if (err.response && err.response.status === 401 && retries > 0) {
+            console.warn(`401 Unauthorized. Retrying in ${delay / 1000}s... (${retries} retries left)`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return retryOn401(fn, retries - 1, delay);
+        }
+        throw err;
+    }
+}
 
 //register
 app.post("/register", async (req, res) => {
@@ -477,24 +490,33 @@ app.post("/savepantryfood", async (req, res) => {
 
 // retrieving all 
 app.get("/getpantryfood", async (req, res) => {
-    const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
-    if (!authHeader) return res.status(401).send({ status: "error", data: "No token sent" });
-
-    const token = authHeader.split(" ")[1];
-    let email;
     try {
-        const decoded = jwt.verify(token, "SECRET_KEY");
-        email = decoded.email;
-    } catch (err) {
-        return res.status(401).send({ status: "error", data: "Invalid token" });
+        const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
+        if (!authHeader) return res.status(401).send({ status: "error", data: "No token sent" });
+
+        const token = authHeader.split(" ")[1];
+        let email;
+        try {
+            const decoded = jwt.verify(token, "SECRET_KEY");
+            email = decoded.email;
+        } catch (err) {
+            return res.status(401).send({ status: "error", data: "Invalid token" });
+        }
+
+        const foodie = await getFoodie(email);
+
+        // Retry getPantryFood on 401 errors
+        const pantryFood = await retryOn401(() => getPantryFood(foodie.data.id), 3, 5000);
+
+        console.log(pantryFood.data);
+        res.send({ status: "ok", data: pantryFood.data });
+
+    } catch (error) {
+        console.error("Something went wrong", error);
+        res.send({ status: "error", data: "Something went wrong when retrieving items" });
     }
-    const foodie = await getFoodie(email)
-    const pantryFood = await getPantryFood(foodie.data.id)
+});
 
-    console.log(pantryFood.data)
-
-    res.send({ status: "ok", data: pantryFood.data })
-})
 
 //deleting 
 app.post("/deletepantryfood", async (req, res) => {
@@ -649,13 +671,13 @@ app.post("/savefridgefood", async (req, res) => {
     }
 })
 
-//retrieving all
+// Route
 app.get("/getfridgefood", async (req, res) => {
     try {
-        const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
+        const authHeader = req.headers.authorization;
         if (!authHeader) return res.status(401).send({ status: "error", data: "No token sent" });
-
         const token = authHeader.split(" ")[1];
+
         let email;
         try {
             const decoded = jwt.verify(token, "SECRET_KEY");
@@ -663,17 +685,19 @@ app.get("/getfridgefood", async (req, res) => {
         } catch (err) {
             return res.status(401).send({ status: "error", data: "Invalid token" });
         }
-        const foodie = await getFoodie(email)
-        console.log(foodie)
-        const fridgeFood = await getFridgeFood(foodie.data.id)
 
-        console.log(fridgeFood.data)
-        res.send({ status: "ok", data: fridgeFood.data })
+        const foodie = await getFoodie(email);
+
+        // Retry getFridgeFood on 401 errors
+        const fridgeFood = await retryOn401(() => getFridgeFood(foodie.data.id), 3, 5000);
+
+        res.send({ status: "ok", data: fridgeFood.data });
+
     } catch (error) {
-        console.error("Something went wrong", error)
-        return res.send({ status: "error", data: "Something went wrong when retrieving items" })
+        console.error("Something went wrong", error);
+        res.send({ status: "error", data: "Something went wrong when retrieving items" });
     }
-})
+});
 
 //deleting 
 app.post("/deletefridgefood", async (req, res) => {
@@ -750,7 +774,6 @@ app.post("/editFridgeFood", async (req, res) => {
 })
 
 /////////////////////////
-
 app.post("/get-ngos", async (req, res) => {
     try {
         const { lat, long, radius = 50000 } = req.body;
@@ -801,7 +824,7 @@ app.post("/getAiRecipe", async (req, res) => {
         const prompt = `
             Return ONLY valid JSON. No explanations. No formatting. No markdown.
             
-            You are a creative and budget-friendly chef AI. Create exactly 2 recipes using ONLY these ingredients:
+            You are a creative and budget-friendly chef AI. Create exactly 4 recipes using ONLY these ingredients:
             ${formattedIngredients}
             
             Each recipe MUST follow this exact structure:
@@ -826,7 +849,7 @@ app.post("/getAiRecipe", async (req, res) => {
             Rules:
             - The number of ingredients is flexible.
             - The number of instruction steps is flexible.
-            - Return only the JSON array with exactly 2 recipe objects.
+            - Return only the JSON array with exactly 4 recipe objects.
             `;
 
         const response = await axios.post(
@@ -860,6 +883,24 @@ app.post("/getAiRecipe", async (req, res) => {
     }
 });
 
+async function axiosWithRetry(url, options = {}, retries = 3, delay = 5000) {
+    try {
+        const response = await axios(url, options);
+        return response;
+    } catch (err) {
+        if (
+            err.response &&
+            (err.response.status >= 500 && err.response.status < 600) && retries > 0
+        ) {
+            console.warn(`Server error ${err.response.status}. Retrying in ${delay / 1000}s...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return axiosWithRetry(url, options, retries - 1, delay);
+        }
+        // Instead of throwing, return null so processing continues
+        console.error("Request failed, skipping:", err.message);
+        return null;
+    }
+}
 
 app.get("/get-recipes", async (req, res) => {
     try {
@@ -867,97 +908,95 @@ app.get("/get-recipes", async (req, res) => {
         const pantryFood = await getPantryFood(id);
         const fridgeFood = await getFridgeFood(id);
 
-        const namesF = fridgeFood.data.map(item => item.name);
-        const namesP = pantryFood.data.map(item => item.name);
-        const allIngredients = [...namesF, ...namesP]
+        const allIngredients = [
+            ...fridgeFood.data.map(item => item.name),
+            ...pantryFood.data.map(item => item.name),
+        ];
 
-        ingredientQuery = encodeURIComponent(allIngredients.join(" "))
-        console.log(ingredientQuery)
-        //console.log(allIngredients.length)
-        if (allIngredients.length > 0) {
-            // getting the meals
-            let meals = []
-            for (let index = 0; index < allIngredients.length; index++) {
-                const mealsReponse = await axios.get(`
-                https://www.themealdb.com/api/json/v1/1/filter.php?i=${allIngredients.at(index)}
-            `)
-                if (mealsReponse.data.meals != null) {
-                    meals.push(...mealsReponse.data.meals)
+        if (!allIngredients.length) return res.json({ status: "ok", data: [] });
+
+        const mealsSet = new Map(); // to avoid duplicates
+
+        // --- Helper to fetch meals by ingredient ---
+        const fetchMealsByIngredient = async (ingredient) => {
+            try {
+                const response = await axiosWithRetry(
+                    `https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(ingredient)}`
+                );
+                if (response?.data?.meals) {
+                    response.data.meals.forEach(meal => mealsSet.set(meal.idMeal, meal));
                 }
-
+            } catch (err) {
+                console.warn(`Failed to fetch meals for ${ingredient}`, err.message);
             }
-            console.log("Individual ingredients Meals fetched:", meals)
+        };
 
-            //Multi ingredient code 
-            // Multi ingredient code
-            if (allIngredients.length > 1) {
-                const multiIngredientMeals = [];
+        // --- Parallel single-ingredient requests ---
+        await Promise.all(allIngredients.map(fetchMealsByIngredient));
 
-                // Decide how many ingredients per query (random between 2 and 4, for example)
-                const maxGroupSize = Math.min(4, allIngredients.length);
+        // --- Multi-ingredient combinations (2–4 ingredients) ---
+        const maxGroupSize = Math.min(4, allIngredients.length);
 
-                // Shuffle ingredients array to randomize grouping
-                const shuffledIngredients = allIngredients.sort(() => 0.5 - Math.random());
+        const getCombinations = (arr, k) => {
+            const combos = [];
+            const helper = (start, path) => {
+                if (path.length === k) {
+                    combos.push([...path]);
+                    return;
+                }
+                for (let i = start; i < arr.length; i++) {
+                    path.push(arr[i]);
+                    helper(i + 1, path);
+                    path.pop();
+                }
+            };
+            helper(0, []);
+            return combos;
+        };
 
-                for (let groupSize = 2; groupSize <= maxGroupSize; groupSize++) {
-                    for (let i = 0; i <= shuffledIngredients.length - groupSize; i++) {
-                        const ingredientGroup = shuffledIngredients.slice(i, i + groupSize);
-                        const groupQuery = encodeURIComponent(ingredientGroup.join(","));
-                        try {
-                            const response = await axios.get(
-                                `https://www.themealdb.com/api/json/v2/65232507/filter.php?i=${groupQuery}`
-                            );
-                            if (response.data.meals != null) {
-                                multiIngredientMeals.push(...response.data.meals);
-                            }
-                        } catch (err) {
-                            console.error("Error fetching multi-ingredient meals:", err.message);
+        for (let size = 2; size <= maxGroupSize; size++) {
+            const combos = getCombinations(allIngredients, size);
+            await Promise.all(
+                combos.map(async (combo) => {
+                    try {
+                        const query = encodeURIComponent(combo.join(","));
+                        const response = await axiosWithRetry(
+                            `https://www.themealdb.com/api/json/v2/65232507/filter.php?i=${query}`
+                        );
+                        if (response?.data?.meals) {
+                            response.data.meals.forEach(meal => mealsSet.set(meal.idMeal, meal));
                         }
+                    } catch (err) {
+                        console.warn(`Failed combo ${combo.join(",")}`, err.message);
                     }
-                }
-
-                // Merge the multi-ingredient meals with the single-ingredient meals
-                meals.push(...multiIngredientMeals);
-            }
-            const mealInstruct = []
-            // getting the ingredients and instructions for every meal
-            for (let index = 0; index < meals.length; index++) {
-                const mealName = meals.at(index).strMeal
-                const mealsDetail = await axios.get(`
-                https://www.themealdb.com/api/json/v1/1/search.php?s=${mealName}
-            `)
-                //console.log(mealsDetail.data.meals)
-                mealInstruct.push(...mealsDetail.data.meals)
-            }
-
-            console.log("Meal Instructions fetched:", mealInstruct)
-
-            console.log("Recipes fetched:", mealInstruct);
-
-            res.json({
-                status: "ok",
-                data: mealInstruct,
-            });
-        } else {
-            res.json({
-                status: "ok",
-                data: [],
-            });
+                })
+            );
         }
 
+        // --- Fetch detailed meal info in parallel ---
+        const mealDetails = await Promise.all(
+            Array.from(mealsSet.values()).map(async meal => {
+                try {
+                    const response = await axiosWithRetry(
+                        `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(meal.strMeal)}`
+                    );
+                    return response?.data?.meals?.[0] || null;
+                } catch (err) {
+                    console.warn(`Failed to fetch details for ${meal.strMeal}`, err.message);
+                    return null;
+                }
+            })
+        );
+
+        // Filter out nulls and return
+        res.json({ status: "ok", data: mealDetails.filter(Boolean) });
 
     } catch (error) {
-        console.error("Error fetching recipes:", error);
-
-        if (!res.headersSent) {
-            res.status(500).json({
-                status: "error",
-                message: "Failed to fetch recipes",
-                error: error.message,
-            });
-        }
+        console.error("Unexpected error:", error);
+        res.json({ status: "ok", data: [] });
     }
 });
+
 
 app.get("/", async (req, res) => {
     res.send({ status: "ok", data: "Server is up" })

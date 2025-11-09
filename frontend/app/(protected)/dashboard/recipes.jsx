@@ -99,39 +99,61 @@ const Recipes = () => {
       <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ padding: 10, flexGrow: 1 }}>
 
         {/* --- AI Recipes --- */}
+        {/* --- AI Recipes --- */}
         {aiRecipes.length > 0 ? (
-          <View style={{ marginBottom: 20, flex: 1 }}>
+          <View style={{ marginVertical: 20, width: "100%" }}>
             <ThemedText style={styles.heading}>
               AI-Generated Recipes
             </ThemedText>
             {aiRecipes.map((recipe, index) => (
-              <View key={index} style={[styles.foodItem, { backgroundColor: theme.background }]}>
-                <ThemedText style={{ fontSize: 20, fontWeight: "bold", marginBottom: 4, textAlign: "center" }}>{recipe.name}</ThemedText>
-                <ThemedText style={{ fontStyle: "italic", marginBottom: 8, textAlign: "center" }}>{recipe.description}</ThemedText>
+              <View
+                key={index}
+                style={[
+                  styles.foodItem,
+                  { backgroundColor: theme.background, marginBottom: 20 } // add spacing between cards
+                ]}
+              >
+                <ThemedText style={{ fontSize: 20, fontWeight: "bold", marginBottom: 8, textAlign: "center" }}>
+                  {recipe.name}
+                </ThemedText>
+                <ThemedText style={{ fontStyle: "italic", marginBottom: 12, textAlign: "center" }}>
+                  {recipe.description}
+                </ThemedText>
 
                 {/* Instructions */}
-                <View style={{ padding: 8, borderRadius: 8, backgroundColor: theme.background }}>
-                  <ThemedText style={{ fontWeight: "bold", marginBottom: 4, textAlign: "center" }}>Instructions:</ThemedText>
+                <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.background, marginBottom: 10 }}>
+                  <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Instructions:</ThemedText>
                   {recipe.instructions.map((step, i) => (
-                    <ThemedText style={{ textAlign: "center" }} key={i}>{i + 1}) {step}</ThemedText>
+                    <ThemedText style={{ textAlign: "center", marginBottom: 4 }} key={i}>
+                      {i + 1}) {step}
+                    </ThemedText>
                   ))}
                 </View>
+
                 {/* Ingredients */}
-                <View style={{ padding: 8, width: "100%", marginBottom: 8, borderRadius: 8, backgroundColor: theme.navBackground }}>
-                  <ThemedText style={{ fontWeight: "bold", marginBottom: 4, textAlign: "center" }}>Ingredients:</ThemedText>
+                <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.navBackground }}>
+                  <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Ingredients:</ThemedText>
                   {recipe.ingredients.map((ing, i) => (
-                    <ThemedText style={{ textAlign: "center" }} key={i}>• {ing.ingredient} ({ing.measure})</ThemedText>
+                    <ThemedText style={{ textAlign: "center", marginBottom: 2 }} key={i}>
+                      • {ing.ingredient} ({ing.measure})
+                    </ThemedText>
                   ))}
                 </View>
-                <ThemedText style={{ marginTop: 8 }}>⏱ {recipe.time} | ⚡ {recipe.difficulty}</ThemedText>
+
+                <ThemedText style={{ marginTop: 8, textAlign: "center" }}>
+                  ⏱ {recipe.time} | ⚡ {recipe.difficulty}
+                </ThemedText>
               </View>
             ))}
           </View>
         ) : (
           <ThemedView style={styles.emptyContainer}>
-            <ThemedText style={styles.eHeading}>Click Generate AI Recipes and Select Food Items to get recipes using.</ThemedText>
+            <ThemedText style={styles.eHeading}>
+              Click Generate AI Recipes and Select Food Items to get recipes using.
+            </ThemedText>
           </ThemedView>
         )}
+
 
         <ThemedText style={styles.heading}>
           Classic Recipes

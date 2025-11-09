@@ -8,6 +8,7 @@ import ThemedButton from '../../../components/ThemedButton'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Toast } from 'toastify-react-native'
 import { Colors } from '../../../constants/Colors'
+import { MaterialCommunityIcons } from "@expo/vector-icons"
 
 const DonateMap = () => {
   const [userToken, setUserToken] = useState(null);
@@ -56,7 +57,6 @@ const DonateMap = () => {
     fetchDonorRequests();
     init();
   }, []);
-
 
   const acceptRequest = async (request) => {
     try {
@@ -132,7 +132,7 @@ const DonateMap = () => {
           {item.fname && <ThemedText style={styles.donorInfo}>Donor: {item.fname}</ThemedText>}
           {item.email && <ThemedText style={styles.donorInfo}>{item.email}</ThemedText>}
 
-          {/* Show pickup location only if accepted */}
+          {/* Show pickup location only if accepted THIS SHOWS ON THE REQUESTER SIDE */}
           {item.status === "Accepted" && item.city && (
             <View style={{ marginTop: 5 }}>
               <ThemedText style={{ fontSize: 13, color: "#444", fontWeight: "bold" }}>
@@ -206,6 +206,24 @@ const DonateMap = () => {
                   <ThemedButton style={styles.claimBtn} onPress={() => acceptRequest(item)}>
                     <ThemedText style={{ color: "#fff", fontWeight: "bold" }}>Accept</ThemedText>
                   </ThemedButton>
+                )}
+                {item.status === "Accepted" && (
+                  <TouchableOpacity
+                    style={{ marginTop: 10 }}
+                    onPress={async () => {
+                      try {
+                        await axios.post(`${API_BASE_URL}/incrementDonatedItem`, { donor_id: item.donor_id, requester_id: item.requester_id }, {
+                          headers: { Authorization: `Bearer ${userToken}` }
+                        });
+                        Toast.show({ type: "success", text1: "Donation count incremented!" });
+                      } catch (err) {
+                        console.error(err);
+                        Toast.show({ type: "error", text1: "Failed to increment donation" });
+                      }
+                    }}
+                  >
+                    <MaterialCommunityIcons name="hand-heart-outline" size={30} color="#34a853" />
+                  </TouchableOpacity>
                 )}
               </View>
             )}

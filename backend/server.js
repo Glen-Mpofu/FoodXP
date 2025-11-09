@@ -68,7 +68,7 @@ app.use(session({
 }));
 
 const port = process.env.PORT ?? 5001
-
+const pLimit = require("p-limit");
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
@@ -811,7 +811,7 @@ app.get("/test-notification", async (req, res) => {
         res.status(500).send("Failed to send notification");
     }
 });
-
+///getting recipes
 app.post("/getAiRecipe", async (req, res) => {
     console.log(req.body)
     try {
@@ -822,35 +822,35 @@ app.post("/getAiRecipe", async (req, res) => {
             .join(", ");
 
         const prompt = `
-            Return ONLY valid JSON. No explanations. No formatting. No markdown.
-            
-            You are a creative and budget-friendly chef AI. Create exactly 4 recipes using ONLY these ingredients:
-            ${formattedIngredients}
-            
-            Each recipe MUST follow this exact structure:
-            
-            [
-              {
-                "name": "string",
-                "description": "string",
-                "ingredients": [
-                  { "ingredient": "string", "measure": "string" }
-                  // number of ingredients can be ANY length
-                ],
-                "instructions": [
-                  "string"
-                  // number of steps can be ANY length (3–10 typical)
-                ],
-                "time": "string",
-                "difficulty": "Easy | Medium | Hard"
-              }
-            ]
-            
-            Rules:
-            - The number of ingredients is flexible.
-            - The number of instruction steps is flexible.
-            - Return only the JSON array with exactly 4 recipe objects.
-            `;
+                Return ONLY valid JSON. No explanations. No formatting. No markdown.
+                
+                You are a creative and budget-friendly chef AI. Create exactly 4 recipes using ONLY these ingredients:
+                ${formattedIngredients}
+                
+                Each recipe MUST follow this exact structure:
+                
+                [
+                {
+                    "name": "string",
+                    "description": "string",
+                    "ingredients": [
+                    { "ingredient": "string", "measure": "string" }
+                    // number of ingredients can be ANY length
+                    ],
+                    "instructions": [
+                    "string"
+                    // number of steps can be ANY length (3–10 typical)
+                    ],
+                    "time": "string",
+                    "difficulty": "Easy | Medium | Hard"
+                }
+                ]
+                
+                Rules:
+                - The number of ingredients is flexible.
+                - The number of instruction steps is flexible.
+                - Return only the JSON array with exactly 4 recipe objects.
+                `;
 
         const response = await axios.post(
             "https://api.groq.com/openai/v1/chat/completions",
@@ -908,6 +908,7 @@ app.get("/get-recipes", async (req, res) => {
         const pantryFood = await getPantryFood(id);
         const fridgeFood = await getFridgeFood(id);
 
+        // --- Collect all ingredients ---
         const allIngredients = [
             ...fridgeFood.data.map(item => item.name),
             ...pantryFood.data.map(item => item.name),
@@ -915,27 +916,30 @@ app.get("/get-recipes", async (req, res) => {
 
         if (!allIngredients.length) return res.json({ status: "ok", data: [] });
 
-        const mealsSet = new Map(); // to avoid duplicates
+        const mealsSet = new Map(); // Deduplicate meals
 
-        // --- Helper to fetch meals by ingredient ---
-        const fetchMealsByIngredient = async (ingredient) => {
+        // --- Helper to fetch meals by ingredient list ---
+        const fetchMealsByIngredients = async (ingredients) => {
+            if (!ingredients.length) return;
             try {
+                const query = encodeURIComponent(ingredients.join(","));
                 const response = await axiosWithRetry(
-                    `https://www.themealdb.com/api/json/v1/1/filter.php?i=${encodeURIComponent(ingredient)}`
+                    `https://www.themealdb.com/api/json/v2/65232507/filter.php?i=${query}`
                 );
                 if (response?.data?.meals) {
                     response.data.meals.forEach(meal => mealsSet.set(meal.idMeal, meal));
                 }
             } catch (err) {
-                console.warn(`Failed to fetch meals for ${ingredient}`, err.message);
+                console.warn(`Failed to fetch meals for [${ingredients.join(",")}]:`, err.message);
             }
         };
 
-        // --- Parallel single-ingredient requests ---
-        await Promise.all(allIngredients.map(fetchMealsByIngredient));
+        // --- 1. Fetch single ingredients in parallel ---
+        await Promise.all(allIngredients.map(ingredient => fetchMealsByIngredients([ingredient])));
 
-        // --- Multi-ingredient combinations (2–4 ingredients) ---
+        // --- 2. Multi-ingredient combinations (2–4) with limit ---
         const maxGroupSize = Math.min(4, allIngredients.length);
+        const maxCombosPerSize = 10; // Limit to avoid combinatorial explosion
 
         const getCombinations = (arr, k) => {
             const combos = [];
@@ -951,44 +955,33 @@ app.get("/get-recipes", async (req, res) => {
                 }
             };
             helper(0, []);
-            return combos;
+            return combos.sort(() => 0.5 - Math.random()).slice(0, maxCombosPerSize);
         };
 
         for (let size = 2; size <= maxGroupSize; size++) {
             const combos = getCombinations(allIngredients, size);
-            await Promise.all(
-                combos.map(async (combo) => {
-                    try {
-                        const query = encodeURIComponent(combo.join(","));
-                        const response = await axiosWithRetry(
-                            `https://www.themealdb.com/api/json/v2/65232507/filter.php?i=${query}`
-                        );
-                        if (response?.data?.meals) {
-                            response.data.meals.forEach(meal => mealsSet.set(meal.idMeal, meal));
-                        }
-                    } catch (err) {
-                        console.warn(`Failed combo ${combo.join(",")}`, err.message);
-                    }
-                })
-            );
+            await Promise.all(combos.map(combo => fetchMealsByIngredients(combo)));
         }
 
-        // --- Fetch detailed meal info in parallel ---
+        // --- 3. Fetch detailed meal info with concurrency limit ---
+        const limit = pLimit(5); // max 5 concurrent requests
         const mealDetails = await Promise.all(
-            Array.from(mealsSet.values()).map(async meal => {
-                try {
-                    const response = await axiosWithRetry(
-                        `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(meal.strMeal)}`
-                    );
-                    return response?.data?.meals?.[0] || null;
-                } catch (err) {
-                    console.warn(`Failed to fetch details for ${meal.strMeal}`, err.message);
-                    return null;
-                }
-            })
+            Array.from(mealsSet.values()).map(meal =>
+                limit(async () => {
+                    try {
+                        const res = await axiosWithRetry(
+                            `https://www.themealdb.com/api/json/v1/1/search.php?s=${encodeURIComponent(meal.strMeal)}`
+                        );
+                        return res?.data?.meals?.[0] || null;
+                    } catch (err) {
+                        console.warn(`Failed to fetch details for ${meal.strMeal}:`, err.message);
+                        return null;
+                    }
+                })
+            )
         );
 
-        // Filter out nulls and return
+        // --- 4. Return filtered results ---
         res.json({ status: "ok", data: mealDetails.filter(Boolean) });
 
     } catch (error) {
@@ -996,7 +989,7 @@ app.get("/get-recipes", async (req, res) => {
         res.json({ status: "ok", data: [] });
     }
 });
-
+/////////////////////////////////////
 
 app.get("/", async (req, res) => {
     res.send({ status: "ok", data: "Server is up" })
@@ -1306,5 +1299,51 @@ app.get("/getLatestLocation", async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send({ status: "error", data: "Server error" });
+    }
+});
+
+app.post("/incrementDonatedItem", async (req, res) => {
+    const { donor_id, requester_id } = req.body; // requester_id is the user who received the donation
+    try {
+        // --- Donor: increment donationsMade ---
+        const donorResult = await pool.query(
+            "SELECT * FROM DONATED_ITEMS WHERE donor_id = $1",
+            [donor_id]
+        );
+
+        if (donorResult.rows.length === 0) {
+            await pool.query(
+                "INSERT INTO DONATED_ITEMS(donor_id, donationsMade, donationsReceived) VALUES($1, 1, 0)",
+                [donor_id]
+            );
+        } else {
+            await pool.query(
+                "UPDATE DONATED_ITEMS SET donationsMade = donationsMade + 1 WHERE donor_id = $1",
+                [donor_id]
+            );
+        }
+
+        // --- Requester: increment donationsReceived ---
+        const requesterResult = await pool.query(
+            "SELECT * FROM DONATED_ITEMS WHERE donor_id = $1",
+            [requester_id]
+        );
+
+        if (requesterResult.rows.length === 0) {
+            await pool.query(
+                "INSERT INTO DONATED_ITEMS(donor_id, donationsMade, donationsReceived) VALUES($1, 0, 1)",
+                [requester_id]
+            );
+        } else {
+            await pool.query(
+                "UPDATE DONATED_ITEMS SET donationsReceived = donationsReceived + 1 WHERE donor_id = $1",
+                [requester_id]
+            );
+        }
+
+        res.json({ status: "ok" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ status: "error", message: err.message });
     }
 });

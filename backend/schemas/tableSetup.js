@@ -106,7 +106,7 @@ async function initialiseTables(pool) {
         console.error("Something went wrong when creating Location table", error)
     });
 
-    // DONATED ITEMS
+    /*// DONATED ITEMS
     await pool.query(`
         CREATE TABLE IF NOT EXISTS DONATED_ITEMS(
             donated_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -119,8 +119,18 @@ async function initialiseTables(pool) {
         console.log("DONATED ITEMS Table Ready")
     }).catch(error => {
         console.error("Something went wrong when creating DONATED ITEMS table", error)
+    });*/
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS DONATED_ITEMS(
+            donor_id UUID REFERENCES FOODIE(id),
+            donationsMade INT,
+            donationsReceived INT
+        );    
+    `).then((res) => {
+        console.log("DONATED ITEMS Table Ready")
+    }).catch(error => {
+        console.error("Something went wrong when creating DONATED ITEMS table", error)
     });
-
 }
 
 module.exports = { initialiseTables };

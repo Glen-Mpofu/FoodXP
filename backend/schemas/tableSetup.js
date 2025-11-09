@@ -60,7 +60,6 @@ async function initialiseTables(pool) {
             fridge_food_id UUID REFERENCES FRIDGE_FOOD(id) ON DELETE CASCADE,
             pantry_food_id UUID REFERENCES PANTRY_FOOD(id) ON DELETE CASCADE,
             location_id UUID REFERENCES LOCATION(id),
-            STATUS VARCHAR(50),
             QUANTITY INT,
             AMOUNT INT,
             sourceTable VARCHAR(10)
@@ -77,14 +76,14 @@ async function initialiseTables(pool) {
             request_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             donation_id uuid REFERENCES DONATION(donation_id) ON DELETE CASCADE,
             requester_id uuid REFERENCES FOODIE(id) ON DELETE CASCADE,
-            donor_id uuid REFERENCES FOODIE(id) ON DELETE CASCADE
+            donor_id uuid REFERENCES FOODIE(id) ON DELETE CASCADE,
+            STATUS VARCHAR(50)
         )
     `).then((res) => {
         console.log("DONATION_REQUESTS Table Ready")
     }).catch(error => {
-        console.error("Something went wrong when creating DONATION table", error)
+        console.error("Something went wrong when creating DONATION_REQUESTS table", error)
     });
-
 
     // LOCATION TABLE
     await pool.query(
@@ -104,7 +103,22 @@ async function initialiseTables(pool) {
     ).then((res) => {
         console.log("Location Table Ready")
     }).catch(error => {
-        console.error("Something went wrong when creating DONATION_PICKUP table", error)
+        console.error("Something went wrong when creating Location table", error)
+    });
+
+    // DONATED ITEMS
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS DONATED_ITEMS(
+            donated_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            donation_id UUID REFERENCES DONATION(donation_id) ON DELETE CASCADE,
+            donor_id UUID REFERENCES FOODIE(id),
+            requester_id UUID REFERENCES FOODIE(id),
+            completed_at TIMESTAMPTZ DEFAULT NOW()
+        );    
+    `).then((res) => {
+        console.log("DONATED ITEMS Table Ready")
+    }).catch(error => {
+        console.error("Something went wrong when creating DONATED ITEMS table", error)
     });
 
 }

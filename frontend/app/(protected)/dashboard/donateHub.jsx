@@ -18,6 +18,7 @@ const DonateMap = () => {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
   const [donorRequests, setDonorRequests] = useState([]);
+
   useEffect(() => {
     async function init() {
       try {
@@ -25,25 +26,37 @@ const DonateMap = () => {
         if (!token) return;
         setUserToken(token);
 
-        const donationsResult = await axios.get(`${API_BASE_URL}/getDonations`, { headers: { Authorization: `Bearer ${token}` } });
-        let donations = donationsResult.data.data || [];
+        // Fetch all donations
+        const donationsResult = await axios.get(`${API_BASE_URL}/getDonations`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const donations = donationsResult.data.data || [];
 
-        const requestsResult = await axios.get(`${API_BASE_URL}/getMyDonationRequests`, { headers: { Authorization: `Bearer ${token}` } });
-        const requestedDonationIds = requestsResult.data.data || [];
+        // Fetch donations this user has already requested
+        const requestsResult = await axios.get(`${API_BASE_URL}/getMyDonationRequests`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const requestedDonations = requestsResult.data.data || [];
 
-        const requestedDonations = donations.filter(d => requestedDonationIds.includes(d.donation_id));
-        const remainingDonations = donations.filter(d => !requestedDonationIds.includes(d.donation_id));
+        // Create a set of requested donation IDs for fast lookup
+        const requestedIds = new Set(requestedDonations.map(d => d.donation_id));
+
+        // Filter out requested donations from available donations
+        const remainingDonations = donations.filter(d => !requestedIds.has(d.donation_id));
 
         setMyRequests(requestedDonations);
         setAvailableDonations(remainingDonations);
+
       } catch (err) {
         console.error(err);
         Toast.show({ type: "error", text1: "Something went wrong", useModal: false });
       }
     }
+
     fetchDonorRequests();
     init();
   }, []);
+
 
   const acceptRequest = async (request) => {
     try {
@@ -109,15 +122,27 @@ const DonateMap = () => {
         onPress={() => toggleSelectDonation(item)}
         activeOpacity={0.9}
       >
-        <Image source={{ uri: item.photo }} style={styles.donationImage} />
+        <Image source={{ uri: item.food_photo ?? item.photo }} style={styles.donationImage} />
 
         <View style={styles.donationDetails}>
-          <ThemedText style={styles.donationName}>{item.name}</ThemedText>
+          <ThemedText style={styles.donationName}>{item.food_name ?? item.name}</ThemedText>
           <ThemedText style={styles.donationAmount}>
             {item.amount} {item.unitofmeasure ?? ""}
           </ThemedText>
           {item.fname && <ThemedText style={styles.donorInfo}>Donor: {item.fname}</ThemedText>}
           {item.email && <ThemedText style={styles.donorInfo}>{item.email}</ThemedText>}
+
+          {/* Show pickup location only if accepted */}
+          {item.status === "Accepted" && item.city && (
+            <View style={{ marginTop: 5 }}>
+              <ThemedText style={{ fontSize: 13, color: "#444", fontWeight: "bold" }}>
+                Pickup Location:
+              </ThemedText>
+              <ThemedText style={{ fontSize: 13, color: "#555" }}>
+                {item.street}, {item.city}, {item.province}, {item.zipcode}, {item.country}
+              </ThemedText>
+            </View>
+          )}
         </View>
 
         <View style={styles.actionContainer}>
@@ -127,14 +152,20 @@ const DonateMap = () => {
             </ThemedButton>
           )}
           {isRequest && (
-            <View style={styles.requestBadge}>
-              <ThemedText style={{ color: "#fff", fontWeight: "bold" }}>Requested</ThemedText>
-            </View>
+            <ThemedView>
+              <View style={styles.requestBadge}>
+                <ThemedText style={{ color: "#fff", fontWeight: "bold" }}>
+                  {item.status ?? "Requested"}
+                </ThemedText>
+              </View>
+            </ThemedView>
           )}
+
         </View>
       </TouchableOpacity>
     );
-  }
+  };
+
 
   return (
 
@@ -171,14 +202,17 @@ const DonateMap = () => {
                   <ThemedText>Email: {item.requester_email}</ThemedText>
                   <ThemedText>Status: {item.status ?? "Pending"}</ThemedText>
                 </View>
-                <ThemedButton style={styles.claimBtn} onPress={() => acceptRequest(item)}>
-                  <ThemedText style={{ color: "#fff", fontWeight: "bold" }}>Accept</ThemedText>
-                </ThemedButton>
+                {item.status !== "Accepted" && (
+                  <ThemedButton style={styles.claimBtn} onPress={() => acceptRequest(item)}>
+                    <ThemedText style={{ color: "#fff", fontWeight: "bold" }}>Accept</ThemedText>
+                  </ThemedButton>
+                )}
               </View>
             )}
             scrollEnabled={false}
             contentContainerStyle={{ paddingBottom: 20 }}
           />
+
         )}
 
         {/* Available Donations */}

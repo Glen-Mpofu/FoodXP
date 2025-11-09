@@ -995,6 +995,7 @@ async function forwardGeocode({ street, city, province, country }) {
     }
 }
 
+//donations
 app.post("/donate", async (req, res) => {
     const donations = req.body.items;
     console.log(req.body)
@@ -1053,17 +1054,15 @@ app.post("/donate", async (req, res) => {
                 foodie_id,
                 ${isPantry ? "pantry_food_id" : "fridge_food_id"},
                 location_id,
-                status,
                 amount,
                 sourceTable
             )
-            VALUES($1, $2, $3, $4, $5, $6)
+            VALUES($1, $2, $3, $4, $5)
             `,
             [
                 donation.foodie_id,
                 donation.id,
                 location_id,
-                "available",
                 donation.amount,
                 donation.from
             ]
@@ -1077,8 +1076,6 @@ app.post("/donate", async (req, res) => {
 
     res.send({ status: "ok", data: "Item(s) are up for Donation" });
 });
-
-//donations
 
 //Getting
 app.get("/getDonations", async (req, res) => {
@@ -1118,13 +1115,20 @@ app.get("/getMyDonationRequests", async (req, res) => {
         if (!requester_id) return res.status(401).json({ status: "error", data: "Unauthorized" });
 
         const result = await pool.query(`
-            SELECT donation_id 
-            FROM DONATION_REQUEST
-            WHERE requester_id = $1
-        `, [requester_id]);
-
+    SELECT dr.donation_id, dr.STATUS, 
+           COALESCE(fr.name, pa.name) as food_name,
+           COALESCE(fr.photo, pa.photo) as food_photo,
+           l.city, l.street, l.province, l.country, l.zipcode
+    FROM DONATION_REQUEST dr
+    JOIN DONATION d ON dr.donation_id = d.donation_id
+    LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
+    LEFT JOIN PANTRY_FOOD pa ON d.pantry_food_id = pa.id
+    LEFT JOIN LOCATION l ON d.location_id = l.id
+    WHERE dr.requester_id = $1
+`, [requester_id]);
+        result.rows.map(r => console.log(r))
         const requests = result.rows.map(r => r.donation_id);
-        res.json({ status: "ok", data: requests });
+        res.json({ status: "ok", data: result.rows });
     } catch (err) {
         console.error(err);
         res.status(500).json({ status: "error", data: "Something went wrong" });
@@ -1183,21 +1187,22 @@ app.post("/requestDonation", async (req, res) => {
 
 app.get("/getRequestsForMe", async (req, res) => {
     try {
-        const donor_id = await getIdFromHeader(req); // authenticated donor
+        const donor_id = await getIdFromHeader(req);
         if (!donor_id) return res.status(401).json({ status: "error", data: "Unauthorized" });
 
         const result = await pool.query(`
-            SELECT dr.request_id, dr.donation_id, dr.requester_id, dr.donor_id,
-                   f.name as requester_name, f.email as requester_email,
-                   d.amount, d.sourceTable, d.STATUS, 
-                   COALESCE(fr.name, pa.name) as food_name, COALESCE(fr.photo, pa.photo) as food_photo
-            FROM DONATION_REQUEST dr
-            JOIN FOODIE f ON dr.requester_id = f.id
-            JOIN DONATION d ON dr.donation_id = d.donation_id
-            LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
-            LEFT JOIN PANTRY_FOOD pa ON d.pantry_food_id = pa.id
-            WHERE dr.donor_id = $1
-        `, [donor_id]);
+        SELECT dr.request_id, dr.donation_id, dr.requester_id, dr.donor_id,
+               f.name as requester_name, f.email as requester_email,
+               d.amount, d.sourceTable,
+               COALESCE(fr.name, pa.name) as food_name, COALESCE(fr.photo, pa.photo) as food_photo,
+               dr.STATUS
+        FROM DONATION_REQUEST dr
+        JOIN FOODIE f ON dr.requester_id = f.id
+        JOIN DONATION d ON dr.donation_id = d.donation_id
+        LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
+        LEFT JOIN PANTRY_FOOD pa ON d.pantry_food_id = pa.id
+        WHERE dr.donor_id = $1
+      `, [donor_id]);
 
         res.json({ status: "ok", data: result.rows });
     } catch (err) {
@@ -1224,18 +1229,16 @@ app.post("/acceptRequest", async (req, res) => {
             return res.status(404).json({ status: "error", data: "Request not found or not yours" });
         }
 
-        const donation_id = requestResult.rows[0].donation_id;
-
-        // Update donation status to Accepted
+        // Update the status in DONATION_REQUEST directly
         await pool.query(
-            `UPDATE DONATION SET STATUS = 'Accepted' WHERE donation_id = $1`,
-            [donation_id]
+            `UPDATE DONATION_REQUEST SET STATUS = 'Accepted' WHERE request_id = $1`,
+            [request_id]
         );
 
         // Remove other requests for the same donation
         await pool.query(
             `DELETE FROM DONATION_REQUEST WHERE donation_id = $1 AND request_id != $2`,
-            [donation_id, request_id]
+            [requestResult.rows[0].donation_id, request_id]
         );
 
         res.json({ status: "ok", data: "Request accepted successfully" });
@@ -1244,7 +1247,6 @@ app.post("/acceptRequest", async (req, res) => {
         res.status(500).json({ status: "error", data: "Something went wrong" });
     }
 });
-
 
 app.get("/getLatestLocation", async (req, res) => {
     try {

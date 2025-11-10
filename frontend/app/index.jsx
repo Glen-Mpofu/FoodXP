@@ -1,6 +1,5 @@
 import { StyleSheet, useColorScheme, Modal, TouchableOpacity, View, Platform, Pressable, Image, Dimensions } from 'react-native'
 import { useEffect, useState } from 'react'
-import registerNNPushToken, { getUserId } from 'native-notify';
 //themedui
 import ThemedView from '../components/ThemedView'
 import ThemedText from '../components/ThemedText'
@@ -113,10 +112,6 @@ const Index = () => {
                             <Ionicons name={showPassword ? "eye" : "eye-off"} size={30} style={styles.icon} color={theme.iconColor} />
                         </Pressable>
                     </View>
-
-                    <TouchableOpacity onPress={openFogotPassWordModal} style={{ width: "100%", alignSelf: 'flex-end' }}>
-                        <ThemedText style={[styles.forgotPassword, { color: theme.forgotPassword, backgroundColor: "transparent" }]}>Forgot Password?</ThemedText>
-                    </TouchableOpacity>
                 </View>
 
                 <ThemedView style={styles.links}>
@@ -178,7 +173,7 @@ const styles = StyleSheet.create({
         flex: 1, // take remaining space
         padding: 30,
         alignItems: "center",
-        justifyContent: "center" // optional: center content vertically
+        justifyContent: "center",
     },
     wHeading: { fontSize: 28, fontWeight: '600', marginBottom: 5, fontFamily: "Raleway" },
     topGradient: {
@@ -186,7 +181,8 @@ const styles = StyleSheet.create({
         paddingVertical: 40,  // controls the vertical space of the gradient
         alignItems: "center",
         justifyContent: "flex-end",
-        flex: 0.3
+        flex: 0.3,
+        paddingHorizontal: 0
     },
     heading: {
         fontSize: 40,
@@ -196,7 +192,7 @@ const styles = StyleSheet.create({
     forgotPassword: { fontSize: 12, marginBottom: Platform.OS === 'android' ? 5 : 30, alignSelf: 'flex-end' },
     inputView: { marginTop: 20, marginBottom: Platform.OS === "android" ? 0 : 20, width: "100%" },
     input: { width: '100%' },
-    links: { flex: 0, alignContent: "center", alignItems: "stretch", marginTop: 10, margin: Platform.OS === "web" ? 50 : 0 },
+    links: { flex: Platform.OS === "web" ? 1 : 0.5, alignContent: "center", alignItems: "stretch", marginTop: 0, margin: Platform.OS === "web" ? 50 : 0 },
     registerLink: { alignSelf: 'center', marginTop: 5 },
     button: { paddingVertical: 15, borderRadius: 10, marginBottom: 10 },
     modalOverlay: { flex: 1, backgroundColor: "rgba(30, 38, 49, 0.6)", justifyContent: "center", alignItems: "center" },

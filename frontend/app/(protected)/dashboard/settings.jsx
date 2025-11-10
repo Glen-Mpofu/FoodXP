@@ -31,12 +31,16 @@ const Settings = () => {
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
 
+  const [phone, onPhoneChange] = React.useState("");
+
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(null);
   const [items, setItems] = useState([
     { label: 'Yes', value: 'yes' },
     { label: 'No', value: 'no' },
   ]);
+
+  const [borderColor, setBorderColor] = useState(theme.borderColor)
 
   useEffect(() => {
     const init = async () => {
@@ -117,6 +121,31 @@ const Settings = () => {
       .catch(console.log);
   }
 
+  async function changePhone() {
+    if (phone.trim() === "") {
+      setBorderColor(Colors.error)
+      return;
+    } else {
+      const foodieData = { email: foodie?.email, phone };
+      axios.post(`${API_BASE_URL}/changePhone`, foodieData, { withCredentials: true }).
+        then((res) => {
+          Toast.show({
+            type: res.data.status === 'ok' ? 'success' : 'error',
+            text1: res.data.data,
+          });
+          setBorderColor(theme.borderColor)
+          onPhoneChange("")
+          closeModal();
+        })
+        .catch(() =>
+          Toast.show({
+            type: 'error',
+            text1: 'There was an error while saving changes',
+          })
+        );
+    }
+  }
+
   async function handleLogout() {
     await axios
       .post(`${API_BASE_URL}/logout`, {}, { withCredentials: true })
@@ -153,6 +182,10 @@ const Settings = () => {
             <Ionicons name="mail-outline" size={20} color={theme.iconColor} />
             <ThemedText style={styles.infoText}>{foodie?.email || 'Loading email...'}</ThemedText>
           </View>
+          <View style={styles.row}>
+            <MaterialCommunityIcons name="phone" size={20} color={theme.iconColor} />
+            <ThemedText style={styles.infoText}>{foodie?.phone || 'Loading phone...'}</ThemedText>
+          </View>
         </View>
 
         <View style={[styles.section, { backgroundColor: theme.navBackground }]}>
@@ -166,6 +199,16 @@ const Settings = () => {
             }}>
             <Ionicons name="lock-closed-outline" size={20} color={theme.iconColor} />
             <ThemedText style={styles.optionText}>Change Password</ThemedText>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.optionButton, { backgroundColor: theme.optionBackground }]}
+            onPress={() => {
+              openModal();
+              setSelectedOption('Phone');
+            }}>
+            <MaterialCommunityIcons name="phone" size={20} color={theme.iconColor} />
+            <ThemedText style={styles.optionText}>Change Phone Number</ThemedText>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -210,10 +253,11 @@ const Settings = () => {
             {selectedOption !== 'Delete' && (
               <ThemedTextInput
                 placeholder={`New ${selectedOption}`}
-                value={selectedOption === 'Name' ? name : password}
+                value={selectedOption === 'Name' ? name : selectedOption === "Phone" ? phone : password}
                 onChangeText={
-                  selectedOption === 'Name' ? onNameChange : onPasswordChange
+                  selectedOption === 'Name' ? onNameChange : selectedOption === 'Phone' ? onPhoneChange : onPasswordChange
                 }
+                style={{ borderColor: borderColor }}
               />
             )}
 
@@ -236,12 +280,14 @@ const Settings = () => {
             )}
 
             <ThemedButton
-              onPress={() =>
+              onPress={async () =>
                 selectedOption === 'Name'
-                  ? nameChange()
+                  ? await nameChange()
                   : selectedOption === 'Password'
-                    ? passwordChange()
-                    : deleteAccount()
+                    ? await passwordChange()
+                    : selectedOption === 'Phone' ?
+                      await changePhone()
+                      : await deleteAccount()
               }>
               <ThemedText>Confirm {selectedOption}</ThemedText>
             </ThemedButton>

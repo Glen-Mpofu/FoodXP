@@ -1,4 +1,4 @@
-import { StyleSheet, useColorScheme, TouchableOpacity, View, Platform, Alert, Image, Pressable, ImageBackground } from 'react-native'
+import { StyleSheet, useColorScheme, TouchableOpacity, View, Platform, Alert, Image, Pressable, ImageBackground, Dimensions, ScrollView } from 'react-native'
 
 //themedui
 import ThemedView from '../components/ThemedView'
@@ -22,9 +22,10 @@ import registerNNPushToken from 'native-notify'
 
 //login page
 const Register = () => {
-    registerNNPushToken(32486, 'rO2Gkf0kRxykOTtwu2XDeX');
+    //registerNNPushToken(32486, 'rO2Gkf0kRxykOTtwu2XDeX');
     const [email, onEmailChange] = React.useState("");
     const [userName, onNameChange] = React.useState("");
+    const [phone, onPhoneChange] = React.useState("");
     //password
     const [password, onPasswordChange] = React.useState("");
     const [showPassword, onShowPasswordChange] = React.useState(true);
@@ -39,7 +40,9 @@ const Register = () => {
     let [emailBorderColor, setEmailBorderColor] = React.useState(theme.borderColor)
     let [passwordBorderColor, setPasswordBorderColor] = React.useState(theme.borderColor)
     let [nameBorderColor, setNameBorderColor] = React.useState(theme.borderColor)
+    let [phoneBorderColor, setPhoneBorderColor] = React.useState(theme.borderColor)
 
+    const { width, height } = Dimensions.get("window")
     async function handleSubmit() {
 
         //valid email check
@@ -80,10 +83,22 @@ const Register = () => {
         }
         setPasswordBorderColor(theme.borderColor)
 
+        if (phone.trim() === "") {
+            Toast.show({
+                type: "error",
+                text1: "Please Enter the Phone Number",
+                useModal: false
+            })
+            setPhoneBorderColor(Colors.error)
+            return;
+        }
+        setPhoneBorderColor(theme.borderColor)
+
         const foodieData = {
             email: email.trim(),
             name: userName.trim(),
             password: userConfirmPassword.trim(),
+            phone: phone.trim()
         };
 
         const baseUrl = Platform.OS === "web" ? "http://localhost:5001" : API_BASE_URL
@@ -119,9 +134,17 @@ const Register = () => {
     }
 
     return (
-        <ThemedView style={[styles.container, { backgroundColor: theme.background }]}>
-            <ThemedView style={styles.mainView}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.container, { backgroundColor: theme.background, height: height, flex: 1 }]}>
+            <LinearGradient
+                colors={[theme.background, theme.navBackground]} // fade from transparent to background
+                style={[styles.topGradient, { width: width }]}
+                start={{ x: 0, y: 1 }}
+                end={{ x: 0, y: 0 }}
+            >
                 <ThemedText style={styles.heading}>FoodXP</ThemedText>
+            </LinearGradient>
+
+            <ThemedView style={styles.mainView}>
 
                 <ThemedText style={styles.wHeading} >Sign Up</ThemedText>
                 <ThemedText>Sign up to access Everything FoodXP!</ThemedText>
@@ -130,6 +153,9 @@ const Register = () => {
                     {/* EMAIL */}
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Email</ThemedText>
                     <ThemedTextInput style={[{ borderColor: emailBorderColor }, styles.input]} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
+
+                    <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Phone</ThemedText>
+                    <ThemedTextInput style={[{ borderColor: phoneBorderColor }, styles.input]} value={phone} onChangeText={onPhoneChange} placeholder="Enter your Phone Number" />
 
                     {/* NAME */}
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Name</ThemedText>
@@ -164,7 +190,7 @@ const Register = () => {
                 </ThemedView>
 
             </ThemedView>
-        </ThemedView>
+        </ScrollView>
     )
 }
 
@@ -173,11 +199,13 @@ export default Register
 const styles = StyleSheet.create({
     container: {
         alignItems: "center",
+        justifyContent: "",
+
     },
     mainView: {
         width: "100%",
         maxWidth: 450,
-        flex: Platform.OS === "android" ? 0.8 : 1,
+        flex: 1,
         borderRadius: 50, // center children horizontally
         padding: 30,
         alignItems: "center",
@@ -190,9 +218,9 @@ const styles = StyleSheet.create({
     heading: {
         fontSize: 40,
         fontWeight: 'bold',
-        alignSelf: 'flex-start',
-        marginBottom: 10,
-        marginTop: Platform.OS === "android" ? 20 : 0,
+        alignSelf: 'center',
+        marginBottom: 0,
+        marginTop: 0,
     },
     inputView: {
         marginTop: 10,
@@ -218,6 +246,7 @@ const styles = StyleSheet.create({
     registerLink: {
         alignSelf: 'center',
         marginTop: 5,
+        paddingBottom: 10,
     },
     bgImage: {
         ...StyleSheet.absoluteFillObject,
@@ -234,5 +263,12 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         margin: 0,
         padding: 0,
-    }
+    },
+    topGradient: {
+        width: "100%",
+        paddingVertical: 40,  // controls the vertical space of the gradient
+        alignItems: "center",
+        justifyContent: "flex-end",
+        flex: 0.2
+    },
 })

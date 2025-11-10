@@ -6,7 +6,9 @@ async function initialiseTables(pool) {
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             EMAIL VARCHAR(100) UNIQUE, 
             NAME VARCHAR(50) NOT NULL, 
-            PASSWORD VARCHAR(100) NOT NULL        )    
+            PASSWORD VARCHAR(100) NOT NULL, 
+            PHONE VARCHAR(100)       
+        )    
         `).then((res) => {
         console.log("Foodie Table Ready")
 

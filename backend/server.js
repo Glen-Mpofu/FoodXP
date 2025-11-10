@@ -210,7 +210,7 @@ async function retryOn401(fn, retries = 3, delay = 5000) {
 
 //register
 app.post("/register", async (req, res) => {
-    const { email, name, password } = req.body
+    const { email, name, password, phone } = req.body
 
     //encrypting password
     const encryptedPassword = await bcrypt.hash(password, 10)
@@ -222,9 +222,9 @@ app.post("/register", async (req, res) => {
     }
 
     await pool.query(
-        `INSERT INTO FOODIE(EMAIL, NAME, PASSWORD)
-         VALUES($1, $2, $3);
-        `, [email, name, encryptedPassword]
+        `INSERT INTO FOODIE(EMAIL, NAME, PASSWORD, PHONE)
+         VALUES($1, $2, $3, $4);
+        `, [email, name, encryptedPassword, phone]
     ).then(() => {
         console.log("Foodie Account Created")
     }).catch((e) => console.log("Error creating account: " + e))
@@ -278,9 +278,7 @@ app.post("/logout", async (req, res) => {
     })
 })
 
-//saving the food
-const classifyModelFile = path.join(__dirname, "model", "pantry_frigde_model.py")
-
+// Classifying food
 app.post("/classifyfood", async (req, res) => {
     try {
         const { photo } = req.body;
@@ -318,17 +316,18 @@ app.get("/session", async (req, res) => {
         } catch (err) {
             return res.status(401).send({ status: "error", data: "Invalid token" });
         }
-        pool.query(`
+        await pool.query(`
         SELECT * FROM FOODIE WHERE EMAIL = $1
         `, [email]).then((result) => {
             const foodie = {
                 email: result.rows[0].email,
                 name: result.rows[0].name,
                 password: result.rows[0].password,
+                phone: result.rows[0].phone
             }
             console.log(foodie)
             res.send({ status: "ok", data: foodie })
-            console.log("Foodie", result.rows[0])
+            console.log("Foodie", foodie)
         })
 
     } catch (error) {
@@ -379,6 +378,21 @@ app.post("/passwordchange", async (req, res) => {
     }).catch(err => {
         console.log(err)
     })
+})
+
+app.post("/changePhone", async (req, res) => {
+    const { email, phone } = req.body
+    const result = await pool.query(`
+        UPDATE FOODIE 
+        SET PHONE = $1
+        WHERE EMAIL = $2   
+    `, [phone, email])
+
+    if (result.rowCount >= 1) {
+        res.send({ status: "ok", data: "Phone Updated Successfully" })
+    } else {
+        res.send({ status: "error", data: "Failed to Update Phone" })
+    }
 })
 
 //account deletion
@@ -516,7 +530,6 @@ app.get("/getpantryfood", async (req, res) => {
         res.send({ status: "error", data: "Something went wrong when retrieving items" });
     }
 });
-
 
 //deleting 
 app.post("/deletepantryfood", async (req, res) => {
@@ -890,7 +903,7 @@ async function axiosWithRetry(url, options = {}, retries = 3, delay = 5000) {
     } catch (err) {
         if (
             err.response &&
-            (err.response.status >= 500 && err.response.status < 600) && retries > 0
+            (err.response.status >= 400 && err.response.status < 600) && retries > 0
         ) {
             console.warn(`Server error ${err.response.status}. Retrying in ${delay / 1000}s...`);
             await new Promise(resolve => setTimeout(resolve, delay));

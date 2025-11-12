@@ -306,7 +306,7 @@ app.post("/classifyfood", async (req, res) => {
 app.get("/session", async (req, res) => {
     try {
         const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
-        if (!authHeader) return res.status(401).send({ status: "error", data: "No token sent" });
+        if (!authHeader) return res.send({ status: "error", data: "No token sent" });
 
         const token = authHeader.split(" ")[1];
         let email;
@@ -314,7 +314,7 @@ app.get("/session", async (req, res) => {
             const decoded = jwt.verify(token, "SECRET_KEY");
             email = decoded.email;
         } catch (err) {
-            return res.status(401).send({ status: "error", data: "Invalid token" });
+            return res.send({ status: "error", data: "Invalid token" });
         }
         await pool.query(`
         SELECT * FROM FOODIE WHERE EMAIL = $1
@@ -506,7 +506,7 @@ app.post("/savepantryfood", async (req, res) => {
 app.get("/getpantryfood", async (req, res) => {
     try {
         const authHeader = req.headers.authorization; // client sends 'Bearer <token>'
-        if (!authHeader) return res.status(401).send({ status: "error", data: "No token sent" });
+        if (!authHeader) return res.send({ status: "error", data: "No token sent" });
 
         const token = authHeader.split(" ")[1];
         let email;
@@ -514,7 +514,7 @@ app.get("/getpantryfood", async (req, res) => {
             const decoded = jwt.verify(token, "SECRET_KEY");
             email = decoded.email;
         } catch (err) {
-            return res.status(401).send({ status: "error", data: "Invalid token" });
+            return res.send({ status: "error", data: "Invalid token" });
         }
 
         const foodie = await getFoodie(email);
@@ -688,7 +688,7 @@ app.post("/savefridgefood", async (req, res) => {
 app.get("/getfridgefood", async (req, res) => {
     try {
         const authHeader = req.headers.authorization;
-        if (!authHeader) return res.status(401).send({ status: "error", data: "No token sent" });
+        if (!authHeader) return res.send({ status: "error", data: "No token sent" });
         const token = authHeader.split(" ")[1];
 
         let email;
@@ -696,7 +696,7 @@ app.get("/getfridgefood", async (req, res) => {
             const decoded = jwt.verify(token, "SECRET_KEY");
             email = decoded.email;
         } catch (err) {
-            return res.status(401).send({ status: "error", data: "Invalid token" });
+            return res.send({ status: "error", data: "Invalid token" });
         }
 
         const foodie = await getFoodie(email);
@@ -824,6 +824,7 @@ app.get("/test-notification", async (req, res) => {
         res.status(500).send("Failed to send notification");
     }
 });
+
 ///getting recipes
 app.post("/getAiRecipe", async (req, res) => {
     console.log(req.body)
@@ -896,25 +897,19 @@ app.post("/getAiRecipe", async (req, res) => {
     }
 });
 
-async function axiosWithRetry(url, options = {}, retries = 3, delay = 5000) {
-    try {
-        const response = await axios(url, options);
-        return response;
-    } catch (err) {
-        if (
-            err.response &&
-            (err.response.status >= 400 && err.response.status < 600) && retries > 0
-        ) {
-            console.warn(`Server error ${err.response.status}. Retrying in ${delay / 1000}s...`);
+async function axiosWithRetry(url, options = {}, delay = 5000) {
+    while (true) {
+        try {
+            const response = await axios(url, options);
+            return response;
+        } catch (err) {
+            console.warn(`Request failed (${err.response?.status}). Retrying in ${delay / 1000}s...`);
             await new Promise(resolve => setTimeout(resolve, delay));
-            return axiosWithRetry(url, options, retries - 1, delay);
         }
-        // Instead of throwing, return null so processing continues
-        console.error("Request failed, skipping:", err.message);
-        return null;
     }
 }
 
+//recipes from themealdb
 app.get("/get-recipes", async (req, res) => {
     try {
         const id = await getIdFromHeader(req);
@@ -1042,90 +1037,99 @@ async function forwardGeocode({ street, city, province, country }) {
 
 //donations
 app.post("/donate", async (req, res) => {
-    const donations = req.body.items;
-    console.log(req.body)
-    const { street, city, province, postalCode, country, } = req.body;
-    const prevLoc = req.body.location_id
+    try {
+        const foodie_id = await getIdFromHeader(req);
+        const donations = req.body.items;
+        const { street, city, province, postalCode, country, pickupTime } = req.body;
+        const prevLoc = req.body.location_id;
 
-    let location_id;
+        let location_id;
+        const dateObj = new Date(pickupTime);
+        let hours = dateObj.getHours();
+        let minutes = String(dateObj.getMinutes()).padStart(2, "0");
 
-    if (prevLoc === null) {
-        const coords = await forwardGeocode({
-            street,
-            city,
-            province,
-            country
-        });
+        const ampm = hours >= 12 ? "PM" : "AM";
+        hours = hours % 12 || 12;  // convert 0 -> 12
 
-        if (!coords) {
-            return res.send({ status: "error", data: "Failed to retrieve coordinates" });
-        }
-
-        await pool.query(
-            `
-                INSERT INTO LOCATION(latitude, longitude, city, province, zipcode, country, street)
-                VALUES($1, $2, $3, $4, $5, $6, $7)
-                RETURNING id
-                `,
-            [
-                coords.latitude,
-                coords.longitude,
+        const finalTime = `${hours}:${minutes} ${ampm}`;
+        console.log(finalTime);
+        // Handle location
+        if (prevLoc === null) {
+            const coords = await forwardGeocode({
+                street,
                 city,
                 province,
-                postalCode,
-                country,
-                street
-            ]
-        )
-            .then((r) => {
-                console.log("LOCATION ADDED");
-                location_id = r.rows[0].id;
-            })
-            .catch(err => {
-                console.error(err);
-                return res.send({ status: "error", data: "Failed to add LOCATION" });
+                country
             });
-    } else {
-        location_id = prevLoc;
+
+            if (!coords) {
+                return res.send({ status: "error", data: "Failed to retrieve coordinates" });
+            }
+
+            const r = await pool.query(
+                `
+                    INSERT INTO LOCATION(latitude, longitude, city, province, zipcode, country, street, foodie_id, pickupTime)
+                    VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    RETURNING id
+                `,
+                [
+                    coords.latitude,
+                    coords.longitude,
+                    city,
+                    province,
+                    postalCode,
+                    country,
+                    street,
+                    foodie_id,
+                    finalTime
+                ]
+            );
+
+            console.log("LOCATION ADDED");
+            location_id = r.rows[0].id;
+        } else {
+            location_id = prevLoc;
+        }
+
+        // Insert each donation record
+        for (const donation of donations) {
+            const isPantry = donation.from === "pantry";
+
+            await pool.query(
+                `
+                INSERT INTO DONATION(
+                    foodie_id,
+                    ${isPantry ? "pantry_food_id" : "fridge_food_id"},
+                    location_id,
+                    amount,
+                    sourceTable
+                )
+                VALUES($1, $2, $3, $4, $5)
+                `,
+                [
+                    donation.foodie_id,
+                    donation.id,
+                    location_id,
+                    donation.amount,
+                    donation.from
+                ]
+            );
+
+            console.log("DONATION ITEM ADDED");
+        }
+
+        // Final response
+        return res.send({ status: "ok", data: "Item(s) are up for Donation" });
+
+    } catch (err) {
+        console.error(err);
+        return res.send({ status: "error", data: "Something went wrong" });
     }
-
-    // Insert donations
-    for (const donation of donations) {
-        const isPantry = donation.from === "pantry";
-
-        await pool.query(
-            `
-            INSERT INTO DONATION(
-                foodie_id,
-                ${isPantry ? "pantry_food_id" : "fridge_food_id"},
-                location_id,
-                amount,
-                sourceTable
-            )
-            VALUES($1, $2, $3, $4, $5)
-            `,
-            [
-                donation.foodie_id,
-                donation.id,
-                location_id,
-                donation.amount,
-                donation.from
-            ]
-        )
-            .then(() => console.log("DONATION ITEM ADDED"))
-            .catch(err => {
-                console.error(err);
-                return res.send({ status: "error", data: "Failed to add Item(s) for Donation" });
-            });
-    }
-
-    res.send({ status: "ok", data: "Item(s) are up for Donation" });
 });
 
 //Getting
 app.get("/getDonations", async (req, res) => {
     const id = await getIdFromHeader(req)
-    console.log(id)
     const pResult = await pool.query(
         `
             SELECT d.donation_id, p.name, d.amount, p.unitOfMeasure, p.photo, city, street, province, country, zipcode, fo.name AS fname, fo.email
@@ -1149,7 +1153,6 @@ app.get("/getDonations", async (req, res) => {
     )
 
     const donation = [...pResult.rows, ...fResult.rows]
-    console.log(donation)
     res.send({ status: "ok", data: donation })
 })
 
@@ -1157,22 +1160,35 @@ app.get("/getDonations", async (req, res) => {
 app.get("/getMyDonationRequests", async (req, res) => {
     try {
         const requester_id = await getIdFromHeader(req);
-        if (!requester_id) return res.status(401).json({ status: "error", data: "Unauthorized" });
+        if (!requester_id) return res.json({ status: "error", data: "Unauthorized" });
 
         const result = await pool.query(`
-    SELECT dr.donation_id, dr.STATUS, 
-           COALESCE(fr.name, pa.name) as food_name,
-           COALESCE(fr.photo, pa.photo) as food_photo,
-           l.city, l.street, l.province, l.country, l.zipcode
-    FROM DONATION_REQUEST dr
-    JOIN DONATION d ON dr.donation_id = d.donation_id
-    LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
-    LEFT JOIN PANTRY_FOOD pa ON d.pantry_food_id = pa.id
-    LEFT JOIN LOCATION l ON d.location_id = l.id
-    WHERE dr.requester_id = $1
-`, [requester_id]);
+            SELECT 
+                dr.donation_id,
+                dr.status,
+                COALESCE(fr.name, pa.name) AS food_name,
+                COALESCE(fr.photo, pa.photo) AS food_photo,
+                d.amount,
+                l.city,
+                l.street,
+                l.province,
+                l.country,
+                l.zipcode,
+                l.pickupTime,
+                donor.name AS donor_name,
+                donor.email AS donor_email,
+                donor.phone AS donor_phone
+            FROM DONATION_REQUEST dr
+            JOIN DONATION d ON dr.donation_id = d.donation_id
+            LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
+            LEFT JOIN PANTRY_FOOD pa ON d.pantry_food_id = pa.id
+            LEFT JOIN LOCATION l ON d.location_id = l.id
+            LEFT JOIN FOODIE donor ON dr.donor_id = donor.id
+            WHERE dr.requester_id = $1
+        `, [requester_id]);
+
         result.rows.map(r => console.log(r))
-        const requests = result.rows.map(r => r.donation_id);
+        //const requests = result.rows.map(r => r.donation_id);
         res.json({ status: "ok", data: result.rows });
     } catch (err) {
         console.error(err);
@@ -1191,7 +1207,7 @@ app.post("/requestDonation", async (req, res) => {
         // Get requester ID from JWT or session
         const requester_id = await getIdFromHeader(req); // Authenticated user's ID
         if (!requester_id) {
-            return res.status(401).json({ status: "error", data: "Unauthorized" });
+            return res.json({ status: "error", data: "Unauthorized" });
         }
 
         // Check if the donation exists
@@ -1233,7 +1249,7 @@ app.post("/requestDonation", async (req, res) => {
 app.get("/getRequestsForMe", async (req, res) => {
     try {
         const donor_id = await getIdFromHeader(req);
-        if (!donor_id) return res.status(401).json({ status: "error", data: "Unauthorized" });
+        if (!donor_id) return res.json({ status: "error", data: "Unauthorized" });
 
         const result = await pool.query(`
         SELECT dr.request_id, dr.donation_id, dr.requester_id, dr.donor_id,
@@ -1262,7 +1278,7 @@ app.post("/acceptRequest", async (req, res) => {
         if (!request_id) return res.status(400).json({ status: "error", data: "Request ID missing" });
 
         const donor_id = await getIdFromHeader(req);
-        if (!donor_id) return res.status(401).json({ status: "error", data: "Unauthorized" });
+        if (!donor_id) return res.json({ status: "error", data: "Unauthorized" });
 
         // Get the request to verify it belongs to this donor
         const requestResult = await pool.query(
@@ -1294,17 +1310,19 @@ app.post("/acceptRequest", async (req, res) => {
 });
 
 app.get("/getLatestLocation", async (req, res) => {
+    const foodie_id = await getIdFromHeader(req)
     try {
         const result = await pool.query(
             `
           SELECT *
-          FROM LOCATION
+          FROM LOCATION l, FOODIE f
+          WHERE l.foodie_id = f.id
+          AND l.foodie_id = $1
           ORDER BY created_at DESC
           LIMIT 1
-        `
+        `, [foodie_id]
         );
-
-        if (result.rows.length === 0) {
+        if (result.rows.length <= 0) {
             return res.send({ status: "empty", data: null });
         }
 

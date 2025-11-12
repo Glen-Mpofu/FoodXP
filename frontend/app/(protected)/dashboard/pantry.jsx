@@ -26,6 +26,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Colors } from '../../../constants/Colors';
 import { useFocusEffect } from "@react-navigation/native";
 import Checkbox from '../../../components/Checkbox';
+import TimePicker from '../../../components/TimePicker';
 
 const Pantry = () => {
   const colorScheme = useColorScheme();
@@ -60,6 +61,7 @@ const Pantry = () => {
   const [postalCode, setPostalCode] = useState('');
   const [city, setCity] = useState('');
 
+  const [pickupTime, setPickupTime] = useState(null);
   const [location_id, setLocationId] = useState(null)
   // Fetch pantry food
   const fetchPantryFood = async (token) => {
@@ -104,21 +106,31 @@ const Pantry = () => {
 
   useFocusEffect(
     useCallback(() => {
-      const handleFocus = async () => {
-        const shouldRefresh = await AsyncStorage.getItem("refreshPantry");
+      let isActive = true; // optional guard to prevent updates after unmount
 
-        // Always reload when screen gains focus for the first time
-        if (shouldRefresh === "true" || shouldRefresh === null) {
-          if (userToken) {
-            fetchPantryFood(userToken); // <-- refresh pantry list
+      const handleFocus = async () => {
+        try {
+          const shouldRefresh = await AsyncStorage.getItem("refreshPantry");
+
+          // Always reload when screen gains focus for the first time
+          if ((shouldRefresh === "true" || shouldRefresh === null) && userToken && isActive) {
+            await fetchPantryFood(userToken); // refresh pantry list
+            await AsyncStorage.setItem("refreshPantry", "false");
           }
-          await AsyncStorage.setItem("refreshPantry", "false")
+        } catch (err) {
+          console.error("Error handling pantry focus:", err);
         }
       };
 
       handleFocus();
+
+      // ✅ Proper cleanup
+      return () => {
+        isActive = false;
+      };
     }, [userToken])
   );
+
 
   const handleUsePreviousLocation = async () => {
     setUsePreviousLocation(prev => !prev); // toggle
@@ -213,7 +225,8 @@ const Pantry = () => {
           postalCode,
           city,
           location_id,
-          country
+          country,
+          pickupTime
         },
         { headers: { Authorization: `Bearer ${userToken}` } }
       );
@@ -609,6 +622,12 @@ const Pantry = () => {
               <Checkbox
                 checked={usePreviousLocation}
                 onPress={handleUsePreviousLocation}
+              />
+              <ThemedText style={{ marginTop: 10, textAlign: "center" }}>Pickup Time</ThemedText>
+
+              <TimePicker
+                value={pickupTime}
+                onChange={(time) => setPickupTime(time)}
               />
               <View style={styles.modalButtons}>
                 <ThemedButton

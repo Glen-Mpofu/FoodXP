@@ -11,6 +11,7 @@ import axios from "axios";
 import { Ionicons } from "@expo/vector-icons";
 import { API_BASE_URL } from "@env";
 import { useFocusEffect } from "@react-navigation/native";
+import { getCurrentLocation } from '../../../components/locantion';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -67,28 +68,45 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
   }, []);
-
   useFocusEffect(
     useCallback(() => {
-      const handleFocus = async () => {
-        const shouldRefresh = await AsyncStorage.getItem("refreshRecipes");
-        const shouldRefreshPantry = await AsyncStorage.getItem("refreshPantry");
-        const shouldRefreshFridge = await AsyncStorage.getItem("refreshFridge");
+      let isActive = true; // prevent updates if unmounted
 
-        if (shouldRefresh === "true" || shouldRefresh === null) {
-          await loadData();
-          await AsyncStorage.setItem("refreshRecipes", "false");
-        }
-        if (shouldRefreshPantry === "true" || shouldRefresh === null) {
-          await loadPantry(userToken);
-        }
-        if (shouldRefreshFridge === "true" || shouldRefresh === null) {
-          await loadFridge(userToken);
+      const handleFocus = async () => {
+        try {
+          const location = await getCurrentLocation();
+
+          const [shouldRefresh, shouldRefreshPantry, shouldRefreshFridge] =
+            await Promise.all([
+              AsyncStorage.getItem("refreshRecipes"),
+              AsyncStorage.getItem("refreshPantry"),
+              AsyncStorage.getItem("refreshFridge"),
+            ]);
+
+          if ((shouldRefresh === "true" || shouldRefresh === null) && isActive) {
+            await loadData();
+            await AsyncStorage.setItem("refreshRecipes", "false");
+          }
+
+          if ((shouldRefreshPantry === "true" || shouldRefreshPantry === null) && isActive) {
+            await loadPantry(userToken);
+          }
+
+          if ((shouldRefreshFridge === "true" || shouldRefreshFridge === null) && isActive) {
+            await loadFridge(userToken);
+          }
+        } catch (err) {
+          console.error("Error during focus effect:", err);
         }
       };
 
       handleFocus();
-    }, [])
+
+      // ✅ cleanup to prevent memory leaks
+      return () => {
+        isActive = false;
+      };
+    }, [userToken])
   );
 
   return (

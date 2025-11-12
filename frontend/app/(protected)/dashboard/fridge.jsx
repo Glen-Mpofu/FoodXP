@@ -24,6 +24,7 @@ import ThemedTextInput from '../../../components/ThemedTextInput';
 import { Colors } from '../../../constants/Colors';
 import { useFocusEffect } from "@react-navigation/native";
 import Checkbox from '../../../components/Checkbox';
+import TimePicker from '../../../components/TimePicker';
 
 const Fridge = () => {
   const colorScheme = useColorScheme();
@@ -56,7 +57,7 @@ const Fridge = () => {
   const [postalCode, setPostalCode] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('South Africa');
-
+  const [pickupTime, setPickupTime] = useState(null);
   // --- Inside your Fridge component ---
 
   // Fetch fridge food function
@@ -91,19 +92,27 @@ const Fridge = () => {
 
   useFocusEffect(
     useCallback(() => {
-      const handleFocus = async () => {
-        const shouldRefresh = await AsyncStorage.getItem("refreshFridge");
+      let isActive = true; // optional guard to avoid running after unmount
 
-        // Always reload when screen gains focus for the first time
-        if (shouldRefresh === "true" || shouldRefresh === null) {
-          if (userToken) {
-            fetchFridgeFood(userToken); // <-- refresh pantry list
+      async function handleFocus() {
+        try {
+          const shouldRefresh = await AsyncStorage.getItem('refreshFridge');
+
+          if ((shouldRefresh === 'true' || shouldRefresh === null) && userToken) {
+            await fetchFridgeFood(userToken);
+            await AsyncStorage.setItem('refreshFridge', 'false');
           }
-          await AsyncStorage.setItem("refreshFridge", "false")
+        } catch (err) {
+          console.error('Error handling focus:', err);
         }
-      };
+      }
 
       handleFocus();
+
+      // Optional cleanup logic
+      return () => {
+        isActive = false;
+      };
     }, [userToken])
   );
 
@@ -220,7 +229,8 @@ const Fridge = () => {
         postalCode,
         city,
         location_id,
-        country
+        country,
+        pickupTime
       }, {
         headers: { Authorization: `Bearer ${userToken}` }
       });
@@ -568,6 +578,12 @@ const Fridge = () => {
               <Checkbox
                 checked={usePreviousLocation}
                 onPress={handleUsePreviousLocation}
+              />
+              <ThemedText style={{ marginTop: 10, textAlign: "center" }}>Pickup Time</ThemedText>
+
+              <TimePicker
+                value={pickupTime}
+                onChange={(time) => setPickupTime(time)}
               />
               <View style={styles.modalButtons}>
                 <ThemedButton

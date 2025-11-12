@@ -16,18 +16,27 @@
       "assets/**/*"
     ],
     "scheme": "foodxp",
+    "notification": {
+      "icon": "./assets/foodxp/notifications.png",
+      "color": "#ffffff",
+      "androidMode": "default",
+      "androidCollapsedTitle": "FoodXP"
+    },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.glenmpofu.FoodXP",
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification"
-        ]
+        ],
+        "NSLocationWhenInUseUsageDescription": "FoodXP needs your location to show nearby restaurants and calculate delivery fees.",
+        "NSLocationAlwaysUsageDescription": "FoodXP needs your location to provide delivery services."
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgrosundColor": "#ffffff"
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.glenmpofu.FoodXP",
@@ -35,14 +44,31 @@
       "permissions": [
         "NOTIFICATIONS",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/foodxp/notifications.png",
+          "color": "#ffffff",
+          "sounds": []
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow FoodXP to use your location to show nearby restaurants and calculate delivery fees.",
+          "locationWhenInUsePermission": "Allow FoodXP to use your location to show nearby restaurants and calculate delivery fees."
+        }
+      ]
     ],
     "extra": {
       "router": {},

@@ -92,6 +92,7 @@ async function initialiseTables(pool) {
         `
             CREATE TABLE IF NOT EXISTS LOCATION(
                 ID UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                FOODIE_ID UUID REFERENCES FOODIE(id),
                 LATITUDE VARCHAR(100), 
                 LONGITUDE VARCHAR(100),
                 CITY VARCHAR(100),
@@ -99,6 +100,7 @@ async function initialiseTables(pool) {
                 ZIPCODE VARCHAR(100),
                 COUNTRY VARCHAR(100),
                 STREET VARCHAR(100), 
+                pickUpTime VARCHAR(100),
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
         `

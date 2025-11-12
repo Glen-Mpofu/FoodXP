@@ -134,7 +134,7 @@ const Register = () => {
     }
 
     return (
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.container, { backgroundColor: theme.background, height: height, flex: 1 }]}>
+        <ScrollView style={{ backgroundColor: theme.background }} showsVerticalScrollIndicator={false} contentContainerStyle={[styles.container, { backgroundColor: theme.background, height: height, flex: 1 }]}>
             <LinearGradient
                 colors={[theme.background, theme.navBackground]} // fade from transparent to background
                 style={[styles.topGradient, { width: width }]}

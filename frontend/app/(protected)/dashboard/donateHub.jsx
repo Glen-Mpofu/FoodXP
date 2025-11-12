@@ -125,12 +125,11 @@ const DonateMap = () => {
         <Image source={{ uri: item.food_photo ?? item.photo }} style={styles.donationImage} />
 
         <View style={styles.donationDetails}>
-          <ThemedText style={styles.donationName}>{item.food_name ?? item.name}</ThemedText>
-          <ThemedText style={styles.donationAmount}>
-            {item.amount} {item.unitofmeasure ?? ""}
-          </ThemedText>
-          {item.fname && <ThemedText style={styles.donorInfo}>Donor: {item.fname}</ThemedText>}
-          {item.email && <ThemedText style={styles.donorInfo}>{item.email}</ThemedText>}
+          <ThemedText style={styles.donationName}>{item.food_name ?? item.name} ({item.amount})</ThemedText>
+
+          {item.donor_name && <ThemedText style={styles.donorInfo}>Donor: {item.donor_name}</ThemedText>}
+          {item.donor_email && <ThemedText style={styles.donorInfo}><MaterialCommunityIcons name="email" color={theme.iconColor} /> {item.donor_email}</ThemedText>}
+          {item.donor_phone && <ThemedText style={styles.donorInfo}> <MaterialCommunityIcons name="phone" color={theme.iconColor} /> {item.donor_phone}</ThemedText>}
 
           {/* Show pickup location only if accepted THIS SHOWS ON THE REQUESTER SIDE */}
           {item.status === "Accepted" && item.city && (
@@ -140,6 +139,9 @@ const DonateMap = () => {
               </ThemedText>
               <ThemedText style={{ fontSize: 13, color: "#555" }}>
                 {item.street}, {item.city}, {item.province}, {item.zipcode}, {item.country}
+              </ThemedText>
+              <ThemedText>
+                Pick Up at {item.pickuptime}
               </ThemedText>
             </View>
           )}
@@ -271,8 +273,8 @@ const styles = StyleSheet.create({
   },
   donationImage: { width: 90, height: 90, borderRadius: 12 },
   donationDetails: { flex: 1, marginLeft: 15, justifyContent: "center" },
-  donationName: { fontSize: 17, fontWeight: "bold", marginBottom: 5 },
-  donationAmount: { fontSize: 15, color: "#555", marginBottom: 5 },
+  donationName: { fontSize: 17, fontWeight: "bold", marginBottom: 0 },
+  donationAmount: { fontSize: 15, color: "#555", marginBottom: 0 },
   donorInfo: { fontSize: 13, color: "#777" },
   actionContainer: { justifyContent: "center", alignItems: "center" },
   claimBtn: {

@@ -49,6 +49,14 @@ export default function Dashboard() {
     setRecipes(res.data.data);
   };
 
+  const userLocation = async (token) => {
+    const location = await getCurrentLocation();
+    const locResult = await axios.post(`${API_BASE_URL}/userLocation`, { location }, {
+      withCredentials: true,
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  }
+
   const loadData = async () => {
     const token = await AsyncStorage.getItem("userToken");
     if (!token) return router.replace("/");
@@ -59,22 +67,20 @@ export default function Dashboard() {
       loadPantry(token),
       loadFridge(token),
       loadRecipes(token),
+      userLocation(token)
     ]);
-
-    await AsyncStorage.setItem("refreshFridge", "false");
-    await AsyncStorage.setItem("refreshPantry", "false");
   };
 
   useEffect(() => {
     loadData();
   }, []);
+
   useFocusEffect(
-    useCallback(() => {
+    useCallback(async () => {
       let isActive = true; // prevent updates if unmounted
 
       const handleFocus = async () => {
         try {
-          const location = await getCurrentLocation();
 
           const [shouldRefresh, shouldRefreshPantry, shouldRefreshFridge] =
             await Promise.all([

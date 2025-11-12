@@ -7,7 +7,7 @@ import {
   ScrollView,
   useColorScheme,
 } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Toast } from 'toastify-react-native';
 import axios from 'axios';
 import ThemedView from '../../../components/ThemedView';
@@ -15,7 +15,7 @@ import ThemedText from '../../../components/ThemedText';
 import ThemedTextInput from '../../../components/ThemedTextInput';
 import ThemedButton from '../../../components/ThemedButton';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import DropDownPicker from 'react-native-dropdown-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '@env';
@@ -28,10 +28,12 @@ const Settings = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
   const [userToken, setUserToken] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
 
-  const [phone, onPhoneChange] = React.useState("");
+  const [phone, onPhoneChange] = useState('');
+  const [borderColor, setBorderColor] = useState(theme.borderColor);
 
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState(null);
@@ -40,128 +42,134 @@ const Settings = () => {
     { label: 'No', value: 'no' },
   ]);
 
-  const [borderColor, setBorderColor] = useState(theme.borderColor)
-
-  useEffect(() => {
-    const init = async () => {
+  // 🔁 Fetch user details
+  const fetchUserData = async () => {
+    try {
       const token = await AsyncStorage.getItem('userToken');
       if (!token) return router.replace('/');
       setUserToken(token);
 
-      await axios
-        .get(`${API_BASE_URL}/session`, {
-          withCredentials: true,
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        .then((res) => {
-          if (res.data.status === 'ok') {
-            setFoodie(res.data.data);
-          } else {
-            Toast.show({ type: 'error', text1: 'Session expired' });
-          }
-        })
-        .catch(console.log);
-    };
+      const res = await axios.get(`${API_BASE_URL}/session`, {
+        withCredentials: true,
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    init();
-  }, []);
+      if (res.data.status === 'ok') {
+        setFoodie(res.data.data);
+      } else {
+        Toast.show({ type: 'error', text1: 'Session expired' });
+        router.replace('/');
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
+  // 🔁 Fetch when screen gains focus or refresh flag changes
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserData();
+    }, [])
+  );
 
   // --- Change Handlers ---
   async function nameChange() {
-    const foodieData = { email: foodie?.email, name };
-    await axios
-      .post(`${API_BASE_URL}/namechange`, foodieData, { withCredentials: true })
-      .then((res) => {
-        Toast.show({
-          type: res.data.status === 'ok' ? 'success' : 'error',
-          text1: res.data.data,
-        });
-        closeModal();
-      })
-      .catch(() =>
-        Toast.show({
-          type: 'error',
-          text1: `There was a problem changing ${selectedOption}`,
-        })
-      );
+    try {
+      const foodieData = { email: foodie?.email, name };
+      const res = await axios.post(`${API_BASE_URL}/namechange`, foodieData, { withCredentials: true });
+      Toast.show({
+        type: res.data.status === 'ok' ? 'success' : 'error',
+        text1: res.data.data,
+      });
+      if (res.data.status === 'ok') await fetchUserData();
+      closeModal();
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: `There was a problem changing ${selectedOption}`,
+      });
+    }
   }
 
   async function passwordChange() {
-    const foodieData = { email: foodie?.email, password };
-    await axios
-      .post(`${API_BASE_URL}/passwordchange`, foodieData, { withCredentials: true })
-      .then((res) => {
-        Toast.show({
-          type: res.data.status === 'ok' ? 'success' : 'error',
-          text1: res.data.data,
-        });
-        closeModal();
-      })
-      .catch(() =>
-        Toast.show({
-          type: 'error',
-          text1: 'There was an error while saving changes',
-        })
-      );
+    try {
+      const foodieData = { email: foodie?.email, password };
+      const res = await axios.post(`${API_BASE_URL}/passwordchange`, foodieData, { withCredentials: true });
+      Toast.show({
+        type: res.data.status === 'ok' ? 'success' : 'error',
+        text1: res.data.data,
+      });
+      if (res.data.status === 'ok') await fetchUserData();
+      closeModal();
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: 'There was an error while saving changes',
+      });
+    }
   }
 
   async function deleteAccount() {
     if (value === 'no') return closeModal();
 
-    const foodieData = { email: foodie?.email };
-    await axios
-      .post(`${API_BASE_URL}/deleteaccount`, foodieData, { withCredentials: true })
-      .then((res) => {
-        Toast.show({
-          type: res.data.status === 'ok' ? 'success' : 'error',
-          text1: res.data.data,
-        });
-        if (res.data.status === 'ok') router.replace('/');
-      })
-      .catch(console.log);
+    try {
+      const foodieData = { email: foodie?.email };
+      const res = await axios.post(`${API_BASE_URL}/deleteaccount`, foodieData, { withCredentials: true });
+      Toast.show({
+        type: res.data.status === 'ok' ? 'success' : 'error',
+        text1: res.data.data,
+      });
+      if (res.data.status === 'ok') router.replace('/');
+    } catch (err) {
+      console.error(err);
+      Toast.show({
+        type: 'error',
+        text1: 'There was an error deleting your account',
+      });
+    }
   }
 
   async function changePhone() {
-    if (phone.trim() === "") {
-      setBorderColor(Colors.error)
+    if (phone.trim() === '') {
+      setBorderColor(Colors.error);
       return;
-    } else {
+    }
+
+    try {
       const foodieData = { email: foodie?.email, phone };
-      axios.post(`${API_BASE_URL}/changePhone`, foodieData, { withCredentials: true }).
-        then((res) => {
-          Toast.show({
-            type: res.data.status === 'ok' ? 'success' : 'error',
-            text1: res.data.data,
-          });
-          setBorderColor(theme.borderColor)
-          onPhoneChange("")
-          closeModal();
-        })
-        .catch(() =>
-          Toast.show({
-            type: 'error',
-            text1: 'There was an error while saving changes',
-          })
-        );
+      const res = await axios.post(`${API_BASE_URL}/changePhone`, foodieData, { withCredentials: true });
+      Toast.show({
+        type: res.data.status === 'ok' ? 'success' : 'error',
+        text1: res.data.data,
+      });
+      if (res.data.status === 'ok') {
+        setBorderColor(theme.borderColor);
+        onPhoneChange('');
+        await fetchUserData();
+      }
+      closeModal();
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: 'There was an error while saving changes',
+      });
     }
   }
 
   async function handleLogout() {
-    await axios
-      .post(`${API_BASE_URL}/logout`, {}, { withCredentials: true })
-      .then((res) => {
-        if (res.data.status === 'ok') {
-          Toast.show({ type: 'success', text1: res.data.data });
-          AsyncStorage.removeItem('userToken');
-          router.replace('/');
-        }
-      })
-      .catch(() =>
-        Toast.show({
-          type: 'error',
-          text1: 'Something went wrong while logging out',
-        })
-      );
+    try {
+      const res = await axios.post(`${API_BASE_URL}/logout`, {}, { withCredentials: true });
+      if (res.data.status === 'ok') {
+        Toast.show({ type: 'success', text1: res.data.data });
+        await AsyncStorage.removeItem('userToken');
+        router.replace('/');
+      }
+    } catch {
+      Toast.show({
+        type: 'error',
+        text1: 'Something went wrong while logging out',
+      });
+    }
   }
 
   const openModal = () => setModalVisible(true);
@@ -233,15 +241,13 @@ const Settings = () => {
             </ThemedText>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: "red" }]} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color={"white"} />
+          <TouchableOpacity style={[styles.logoutBtn, { backgroundColor: 'red' }]} onPress={handleLogout}>
+            <Ionicons name="log-out-outline" size={20} color={'white'} />
             <ThemedText style={styles.logoutText}>Logout</ThemedText>
           </TouchableOpacity>
         </View>
 
-        <ThemedText style={styles.footerText}>
-          FoodXP • Designed by Tshepo Mpofu
-        </ThemedText>
+        <ThemedText style={styles.footerText}>FoodXP • Designed by Tshepo Mpofu</ThemedText>
       </ScrollView>
 
       {/* MODAL */}
@@ -253,9 +259,13 @@ const Settings = () => {
             {selectedOption !== 'Delete' && (
               <ThemedTextInput
                 placeholder={`New ${selectedOption}`}
-                value={selectedOption === 'Name' ? name : selectedOption === "Phone" ? phone : password}
+                value={selectedOption === 'Name' ? name : selectedOption === 'Phone' ? phone : password}
                 onChangeText={
-                  selectedOption === 'Name' ? onNameChange : selectedOption === 'Phone' ? onPhoneChange : onPasswordChange
+                  selectedOption === 'Name'
+                    ? onNameChange
+                    : selectedOption === 'Phone'
+                      ? onPhoneChange
+                      : onPasswordChange
                 }
                 style={{ borderColor: borderColor }}
               />
@@ -285,8 +295,8 @@ const Settings = () => {
                   ? await nameChange()
                   : selectedOption === 'Password'
                     ? await passwordChange()
-                    : selectedOption === 'Phone' ?
-                      await changePhone()
+                    : selectedOption === 'Phone'
+                      ? await changePhone()
                       : await deleteAccount()
               }>
               <ThemedText>Confirm {selectedOption}</ThemedText>
@@ -369,7 +379,7 @@ const styles = StyleSheet.create({
   logoutText: {
     fontWeight: 'bold',
     marginLeft: 6,
-    color: "#ddd"
+    color: '#ddd',
   },
   footerText: {
     marginTop: 25,
@@ -382,26 +392,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   modalContainer: {
     width: '80%',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-
-    // ✅ ensures it’s just a floating box, not full height
     minHeight: 150,
     maxHeight: 300,
-
-    // subtle shadow for the floating effect
     shadowColor: '#000',
     shadowOpacity: 0.25,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 6,
     elevation: 6,
   },
-
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',

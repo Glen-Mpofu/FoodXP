@@ -28,29 +28,26 @@ import TimePicker from '../../../components/TimePicker';
 
 const Fridge = () => {
   const colorScheme = useColorScheme();
-  const theme = Colors[colorScheme] ?? Colors.light
-  const [useCurrentLocation, setUseCurrentLocation] = useState(false)
+  const theme = Colors[colorScheme] ?? Colors.light;
+
+  const [useCurrentLocation, setUseCurrentLocation] = useState(false);
   const [fridgeFood, setFridgeFood] = useState([]);
   const [userToken, setUserToken] = useState(null);
   const [showDonateModal, setShowDonateModal] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
-
-  const [location_id, setLocationId] = useState(null)
+  const [pickup_id, setPickupID] = useState(null);
   const { width: screenWidth } = useWindowDimensions();
   const itemWidth = 150;
   const itemsPerRow = Math.floor(screenWidth / itemWidth);
   const baseUrl = API_BASE_URL;
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  const [usePreviousLocation, setUsePreviousLocation] = useState(false)
+  const [usePreviousLocation, setUsePreviousLocation] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [editName, setEditName] = useState('');
   const [editAmount, setEditAmount] = useState('');
-
   const [deletingItem, setDeletingItem] = useState(null);
   const [deleteAmount, setDeleteAmount] = useState(1);
-
   const [showDonationDetailsModal, setShowDonationDetailsModal] = useState(false);
   const [street, setStreet] = useState('');
   const [province, setProvince] = useState('');
@@ -58,7 +55,6 @@ const Fridge = () => {
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('South Africa');
   const [pickupTime, setPickupTime] = useState(null);
-  // --- Inside your Fridge component ---
 
   // Fetch fridge food function
   const fetchFridgeFood = async (token) => {
@@ -74,7 +70,7 @@ const Fridge = () => {
     }
   };
 
-  // useEffect to initialize
+  // Initialize token and fetch
   useEffect(() => {
     async function init() {
       try {
@@ -92,12 +88,10 @@ const Fridge = () => {
 
   useFocusEffect(
     useCallback(() => {
-      let isActive = true; // optional guard to avoid running after unmount
-
+      let isActive = true;
       async function handleFocus() {
         try {
           const shouldRefresh = await AsyncStorage.getItem('refreshFridge');
-
           if ((shouldRefresh === 'true' || shouldRefresh === null) && userToken) {
             await fetchFridgeFood(userToken);
             await AsyncStorage.setItem('refreshFridge', 'false');
@@ -106,13 +100,8 @@ const Fridge = () => {
           console.error('Error handling focus:', err);
         }
       }
-
       handleFocus();
-
-      // Optional cleanup logic
-      return () => {
-        isActive = false;
-      };
+      return () => { isActive = false; };
     }, [userToken])
   );
 
@@ -126,16 +115,14 @@ const Fridge = () => {
         deleteAmount,
         amount: deletingItem.amount,
         public_id: deletingItem.public_id
-      }, {
-        headers: { Authorization: `Bearer ${userToken}` }
-      });
+      }, { headers: { Authorization: `Bearer ${userToken}` } });
 
       if (result.data.status === "ok") {
         Toast.show({ type: "success", text1: "Item updated successfully", useModal: false });
         await AsyncStorage.setItem("refreshRecipes", "true");
         await AsyncStorage.setItem("refreshFridge", "true");
         setShowDeleteModal(false);
-        fetchFridgeFood(userToken); // <-- refresh
+        fetchFridgeFood(userToken);
       } else {
         Toast.show({ type: "error", text1: result.data.data, useModal: false });
       }
@@ -148,12 +135,7 @@ const Fridge = () => {
   // Edit confirmation
   const handleEditConfirm = async () => {
     if (!editingItem) return;
-
-    const newFood = {
-      name: editName.trim(),
-      amount: parseInt(editAmount.trim()),
-      id: editingItem.id
-    };
+    const newFood = { name: editName.trim(), amount: parseInt(editAmount.trim()), id: editingItem.id };
 
     try {
       const res = await axios.post(`${API_BASE_URL}/editFridgeFood`, { newFood }, {
@@ -164,7 +146,7 @@ const Fridge = () => {
         Toast.show({ type: "success", text1: res.data.data, useModal: false });
         await AsyncStorage.setItem("refreshFridge", "true");
         setShowEditModal(false);
-        fetchFridgeFood(userToken); // <-- refresh
+        fetchFridgeFood(userToken);
       } else {
         Toast.show({ type: "error", text1: res.data.data, useModal: false });
       }
@@ -175,48 +157,42 @@ const Fridge = () => {
   };
 
   const handleUsePreviousLocation = async () => {
-    setUsePreviousLocation(prev => !prev); // toggle
-
+    setUsePreviousLocation(prev => !prev);
     if (!usePreviousLocation) {
-      // fetch previous location
       try {
-        const res = await axios.get(`${API_BASE_URL}/getLatestLocation`, {
-          headers: { Authorization: `Bearer ${userToken}` }
-        });
-
+        const res = await axios.get(`${API_BASE_URL}/getLatestLocation`, { headers: { Authorization: `Bearer ${userToken}` } });
         if (res.data.status === "ok" && res.data.data) {
           const loc = res.data.data;
           setStreet(loc.street || "");
           setCity(loc.city || "");
           setProvince(loc.province || "");
           setPostalCode(loc.zipcode || "");
-          setLocationId(loc.id || null);
+          setPickupID(loc.id || null);
+          setCountry(loc.country || null)
         } else {
-          Toast.show({ type: "info", text1: "No previous location found", useModal: false });
-          setLocationId(null);
+          Toast.show({ type: "error", text1: "No previous location found", useModal: false });
+          setPickupID(null);
         }
       } catch (err) {
         console.log(err);
         Toast.show({ type: "error", text1: "Failed to load previous location", useModal: false });
-        setLocationId(null);
+        setPickupID(null);
       }
     } else {
-      // checkbox turned off
-      setLocationId(null)
-      setStreet('')
-      setCity('')
-      setProvince('')
-      setPostalCode('')
+      setPickupID(null);
+      setStreet('');
+      setCity('');
+      setProvince('');
+      setPostalCode('');
+      setCountry('South Africa')
     }
   };
-
 
   const handleDonateConfirm = async () => {
     if (selectedItems.length === 0) {
       Toast.show({ type: "info", text1: "No items selected", useModal: false });
       return;
     }
-
     try {
       const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id, actualQuantity, from }) => ({
         id, name, amount: donateQty, photo, foodie_id, actualQuantity, from
@@ -224,28 +200,20 @@ const Fridge = () => {
 
       const result = await axios.post(`${API_BASE_URL}/donate`, {
         items: donationData,
-        street,
-        province,
-        postalCode,
-        city,
-        location_id,
-        country,
-        pickupTime
-      }, {
-        headers: { Authorization: `Bearer ${userToken}` }
-      });
+        street, province, postalCode, city, pickup_id, country, pickupTime
+      }, { headers: { Authorization: `Bearer ${userToken}` } });
 
       if (result.data.status === "ok") {
         Toast.show({ type: "success", text1: "Donation recorded successfully!", useModal: false });
         await AsyncStorage.setItem("refreshFridge", "true");
         setSelectedItems([]);
-        setStreet('')
+        setStreet('');
         setPostalCode('');
         setProvince('');
-        setCity('')
-        setUsePreviousLocation(false)
-        setLocationId(null)
-        setCountry("South Africa")
+        setCity('');
+        setUsePreviousLocation(false);
+        setPickupID(null);
+        setCountry("South Africa");
       } else {
         Toast.show({ type: "error", text1: result.data.data, useModal: false });
       }
@@ -303,14 +271,11 @@ const Fridge = () => {
               {rows.map((row, rowIndex) => (
                 <View key={rowIndex} style={styles.row}>
                   {row.map(item => (
-                    <TouchableOpacity onPress={() => {
-                      openEditModal(item)
-                    }}>
-                      <View key={item.id} style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
+                    <TouchableOpacity key={item.id} onPress={() => openEditModal(item)}>
+                      <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                         <Image source={{ uri: item.photo }} style={styles.img} />
                         <ThemedText>{item.name}</ThemedText>
                         <ThemedText>{item.amount} {item.unitofmeasure}</ThemedText>
-
                         <View style={styles.buttonRow}>
                           <ThemedButton style={[styles.btn, { backgroundColor: "#f28b82" }]} onPress={() => openDeleteModal(item)}>
                             <ThemedText>Eaten</ThemedText>
@@ -617,7 +582,6 @@ const Fridge = () => {
             </View>
           </View>
         </Modal>
-
       </ImageBackground>
     </View>
   );
@@ -626,7 +590,7 @@ const Fridge = () => {
 export default Fridge;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, width: "100%", height: "100%", },
+  container: { flex: 1, width: "100%", height: "100%" },
   imgBackground: { width: "100%", height: "100%", ...StyleSheet.absoluteFillObject },
   scrollContainer: { flexGrow: 1, padding: 10, alignItems: "center" },
   row: { flexDirection: 'row', marginBottom: 10 },
@@ -641,8 +605,6 @@ const styles = StyleSheet.create({
   buttonRow: { flexDirection: "row", justifyContent: "space-between", width: "100%" },
   emptyContainer: { flex: 1, alignItems: "center", justifyContent: "center", marginTop: 100 },
   heading: { alignSelf: "center", fontSize: 25 },
-
-  // Modal styles
   modalContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.6)" },
   modalContent: { width: "90%", maxHeight: "80%", backgroundColor: "#fff", borderRadius: 16, padding: 15 },
   modalTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 10, textAlign: "center" },

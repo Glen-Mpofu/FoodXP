@@ -1,56 +1,70 @@
-import { StyleSheet, Text, View, Image, FlatList, TouchableOpacity, useColorScheme, ScrollView } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import axios from "axios"
-import { API_BASE_URL } from "@env"
-import ThemedView from '../../../components/ThemedView'
-import ThemedText from '../../../components/ThemedText'
-import ThemedButton from '../../../components/ThemedButton'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Toast } from 'toastify-react-native'
-import { Colors } from '../../../constants/Colors'
-import { MaterialCommunityIcons } from "@expo/vector-icons"
+import {
+  StyleSheet,
+  View,
+  Image,
+  FlatList,
+  TouchableOpacity,
+  useColorScheme,
+  ScrollView,
+  Platform
+} from "react-native";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { API_BASE_URL } from "@env";
+import ThemedView from "../../../components/ThemedView";
+import ThemedText from "../../../components/ThemedText";
+import ThemedButton from "../../../components/ThemedButton";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Toast } from "toastify-react-native";
+import { Colors } from "../../../constants/Colors";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { getCurrentLocation } from '../../../components/locantion';
 
 const DonateMap = () => {
   const [userToken, setUserToken] = useState(null);
   const [availableDonations, setAvailableDonations] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
   const [selectedDonation, setSelectedDonation] = useState(null);
+  const [donorRequests, setDonorRequests] = useState([]);
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
-  const [donorRequests, setDonorRequests] = useState([]);
 
   useEffect(() => {
     async function init() {
+
       try {
         const token = await AsyncStorage.getItem("userToken");
         if (!token) return;
         setUserToken(token);
 
-        // Fetch all donations
         const donationsResult = await axios.get(`${API_BASE_URL}/getDonations`, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${token}` },
         });
         const donations = donationsResult.data.data || [];
 
-        // Fetch donations this user has already requested
-        const requestsResult = await axios.get(`${API_BASE_URL}/getMyDonationRequests`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const requestsResult = await axios.get(
+          `${API_BASE_URL}/getMyDonationRequests`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         const requestedDonations = requestsResult.data.data || [];
+        const requestedIds = new Set(
+          requestedDonations.map((d) => d.donation_id)
+        );
 
-        // Create a set of requested donation IDs for fast lookup
-        const requestedIds = new Set(requestedDonations.map(d => d.donation_id));
-
-        // Filter out requested donations from available donations
-        const remainingDonations = donations.filter(d => !requestedIds.has(d.donation_id));
+        const remainingDonations = donations.filter(
+          (d) => !requestedIds.has(d.donation_id)
+        );
 
         setMyRequests(requestedDonations);
         setAvailableDonations(remainingDonations);
-
       } catch (err) {
         console.error(err);
-        Toast.show({ type: "error", text1: "Something went wrong", useModal: false });
+        Toast.show({
+          type: "error",
+          text1: "Something went wrong",
+          useModal: false,
+        });
       }
     }
 
@@ -58,55 +72,94 @@ const DonateMap = () => {
     init();
   }, []);
 
-  const acceptRequest = async (request) => {
-    try {
-      await axios.post(`${API_BASE_URL}/acceptRequest`, { request_id: request.request_id }, {
-        headers: { Authorization: `Bearer ${userToken}` }
-      });
-      Toast.show({ type: "success", text1: `Accepted request from ${request.requester_name}` });
-
-      // Remove accepted request from donorRequests
-      setDonorRequests(prev => prev.filter(r => r.request_id !== request.request_id));
-    } catch (err) {
-      console.error(err);
-      Toast.show({ type: "error", text1: "Failed to accept request" });
-    }
-  };
-
-
   async function fetchDonorRequests() {
     try {
       const token = await AsyncStorage.getItem("userToken");
       if (!token) return;
 
       const res = await axios.get(`${API_BASE_URL}/getRequestsForMe`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       setDonorRequests(res.data.data || []);
     } catch (err) {
       console.error(err);
-      Toast.show({ type: "error", text1: "Failed to fetch donor requests" });
+      Toast.show({
+        type: "error",
+        text1: "Failed to fetch donor requests",
+      });
     }
   }
 
+  const acceptRequest = async (request) => {
+    try {
+      await axios.post(
+        `${API_BASE_URL}/acceptRequest`,
+        { request_id: request.request_id },
+        { headers: { Authorization: `Bearer ${userToken}` } }
+      );
+      Toast.show({
+        type: "success",
+        text1: `Accepted request from ${request.requester_name}`,
+      });
+      setDonorRequests((prev) =>
+        prev.filter((r) => r.request_id !== request.request_id)
+      );
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Failed to accept request" });
+    }
+  };
+
   const requestDonation = async (donation) => {
     try {
-      await axios.post(`${API_BASE_URL}/requestDonation`, { donation }, { headers: { Authorization: `Bearer ${userToken}` } })
-      Toast.show({ type: "success", text1: `You claimed ${donation.name}!` });
+      await axios.post(
+        `${API_BASE_URL}/requestDonation`,
+        { donation },
+        { headers: { Authorization: `Bearer ${userToken}` } }
+      );
+      Toast.show({
+        type: "success",
+        text1: `You claimed ${donation.name}!`,
+      });
 
-      setAvailableDonations(prev => prev.filter(d => d.donation_id !== donation.donation_id));
-      setMyRequests(prev => [...prev, donation]);
+      setAvailableDonations((prev) =>
+        prev.filter((d) => d.donation_id !== donation.donation_id)
+      );
+      setMyRequests((prev) => [...prev, donation]);
       setSelectedDonation(null);
     } catch (err) {
       console.error(err);
       Toast.show({ type: "error", text1: "Failed to claim donation" });
     }
-  }
+  };
 
   const toggleSelectDonation = (donation) => {
-    setSelectedDonation(prev => (prev?.donation_id === donation.donation_id ? null : donation));
-  }
+    setSelectedDonation((prev) =>
+      prev?.donation_id === donation.donation_id ? null : donation
+    );
+  };
+
+  // Inside DonateMap component
+  const rejectRequest = async (request) => {
+    try {
+      await axios.post(
+        `${API_BASE_URL}/rejectRequest`,
+        { request_id: request.request_id },
+        { headers: { Authorization: `Bearer ${userToken}` } }
+      );
+      Toast.show({
+        type: "success",
+        text1: `Rejected request from ${request.requester_name}`,
+      });
+      setDonorRequests((prev) =>
+        prev.filter((r) => r.request_id !== request.request_id)
+      );
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Failed to reject request" });
+    }
+  };
 
   const renderDonation = ({ item, isRequest = false }) => {
     const selected = selectedDonation?.donation_id === item.donation_id;
@@ -170,8 +223,9 @@ const DonateMap = () => {
 
 
   return (
-
-    <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground }]}>
+    <ThemedView
+      style={[styles.container, { backgroundColor: theme.uiBackground }]}
+    >
       <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
         {/* My Requests */}
         <ThemedText style={styles.heading}>My Donation Requests</ThemedText>
@@ -187,46 +241,77 @@ const DonateMap = () => {
           />
         )}
 
-        {/* Donor Requests */}
+        {/* Requests for My Donations */}
         <ThemedText style={styles.heading}>Requests for My Donations</ThemedText>
         {donorRequests.length === 0 ? (
-          <ThemedText style={{ textAlign: "center", marginBottom: 10 }}>No requests yet</ThemedText>
+          <ThemedText style={styles.emptyText}>No requests yet</ThemedText>
         ) : (
           <FlatList
             data={donorRequests}
-            keyExtractor={item => item.request_id}
+            keyExtractor={(item) => item.request_id}
             renderItem={({ item }) => (
-              <View style={[styles.donationRow, { backgroundColor: theme.cardColor }]}>
+              <View
+                style={[styles.donationRow, { backgroundColor: theme.cardColor }]}
+              >
                 <Image source={{ uri: item.food_photo }} style={styles.donationImage} />
-                <View style={styles.donationDetails}>
+                <View style={styles.donationDetailsColumn}>
                   <ThemedText style={styles.donationName}>{item.food_name}</ThemedText>
                   <ThemedText>Requester: {item.requester_name}</ThemedText>
                   <ThemedText>Email: {item.requester_email}</ThemedText>
                   <ThemedText>Status: {item.status ?? "Pending"}</ThemedText>
+
+                  {item.status !== "Accepted" && (
+                    <View style={{ flexDirection: "row", marginTop: 10 }}>
+                      <ThemedButton
+                        style={[styles.claimBtn, { marginRight: 10 }]}
+                        onPress={() => acceptRequest(item)}
+                      >
+                        <ThemedText style={styles.btnText}>Accept</ThemedText>
+                      </ThemedButton>
+
+                      <ThemedButton
+                        style={[styles.rejectBtn]}
+                        onPress={() => rejectRequest(item)}
+                      >
+                        <ThemedText style={styles.btnText}>Reject</ThemedText>
+                      </ThemedButton>
+                    </View>
+                  )}
+
+                  {item.status === "Accepted" && (
+                    <TouchableOpacity
+                      style={[styles.heartIconContainer, { marginTop: 10 }]}
+                      onPress={async () => {
+                        try {
+                          await axios.post(
+                            `${API_BASE_URL}/incrementDonatedItem`,
+                            {
+                              donor_id: item.donor_id,
+                              requester_id: item.requester_id,
+                            },
+                            { headers: { Authorization: `Bearer ${userToken}` } }
+                          );
+                          Toast.show({
+                            type: "success",
+                            text1: "Donation count incremented!",
+                          });
+                        } catch (err) {
+                          console.error(err);
+                          Toast.show({
+                            type: "error",
+                            text1: "Failed to increment donation",
+                          });
+                        }
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name="hand-heart-outline"
+                        size={28}
+                        color="#34a853"
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
-                {item.status !== "Accepted" && (
-                  <ThemedButton style={styles.claimBtn} onPress={() => acceptRequest(item)}>
-                    <ThemedText style={{ color: "#fff", fontWeight: "bold" }}>Accept</ThemedText>
-                  </ThemedButton>
-                )}
-                {item.status === "Accepted" && (
-                  <TouchableOpacity
-                    style={{ marginTop: 10 }}
-                    onPress={async () => {
-                      try {
-                        await axios.post(`${API_BASE_URL}/incrementDonatedItem`, { donor_id: item.donor_id, requester_id: item.requester_id }, {
-                          headers: { Authorization: `Bearer ${userToken}` }
-                        });
-                        Toast.show({ type: "success", text1: "Donation count incremented!" });
-                      } catch (err) {
-                        console.error(err);
-                        Toast.show({ type: "error", text1: "Failed to increment donation" });
-                      }
-                    }}
-                  >
-                    <MaterialCommunityIcons name="hand-heart-outline" size={30} color="#34a853" />
-                  </TouchableOpacity>
-                )}
               </View>
             )}
             scrollEnabled={false}
@@ -238,11 +323,11 @@ const DonateMap = () => {
         {/* Available Donations */}
         <ThemedText style={styles.heading}>Available Donations</ThemedText>
         {availableDonations.length === 0 ? (
-          <ThemedText style={{ textAlign: "center", marginBottom: 10 }}>No Donations yet</ThemedText>
+          <ThemedText style={styles.emptyText}>No Donations yet</ThemedText>
         ) : (
           <FlatList
             data={availableDonations}
-            keyExtractor={item => item.donation_id}
+            keyExtractor={(item) => item.donation_id}
             renderItem={renderDonation}
             scrollEnabled={false}
             contentContainerStyle={{ paddingBottom: 20 }}
@@ -250,45 +335,63 @@ const DonateMap = () => {
         )}
       </ScrollView>
     </ThemedView>
-  )
-}
+  );
+};
 
-export default DonateMap
+export default DonateMap;
 
 const styles = StyleSheet.create({
   container: { flex: 1, width: "100%" },
-  heading: { alignSelf: "center", fontSize: 26, fontWeight: "bold", marginVertical: 15 },
+  heading: {
+    alignSelf: "center",
+    fontSize: 24,
+    fontWeight: "bold",
+    marginVertical: 15,
+  },
+  emptyText: { textAlign: "center", marginBottom: 10, color: "#777" },
   donationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 15,
     borderRadius: 15,
+    marginHorizontal: 10,
     marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 5,
-    elevation: 3
+    elevation: 3,
+    ...Platform.select({
+      ios: { backgroundColor: "#fff" },
+      android: { backgroundColor: "#fafafa" },
+    }),
   },
-  donationImage: { width: 90, height: 90, borderRadius: 12 },
-  donationDetails: { flex: 1, marginLeft: 15, justifyContent: "center" },
-  donationName: { fontSize: 17, fontWeight: "bold", marginBottom: 0 },
-  donationAmount: { fontSize: 15, color: "#555", marginBottom: 0 },
-  donorInfo: { fontSize: 13, color: "#777" },
-  actionContainer: { justifyContent: "center", alignItems: "center" },
+  donationImage: {
+    width: "100%",
+    height: 180,
+    borderTopLeftRadius: 15,
+    borderTopRightRadius: 15,
+    resizeMode: "cover",
+  },
+  donationDetailsColumn: {
+    flex: 1,
+    marginTop: 10,
+    marginHorizontal: 10,
+  },
+  donationName: { fontSize: 16, fontWeight: "bold", marginBottom: 4 },
+  donorInfo: { fontSize: 13, color: "#555", marginTop: 2 },
+  pickupContainer: { marginTop: 8 },
+  pickupLabel: { fontSize: 13, fontWeight: "bold", color: "#444" },
+  pickupText: { fontSize: 13, color: "#555" },
+  pickupTime: { fontSize: 13, color: "#333", fontWeight: "600" },
   claimBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     backgroundColor: "#34a853",
     borderRadius: 8,
-    height: 35,
-    width: 100
   },
-  requestBadge: {
-    backgroundColor: "#34a853",
-    paddingHorizontal: 10,
+  btnText: { color: "#fff", fontWeight: "bold", textAlign: "center" },
+  heartIconContainer: { alignItems: "center", justifyContent: "center" }, rejectBtn: {
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 10
-  }
+    backgroundColor: "#ea4335", // red for reject
+    borderRadius: 8,
+  },
 });

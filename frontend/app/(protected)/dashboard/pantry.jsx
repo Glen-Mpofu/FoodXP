@@ -62,7 +62,7 @@ const Pantry = () => {
   const [city, setCity] = useState('');
 
   const [pickupTime, setPickupTime] = useState(null);
-  const [location_id, setLocationId] = useState(null)
+  const [pickup_id, setPickupID] = useState(null)
   // Fetch pantry food
   const fetchPantryFood = async (token) => {
     try {
@@ -131,7 +131,6 @@ const Pantry = () => {
     }, [userToken])
   );
 
-
   const handleUsePreviousLocation = async () => {
     setUsePreviousLocation(prev => !prev); // toggle
 
@@ -148,19 +147,19 @@ const Pantry = () => {
           setCity(loc.city || "");
           setProvince(loc.province || "");
           setPostalCode(loc.zipcode || "");
-          setLocationId(loc.id || null);
+          setPickupID(loc.id || null);
         } else {
           Toast.show({ type: "info", text1: "No previous location found", useModal: false });
-          setLocationId(null);
+          setPickupID(null);
         }
       } catch (err) {
         console.log(err);
         Toast.show({ type: "error", text1: "Failed to load previous location", useModal: false });
-        setLocationId(null);
+        setPickupID(null);
       }
     } else {
       // checkbox turned off
-      setLocationId(null)
+      setPickupID(null)
       setStreet('')
       setCity('')
       setProvince('')
@@ -224,7 +223,7 @@ const Pantry = () => {
           province,
           postalCode,
           city,
-          location_id,
+          pickup_id,
           country,
           pickupTime
         },
@@ -239,7 +238,7 @@ const Pantry = () => {
         setProvince('');
         setCity('');
         setUsePreviousLocation(false)
-        setLocationId(null)
+        setPickupID(null)
         setCountry("South Africa")
       } else {
         Toast.show({ type: "error", text1: result.data.data, useModal: false });

@@ -61,7 +61,7 @@ async function initialiseTables(pool) {
             foodie_id uuid REFERENCES FOODIE(id) ON DELETE CASCADE,
             fridge_food_id UUID REFERENCES FRIDGE_FOOD(id) ON DELETE CASCADE,
             pantry_food_id UUID REFERENCES PANTRY_FOOD(id) ON DELETE CASCADE,
-            location_id UUID REFERENCES LOCATION(id),
+            pickup_id UUID REFERENCES DONATION_PICKUP(id),
             QUANTITY INT,
             AMOUNT INT,
             sourceTable VARCHAR(10)
@@ -87,14 +87,14 @@ async function initialiseTables(pool) {
         console.error("Something went wrong when creating DONATION_REQUESTS table", error)
     });
 
-    // LOCATION TABLE
+    // DONATION_PICKUP TABLE
     await pool.query(
         `
-            CREATE TABLE IF NOT EXISTS LOCATION(
+            CREATE TABLE IF NOT EXISTS DONATION_PICKUP(
                 ID UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 FOODIE_ID UUID REFERENCES FOODIE(id),
-                LATITUDE VARCHAR(100), 
-                LONGITUDE VARCHAR(100),
+                LATITUDE double precision, 
+                LONGITUDE double precision,
                 CITY VARCHAR(100),
                 PROVINCE VARCHAR(100),
                 ZIPCODE VARCHAR(100),
@@ -105,9 +105,9 @@ async function initialiseTables(pool) {
             )
         `
     ).then((res) => {
-        console.log("Location Table Ready")
+        console.log("DONATION_PICKUP Table Ready")
     }).catch(error => {
-        console.error("Something went wrong when creating Location table", error)
+        console.error("Something went wrong when creating DONATION_PICKUP table", error)
     });
 
     /*// DONATED ITEMS
@@ -134,6 +134,24 @@ async function initialiseTables(pool) {
         console.log("DONATED ITEMS Table Ready")
     }).catch(error => {
         console.error("Something went wrong when creating DONATED ITEMS table", error)
+    });
+
+    await pool.query(
+        `
+            CREATE TABLE IF NOT EXISTS LOCATION(
+                latitude double precision,
+                longitude double precision,
+                street VARCHAR(100),
+                CITY VARCHAR(100),
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                foodie_id UUID REFERENCES FOODIE(id) UNIQUE,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        `
+    ).then((res) => {
+        console.log("Location Table Ready")
+    }).catch(error => {
+        console.error("Something went wrong when creating Location table", error)
     });
 }
 

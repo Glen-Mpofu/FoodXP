@@ -69,6 +69,7 @@ app.use(session({
 
 const port = process.env.PORT ?? 5001
 const pLimit = require("p-limit");
+const { default: reverseGeocode } = require("./reverseGeocode");
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 
@@ -206,6 +207,18 @@ async function retryOn401(fn, retries = 3, delay = 5000) {
         }
         throw err;
     }
+}
+
+function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // distance in meters
 }
 
 //register
@@ -522,7 +535,6 @@ app.get("/getpantryfood", async (req, res) => {
         // Retry getPantryFood on 401 errors
         const pantryFood = await retryOn401(() => getPantryFood(foodie.data.id), 3, 5000);
 
-        console.log(pantryFood.data);
         res.send({ status: "ok", data: pantryFood.data });
 
     } catch (error) {
@@ -1041,9 +1053,10 @@ app.post("/donate", async (req, res) => {
         const foodie_id = await getIdFromHeader(req);
         const donations = req.body.items;
         const { street, city, province, postalCode, country, pickupTime } = req.body;
-        const prevLoc = req.body.location_id;
+        const prevLoc = req.body.pickup_id;
+        console.log(req.body)
 
-        let location_id;
+        let pickup_id;
         const dateObj = new Date(pickupTime);
         let hours = dateObj.getHours();
         let minutes = String(dateObj.getMinutes()).padStart(2, "0");
@@ -1052,9 +1065,10 @@ app.post("/donate", async (req, res) => {
         hours = hours % 12 || 12;  // convert 0 -> 12
 
         const finalTime = `${hours}:${minutes} ${ampm}`;
-        console.log(finalTime);
+
         // Handle location
         if (prevLoc === null) {
+            console.log("If loc is null")
             const coords = await forwardGeocode({
                 street,
                 city,
@@ -1068,7 +1082,7 @@ app.post("/donate", async (req, res) => {
 
             const r = await pool.query(
                 `
-                    INSERT INTO LOCATION(latitude, longitude, city, province, zipcode, country, street, foodie_id, pickupTime)
+                    INSERT INTO DONATION_PICKUP(latitude, longitude, city, province, zipcode, country, street, foodie_id, pickupTime)
                     VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
                     RETURNING id
                 `,
@@ -1085,10 +1099,10 @@ app.post("/donate", async (req, res) => {
                 ]
             );
 
-            console.log("LOCATION ADDED");
-            location_id = r.rows[0].id;
+            console.log("DONATION_PICKUP ADDED");
+            pickup_id = r.rows[0].id;
         } else {
-            location_id = prevLoc;
+            pickup_id = prevLoc;
         }
 
         // Insert each donation record
@@ -1100,7 +1114,7 @@ app.post("/donate", async (req, res) => {
                 INSERT INTO DONATION(
                     foodie_id,
                     ${isPantry ? "pantry_food_id" : "fridge_food_id"},
-                    location_id,
+                    pickup_id,
                     amount,
                     sourceTable
                 )
@@ -1109,7 +1123,7 @@ app.post("/donate", async (req, res) => {
                 [
                     donation.foodie_id,
                     donation.id,
-                    location_id,
+                    pickup_id,
                     donation.amount,
                     donation.from
                 ]
@@ -1129,32 +1143,141 @@ app.post("/donate", async (req, res) => {
 
 //Getting
 app.get("/getDonations", async (req, res) => {
-    const id = await getIdFromHeader(req)
-    const pResult = await pool.query(
-        `
-            SELECT d.donation_id, p.name, d.amount, p.unitOfMeasure, p.photo, city, street, province, country, zipcode, fo.name AS fname, fo.email
-            from DONATION d, PANTRY_FOOD p, LOCATION l, FOODIE fo
-            WHERE d.foodie_id = fo.id
-            AND d.location_id = l.id
-            AND d.pantry_food_id = p.id
-            AND fo.id != $1
-        `, [id]
-    )
+    try {
+        const id = await getIdFromHeader(req);
 
-    const fResult = await pool.query(
-        `
-            SELECT d.donation_id, f.name, d.amount, f.unitOfMeasure, f.photo, city, street, province, country, zipcode, fo.name AS fname, fo.email
-            from DONATION d, FRIDGE_FOOD f, LOCATION l, FOODIE fo
-            WHERE d.foodie_id = fo.id
-            AND d.fridge_food_id = f.id
-            AND d.location_id = l.id
-            AND fo.id != $1
-        `, [id]
-    )
+        // Get user's location
+        const lResult = await pool.query(`
+            SELECT latitude::float AS latitude, longitude::float AS longitude
+            FROM LOCATION
+            WHERE foodie_id = $1
+        `, [id]);
 
-    const donation = [...pResult.rows, ...fResult.rows]
-    res.send({ status: "ok", data: donation })
-})
+        if (!lResult.rows[0]) {
+            return res.status(400).send({ status: "error", message: "User location not found" });
+        }
+
+        const userLat = lResult.rows[0].latitude;
+        const userLon = lResult.rows[0].longitude;
+        const radiusKm = 5; // 5 km
+
+        // Pantry donations within proximity
+        const pResult = await pool.query(`
+    SELECT d.donation_id, p.name, d.amount, p.unitOfMeasure, p.photo,
+           l.city, l.street, l.province, l.country, l.zipcode, fo.name AS fname, fo.email,
+           (6371 * acos(
+                cos(radians($1)) *
+                cos(radians(l.latitude::float)) *
+                cos(radians(l.longitude::float) - radians($2)) +
+                sin(radians($1)) *
+                sin(radians(l.latitude::float))
+           )) AS distance_km
+    FROM DONATION d
+    JOIN PANTRY_FOOD p ON d.pantry_food_id = p.id
+    JOIN DONATION_PICKUP l ON d.pickup_id = l.id
+    JOIN FOODIE fo ON d.foodie_id = fo.id
+    WHERE fo.id != $3
+      AND (6371 * acos(
+                cos(radians($1)) *
+                cos(radians(l.latitude::float)) *
+                cos(radians(l.longitude::float) - radians($2)) +
+                sin(radians($1)) *
+                sin(radians(l.latitude::float))
+           )) <= $4
+`, [userLat, userLon, id, radiusKm]);
+
+        // Fridge donations within proximity
+        const fResult = await pool.query(`
+    SELECT d.donation_id, f.name, d.amount, f.unitOfMeasure, f.photo,
+           l.city, l.street, l.province, l.country, l.zipcode, fo.name AS fname, fo.email,
+           (6371 * acos(
+                cos(radians($1)) *
+                cos(radians(l.latitude::float)) *
+                cos(radians(l.longitude::float) - radians($2)) +
+                sin(radians($1)) *
+                sin(radians(l.latitude::float))
+           )) AS distance_km
+    FROM DONATION d
+    JOIN FRIDGE_FOOD f ON d.fridge_food_id = f.id
+    JOIN DONATION_PICKUP l ON d.pickup_id = l.id
+    JOIN FOODIE fo ON d.foodie_id = fo.id
+    WHERE fo.id != $3
+      AND (6371 * acos(
+                cos(radians($1)) *
+                cos(radians(l.latitude::float)) *
+                cos(radians(l.longitude::float) - radians($2)) +
+                sin(radians($1)) *
+                sin(radians(l.latitude::float))
+           )) <= $4
+`, [userLat, userLon, id, radiusKm]);
+
+
+        const donations = [...pResult.rows, ...fResult.rows];
+
+        res.send({ status: "ok", data: donations });
+    } catch (err) {
+        console.error("Error fetching donations:", err);
+        res.status(500).send({ status: "error", message: "Server error" });
+    }
+});
+
+
+//saving the user's location
+app.post("/userLocation", async (req, res) => {
+    try {
+        const { latitude, longitude } = req.body.location;
+        const userId = await getIdFromHeader(req);
+
+        // Get reverse geocoded info
+        const geoResult = await reverseGeocode({ latitude, longitude }, GOOGLE_MAPS_API_KEY);
+        if (!geoResult) {
+            console.warn("Reverse geocoding failed or returned null");
+        } else {
+            console.log("User is around:", geoResult.formattedAddress);
+        }
+
+        const street = geoResult?.street || null;
+        const city = geoResult?.city || null;
+
+        // Fetch existing location
+        const result = await pool.query(
+            "SELECT latitude, longitude FROM LOCATION WHERE foodie_id = $1",
+            [userId]
+        );
+
+        let shouldUpdate = true;
+
+        if (result.rows.length > 0) {
+            const oldLat = parseFloat(result.rows[0].latitude);
+            const oldLon = parseFloat(result.rows[0].longitude);
+
+            const distance = getDistanceFromLatLonInMeters(oldLat, oldLon, latitude, longitude);
+            console.log("Distance from previous location (meters):", distance);
+
+            // Only update if moved more than 50 meters
+            shouldUpdate = distance > 50;
+        }
+
+        if (shouldUpdate) {
+            await pool.query(
+                `INSERT INTO LOCATION (foodie_id, latitude, longitude, street, city, updated_at)
+                 VALUES ($1, $2, $3, $4, $5, NOW())
+                 ON CONFLICT (foodie_id)
+                 DO UPDATE SET latitude = $2, longitude = $3, street = $4, city = $5, updated_at = NOW()`,
+                [userId, latitude, longitude, street, city]
+            );
+            console.log("User location updated");
+        } else {
+            console.log("Location change too small, no update");
+        }
+
+        res.send({ status: "ok", data: "Location processed" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send({ status: "error", data: "Something went wrong" });
+    }
+});
+
 
 // GET donation requests for the logged-in user
 app.get("/getMyDonationRequests", async (req, res) => {
@@ -1169,12 +1292,12 @@ app.get("/getMyDonationRequests", async (req, res) => {
                 COALESCE(fr.name, pa.name) AS food_name,
                 COALESCE(fr.photo, pa.photo) AS food_photo,
                 d.amount,
-                l.city,
-                l.street,
-                l.province,
-                l.country,
-                l.zipcode,
-                l.pickupTime,
+                p.city,
+                p.street,
+                p.province,
+                p.country,
+                p.zipcode,
+                p.pickupTime,
                 donor.name AS donor_name,
                 donor.email AS donor_email,
                 donor.phone AS donor_phone
@@ -1182,12 +1305,12 @@ app.get("/getMyDonationRequests", async (req, res) => {
             JOIN DONATION d ON dr.donation_id = d.donation_id
             LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
             LEFT JOIN PANTRY_FOOD pa ON d.pantry_food_id = pa.id
-            LEFT JOIN LOCATION l ON d.location_id = l.id
+            LEFT JOIN DONATION_PICKUP p ON d.pickup_id = p.id
             LEFT JOIN FOODIE donor ON dr.donor_id = donor.id
             WHERE dr.requester_id = $1
         `, [requester_id]);
 
-        result.rows.map(r => console.log(r))
+        //result.rows.map(r => console.log(r))
         //const requests = result.rows.map(r => r.donation_id);
         res.json({ status: "ok", data: result.rows });
     } catch (err) {
@@ -1314,17 +1437,18 @@ app.get("/getLatestLocation", async (req, res) => {
     try {
         const result = await pool.query(
             `
-          SELECT *
-          FROM LOCATION l, FOODIE f
-          WHERE l.foodie_id = f.id
-          AND l.foodie_id = $1
+          SELECT p.id, street, city, province, zipcode, country
+          FROM DONATION_PICKUP p, FOODIE f
+          WHERE p.foodie_id = f.id
+          AND p.foodie_id = $1
           ORDER BY created_at DESC
           LIMIT 1
         `, [foodie_id]
         );
         if (result.rows.length <= 0) {
-            return res.send({ status: "empty", data: null });
+            return res.send({ status: "error", data: null });
         }
+        console.log("Prev location" + result.rows[0].id)
 
         res.send({ status: "ok", data: result.rows[0] });
     } catch (err) {

@@ -20,7 +20,9 @@
       "icon": "./assets/foodxp/notifications.png",
       "color": "#ffffff",
       "androidMode": "default",
-      "androidCollapsedTitle": "FoodXP"
+      "androidCollapsedTitle": "FoodXP",
+      "vapidPublicKey": "BEMI803cHu2Af4JcuVTpY_SaeRXOb3L0BDp-2M2EkK1zDhqtNNs4w66OCIqmOsLEsqkDAoqKvbkmBOZwbdy14yU",
+      "serviceWorkerPath": "service-worker.js"
     },
     "ios": {
       "supportsTablet": true,

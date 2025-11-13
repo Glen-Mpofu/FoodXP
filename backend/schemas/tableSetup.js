@@ -136,6 +136,7 @@ async function initialiseTables(pool) {
         console.error("Something went wrong when creating DONATED ITEMS table", error)
     });
 
+    // LOCATION
     await pool.query(
         `
             CREATE TABLE IF NOT EXISTS LOCATION(
@@ -152,6 +153,23 @@ async function initialiseTables(pool) {
         console.log("Location Table Ready")
     }).catch(error => {
         console.error("Something went wrong when creating Location table", error)
+    });
+
+    // NOTIFICATIONS TOKEN
+    await pool.query(
+        `
+        CREATE TABLE IF NOT EXISTS PUSH_TOKENS (
+            foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
+            token TEXT NOT NULL,
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            PRIMARY KEY (foodie_id, token)
+        );
+
+        `
+    ).then((res) => {
+        console.log("PUSH_TOKENS Table Ready")
+    }).catch(error => {
+        console.error("Something went wrong when creating PUSH_TOKENS table", error)
     });
 }
 

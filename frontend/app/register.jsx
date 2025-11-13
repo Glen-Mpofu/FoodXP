@@ -11,17 +11,22 @@ import { API_BASE_URL } from "@env"
 //api access
 import axios from "axios"
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Colors } from '../constants/Colors'
 import { router } from 'expo-router'
 
 import { Toast } from 'toastify-react-native'
 
 import { Ionicons } from '@expo/vector-icons';
-import registerNNPushToken from 'native-notify'
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import { registerForPushNotificationsAsync } from '../components/notificationsSetup'
 
 //login page
 const Register = () => {
+    useEffect(() => {
+        registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+    }, []);
     //registerNNPushToken(32486, 'rO2Gkf0kRxykOTtwu2XDeX');
     const [email, onEmailChange] = React.useState("");
     const [userName, onNameChange] = React.useState("");
@@ -41,8 +46,10 @@ const Register = () => {
     let [passwordBorderColor, setPasswordBorderColor] = React.useState(theme.borderColor)
     let [nameBorderColor, setNameBorderColor] = React.useState(theme.borderColor)
     let [phoneBorderColor, setPhoneBorderColor] = React.useState(theme.borderColor)
-
+    const [expoPushToken, setExpoPushToken] = React.useState(null);
     const { width, height } = Dimensions.get("window")
+
+
     async function handleSubmit() {
 
         //valid email check
@@ -103,14 +110,15 @@ const Register = () => {
 
         const baseUrl = Platform.OS === "web" ? "http://localhost:5001" : API_BASE_URL
 
-        axios.post(`${baseUrl}/register`, foodieData, { withCredentials: true }).
-            then(res => {
+        axios.post(`${baseUrl}/register`, { foodieData, expoPushToken }, { withCredentials: true }).
+            then(async res => {
                 if (res.data.status === 'ok') {
                     Toast.show({
                         type: "success",
                         text1: res.data.data,
                         useModal: false
                     })
+
                     router.push("/");
                 }
                 else if (res.data.status === 'foodie exists') {

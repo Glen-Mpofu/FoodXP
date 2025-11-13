@@ -152,25 +152,15 @@ function getFoodieEmailFromToken(token) {
     return email
 }
 
-async function sendNotification(message) {
-
+// METHOD FOR SENDING
+async function sendNotification(token, message) {
     try {
-        const response = await axios.post(
-            "https://app.nativenotify.com/api/notification",
-            {  // The Native Notify user ID
-                appId: process.env.NATIVE_NOTIFY_APP_ID, // numeric App ID from Native Notify
-                appToken: process.env.NATIVE_NOTIFY_APP_TOKEN, // your app token
-                title: "Food Expiry Alert 🍎",
-                dateSent: message,
-            },
-            {
-                headers: {
-                    "Content-Type": "application/json"
-                }
-            }
-        );
-
-        console.log("Notification sent:", response.data);
+        await axios.post("https://exp.host/--/api/v2/push/send", {
+            to: token,
+            sound: "default",
+            title: "Food Expiry Alert",
+            body: message,
+        });
     } catch (err) {
         console.error("Failed to send notification:", err.response?.data || err.message);
     }
@@ -223,8 +213,9 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 
 //register
 app.post("/register", async (req, res) => {
-    const { email, name, password, phone } = req.body
-
+    const { email, name, password, phone } = req.body.foodieData
+    const expoPushToken = req.body.expoPushToken
+    console.log(req.body)
     //encrypting password
     const encryptedPassword = await bcrypt.hash(password, 10)
 
@@ -234,13 +225,18 @@ app.post("/register", async (req, res) => {
         return res.send({ status: "foodie exists", data: "Foodie Already Has an Account" });
     }
 
+    let id
     await pool.query(
         `INSERT INTO FOODIE(EMAIL, NAME, PASSWORD, PHONE)
-         VALUES($1, $2, $3, $4);
+         VALUES($1, $2, $3, $4)
+         returning id
         `, [email, name, encryptedPassword, phone]
-    ).then(() => {
+    ).then((res) => {
+        id = res.rows[0].id
         console.log("Foodie Account Created")
     }).catch((e) => console.log("Error creating account: " + e))
+
+
 
     res.send({ status: "ok", data: "Foodie Registered Successfully" })
 })
@@ -634,10 +630,17 @@ const checkExpiryFoods = async () => {
 
                 if (daysLeft <= 2) {
                     const message = `${item.name} in your ${category} will expire in ${Math.ceil(daysLeft)} day(s)!`;
+
                     console.log(`Sending notification to ${foodie.email}:`, message);
 
-                    // Send to all tokens of the foodie
-                    await sendNotification(message);
+                    const foodieTokens = await pool.query(
+                        `SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1`,
+                        [foodie.id]
+                    );
+
+                    for (const row of foodieTokens.rows) {
+                        await sendNotification(row.token, message);
+                    }
                 }
             }
         };
@@ -1159,58 +1162,61 @@ app.get("/getDonations", async (req, res) => {
 
         const userLat = lResult.rows[0].latitude;
         const userLon = lResult.rows[0].longitude;
-        const radiusKm = 5; // 5 km
+        const radiusKm = 10; // 5 km
 
-        // Pantry donations within proximity
+        // Pantry donations within proximity and not accepted
         const pResult = await pool.query(`
     SELECT d.donation_id, p.name, d.amount, p.unitOfMeasure, p.photo,
            l.city, l.street, l.province, l.country, l.zipcode, fo.name AS fname, fo.email,
            (6371 * acos(
                 cos(radians($1)) *
-                cos(radians(l.latitude::float)) *
-                cos(radians(l.longitude::float) - radians($2)) +
+                cos(radians(l.latitude)) *
+                cos(radians(l.longitude) - radians($2)) +
                 sin(radians($1)) *
-                sin(radians(l.latitude::float))
+                sin(radians(l.latitude))
            )) AS distance_km
     FROM DONATION d
     JOIN PANTRY_FOOD p ON d.pantry_food_id = p.id
     JOIN DONATION_PICKUP l ON d.pickup_id = l.id
     JOIN FOODIE fo ON d.foodie_id = fo.id
+    LEFT JOIN DONATION_REQUEST dr ON d.donation_id = dr.donation_id AND dr.status = 'Accepted'
     WHERE fo.id != $3
+      AND dr.request_id IS NULL
       AND (6371 * acos(
                 cos(radians($1)) *
-                cos(radians(l.latitude::float)) *
-                cos(radians(l.longitude::float) - radians($2)) +
+                cos(radians(l.latitude)) *
+                cos(radians(l.longitude) - radians($2)) +
                 sin(radians($1)) *
-                sin(radians(l.latitude::float))
+                sin(radians(l.latitude))
            )) <= $4
 `, [userLat, userLon, id, radiusKm]);
 
-        // Fridge donations within proximity
+        // Fridge donations within proximity and not accepted
         const fResult = await pool.query(`
     SELECT d.donation_id, f.name, d.amount, f.unitOfMeasure, f.photo,
            l.city, l.street, l.province, l.country, l.zipcode, fo.name AS fname, fo.email,
            (6371 * acos(
                 cos(radians($1)) *
-                cos(radians(l.latitude::float)) *
-                cos(radians(l.longitude::float) - radians($2)) +
+                cos(radians(l.latitude)) *
+                cos(radians(l.longitude) - radians($2)) +
                 sin(radians($1)) *
-                sin(radians(l.latitude::float))
+                sin(radians(l.latitude))
            )) AS distance_km
     FROM DONATION d
     JOIN FRIDGE_FOOD f ON d.fridge_food_id = f.id
     JOIN DONATION_PICKUP l ON d.pickup_id = l.id
     JOIN FOODIE fo ON d.foodie_id = fo.id
+    LEFT JOIN DONATION_REQUEST dr ON d.donation_id = dr.donation_id AND dr.status = 'Accepted'
     WHERE fo.id != $3
+      AND dr.request_id IS NULL
       AND (6371 * acos(
                 cos(radians($1)) *
-                cos(radians(l.latitude::float)) *
-                cos(radians(l.longitude::float) - radians($2)) +
+                cos(radians(l.latitude)) *
+                cos(radians(l.longitude) - radians($2)) +
                 sin(radians($1)) *
-                sin(radians(l.latitude::float))
+                sin(radians(l.latitude))
            )) <= $4
 `, [userLat, userLon, id, radiusKm]);
-
 
         const donations = [...pResult.rows, ...fResult.rows];
 
@@ -1220,7 +1226,6 @@ app.get("/getDonations", async (req, res) => {
         res.status(500).send({ status: "error", message: "Server error" });
     }
 });
-
 
 //saving the user's location
 app.post("/userLocation", async (req, res) => {
@@ -1277,7 +1282,6 @@ app.post("/userLocation", async (req, res) => {
         res.status(500).send({ status: "error", data: "Something went wrong" });
     }
 });
-
 
 // GET donation requests for the logged-in user
 app.get("/getMyDonationRequests", async (req, res) => {
@@ -1368,6 +1372,18 @@ app.post("/requestDonation", async (req, res) => {
         res.status(500).json({ status: "error", data: "Something went wrong" });
     }
 });
+
+// DELETING THE REJECTED REQUEST
+app.post("/rejectRequest", async (req, res) => {
+    const request_id = req.body.request_id
+    const result = await pool.query(`
+        DELETE 
+        FROM DONATION_REQUEST
+        WHERE request_id = $1    
+    `, [request_id])
+
+    res.send({ status: "ok", data: "Request Rejected" })
+})
 
 app.get("/getRequestsForMe", async (req, res) => {
     try {

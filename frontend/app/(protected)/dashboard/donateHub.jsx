@@ -261,9 +261,9 @@ const DonateMap = () => {
                   <ThemedText>Status: {item.status ?? "Pending"}</ThemedText>
 
                   {item.status !== "Accepted" && (
-                    <View style={{ flexDirection: "row", marginTop: 10 }}>
+                    <View style={{ flexDirection: "row", marginTop: 10, marginBottom: 5, }}>
                       <ThemedButton
-                        style={[styles.claimBtn, { marginRight: 10 }]}
+                        style={[styles.claimBtn, { marginRight: 5 }]}
                         onPress={() => acceptRequest(item)}
                       >
                         <ThemedText style={styles.btnText}>Accept</ThemedText>
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginHorizontal: 10,
   },
-  donationName: { fontSize: 16, fontWeight: "bold", marginBottom: 4 },
+  donationName: { fontSize: 16, fontWeight: "bold", margin: 4, textAlign: "center" },
   donorInfo: { fontSize: 13, color: "#555", marginTop: 2 },
   pickupContainer: { marginTop: 8 },
   pickupLabel: { fontSize: 13, fontWeight: "bold", color: "#444" },
@@ -394,4 +394,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#ea4335", // red for reject
     borderRadius: 8,
   },
+  actionContainer: {
+    alignItems: "center",
+    padding: 5
+  }
 });

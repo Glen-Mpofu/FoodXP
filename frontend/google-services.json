@@ -4,25 +4,26 @@
     "project_id": "foodxp-2a83b",
     "storage_bucket": "foodxp-2a83b.firebasestorage.app"
   },
-  {
-    "client_info": {
-      "mobilesdk_app_id": "1:1060163040323:android:d7f4966d2f9ad6c9a090f6",
-      "android_client_info": {
-        "package_name": "com.glenmpofu.FoodXP"
-      }
-    },
-    "oauth_client": [],
-    "api_key": [
-      {
-        "current_key": "AIzaSyAXpBP7Z9i8Dn5BIfjHoV3gvt818JkCZiU"
-      }
-    ],
-    "services": {
-      "appinvite_service": {
-        "other_platform_oauth_client": []
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1060163040323:android:d7f4966d2f9ad6c9a090f6",
+        "android_client_info": {
+          "package_name": "com.glenmpofu.FoodXP"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAXpBP7Z9i8Dn5BIfjHoV3gvt818JkCZiU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
       }
     }
-  }
-],
-"configuration_version": "1"
+  ],
+  "configuration_version": "1"
 }

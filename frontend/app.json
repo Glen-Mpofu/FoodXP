@@ -4,11 +4,11 @@
     "slug": "FoodXP",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/foodxp/logoXP.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/foodxp/logoXP.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -20,9 +20,7 @@
       "icon": "./assets/foodxp/notifications.png",
       "color": "#ffffff",
       "androidMode": "default",
-      "androidCollapsedTitle": "FoodXP",
-      "vapidPublicKey": "BEMI803cHu2Af4JcuVTpY_SaeRXOb3L0BDp-2M2EkK1zDhqtNNs4w66OCIqmOsLEsqkDAoqKvbkmBOZwbdy14yU",
-      "serviceWorkerPath": "service-worker.js"
+      "androidCollapsedTitle": "FoodXP"
     },
     "ios": {
       "supportsTablet": true,
@@ -37,7 +35,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/foodxp/bg4.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
@@ -52,7 +50,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/foodxp/notifications.png"
     },
     "plugins": [
       "expo-router",

@@ -76,18 +76,16 @@ export default function Dashboard() {
   }, []);
 
   useFocusEffect(
-    useCallback(async () => {
-      let isActive = true; // prevent updates if unmounted
+    useCallback(() => {
+      let isActive = true;
 
-      const handleFocus = async () => {
+      const fetchData = async () => {
         try {
-
-          const [shouldRefresh, shouldRefreshPantry, shouldRefreshFridge] =
-            await Promise.all([
-              AsyncStorage.getItem("refreshRecipes"),
-              AsyncStorage.getItem("refreshPantry"),
-              AsyncStorage.getItem("refreshFridge"),
-            ]);
+          const [shouldRefresh, shouldRefreshPantry, shouldRefreshFridge] = await Promise.all([
+            AsyncStorage.getItem("refreshRecipes"),
+            AsyncStorage.getItem("refreshPantry"),
+            AsyncStorage.getItem("refreshFridge"),
+          ]);
 
           if ((shouldRefresh === "true" || shouldRefresh === null) && isActive) {
             await loadData();
@@ -106,14 +104,14 @@ export default function Dashboard() {
         }
       };
 
-      handleFocus();
+      fetchData(); // call async function
 
-      // ✅ cleanup to prevent memory leaks
       return () => {
-        isActive = false;
+        isActive = false; // cleanup
       };
     }, [userToken])
   );
+
 
   return (
     <ScrollView

@@ -1,13 +1,35 @@
 import { StyleSheet, View, Text } from 'react-native'
-import { Stack } from 'expo-router'
+import { router, Stack } from 'expo-router'
 import { useFonts } from "expo-font"
 import { Dimensions } from 'react-native'
 import * as Font from "expo-font";
-
+import * as Notifications from 'expo-notifications';
 //toast
-import ToastManager from "toastify-react-native"
+import ToastManager, { Toast } from "toastify-react-native"
+import { useEffect } from 'react';
 
 const FoodXPLayout = () => {
+  useEffect(() => {
+    // Listener for foreground notifications
+    const subscription = Notifications.addNotificationReceivedListener(notification => {
+      console.log('Notification received:', notification);
+      // Optionally show a toast
+      Toast.show({ type: 'success', text1: notification.request.content.title, text2: notification.request.content.body });
+    });
+
+    // Listener for when the user taps on a notification
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      console.log('Notification response:', response);
+      // Navigate the user somewhere if needed
+      router.push('(protected)/dashboard/');
+    });
+
+    return () => {
+      subscription.remove();
+      responseListener.remove();
+    };
+  }, []);
+
   const { height, width } = Dimensions.get("window")
   const toastPlacement = height - 100
   const [loaded] = useFonts({

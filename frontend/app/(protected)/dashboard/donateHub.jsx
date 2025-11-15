@@ -29,10 +29,9 @@ const DonateMap = () => {
 
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
-
+  const [stats, setStats] = useState([])
   useEffect(() => {
     async function init() {
-
       try {
         const token = await AsyncStorage.getItem("userToken");
         if (!token) return;
@@ -56,8 +55,13 @@ const DonateMap = () => {
           (d) => !requestedIds.has(d.donation_id)
         );
 
+
         setMyRequests(requestedDonations);
         setAvailableDonations(remainingDonations);
+
+        const result = await axios.get(`${API_BASE_URL}/getStats`,
+          { headers: { Authorization: `Bearer ${token}` } })
+        setStats(result.data.data)
       } catch (err) {
         console.error(err);
         Toast.show({
@@ -221,7 +225,6 @@ const DonateMap = () => {
     );
   };
 
-
   return (
     <ThemedView
       style={[styles.container, { backgroundColor: theme.uiBackground }]}
@@ -284,10 +287,12 @@ const DonateMap = () => {
                       onPress={async () => {
                         try {
                           await axios.post(
-                            `${API_BASE_URL}/incrementDonatedItem`,
+                            `${API_BASE_URL}/finaliseDonation`,
                             {
                               donor_id: item.donor_id,
                               requester_id: item.requester_id,
+                              donation_id: item.donation_id,
+                              donation: item
                             },
                             { headers: { Authorization: `Bearer ${userToken}` } }
                           );
@@ -334,6 +339,14 @@ const DonateMap = () => {
           />
         )}
       </ScrollView>
+      <View style={{ flexDirection: "row", justifyContent: "space-evenly", margin: 15 }}>
+        <ThemedText>
+          Donations Made: {stats?.donationsmade || 0}
+        </ThemedText>
+        <ThemedText>
+          Donations Received: {stats?.donationsreceived || 0}
+        </ThemedText>
+      </View>
     </ThemedView>
   );
 };

@@ -163,7 +163,7 @@ const Register = () => {
                     <ThemedTextInput style={[{ borderColor: emailBorderColor }, styles.input]} value={email} onChangeText={onEmailChange} placeholder="Enter your Email" />
 
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Phone</ThemedText>
-                    <ThemedTextInput style={[{ borderColor: phoneBorderColor }, styles.input]} value={phone} onChangeText={onPhoneChange} placeholder="Enter your Phone Number" />
+                    <ThemedTextInput keyboardType={"numeric"} style={[{ borderColor: phoneBorderColor }, styles.input]} value={phone} onChangeText={onPhoneChange} placeholder="Enter your Phone Number" />
 
                     {/* NAME */}
                     <ThemedText style={[{ marginBottom: 0, alignSelf: "flex-start" }]}>Name</ThemedText>

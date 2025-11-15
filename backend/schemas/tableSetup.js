@@ -27,7 +27,7 @@ async function initialiseTables(pool) {
             unitOfMeasure VARCHAR(10),
             foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
             photo VARCHAR(150),
-            public_id VARCHAR(100) NOT NULL UNIQUE
+            public_id VARCHAR(100) NOT NULL 
         );
     `).then((res) => {
         console.log("Pantry_Food Table Ready")
@@ -46,7 +46,7 @@ async function initialiseTables(pool) {
             isFresh BOOLEAN, 
             foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
             photo VARCHAR(150),
-            public_id VARCHAR(100) NOT NULL UNIQUE
+            public_id VARCHAR(100) NOT NULL
         );
     `).then((res) => {
         console.log("Fridge_Food Table Ready")
@@ -161,6 +161,7 @@ async function initialiseTables(pool) {
         CREATE TABLE IF NOT EXISTS PUSH_TOKENS (
             foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
             token TEXT NOT NULL,
+            is_valid BOOLEAN DEFAULT TRUE,
             updated_at TIMESTAMPTZ DEFAULT NOW(),
             PRIMARY KEY (foodie_id, token)
         );

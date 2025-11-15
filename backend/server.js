@@ -213,33 +213,63 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 
 //register
 app.post("/register", async (req, res) => {
-    const { email, name, password, phone } = req.body.foodieData
-    const expoPushToken = req.body.expoPushToken
-    console.log(req.body)
-    //encrypting password
-    const encryptedPassword = await bcrypt.hash(password, 10)
+    try {
+        const { email, name, password, phone } = req.body.foodieData;
+        const expoPushToken = req.body.expoPushToken;
 
-    //checking if the user isn't already in the db
-    const oldFoodie = pool.query("SELECT EMAIL FROM FOODIE WHERE EMAIL = $1", [email])
-    if ((await oldFoodie).rowCount >= 1) {
-        return res.send({ status: "foodie exists", data: "Foodie Already Has an Account" });
+        console.log("Register body:", req.body);
+
+        // Encrypt password
+        const encryptedPassword = await bcrypt.hash(password, 10);
+
+        // Check if user exists
+        const existing = await pool.query(
+            "SELECT EMAIL FROM FOODIE WHERE EMAIL = $1",
+            [email]
+        );
+
+        if (existing.rowCount > 0) {
+            return res.send({
+                status: "foodie exists",
+                data: "Foodie Already Has an Account",
+            });
+        }
+
+        // Insert new foodie and get ID
+        const newFoodie = await pool.query(
+            `
+            INSERT INTO FOODIE(EMAIL, NAME, PASSWORD, PHONE)
+            VALUES($1, $2, $3, $4)
+            RETURNING id
+            `,
+            [email, name, encryptedPassword, phone]
+        );
+
+        const foodieId = newFoodie.rows[0].id;
+        console.log("Foodie account created with ID:", foodieId);
+
+        // Insert the Expo push token
+        await pool.query(
+            `
+            INSERT INTO PUSH_TOKENS(foodie_id, token)
+            VALUES($1, $2)
+            ON CONFLICT (foodie_id, token) DO NOTHING
+            `,
+            [foodieId, expoPushToken]
+        );
+
+        return res.send({
+            status: "ok",
+            data: "Foodie Registered Successfully",
+        });
+    } catch (err) {
+        console.error("Error in /register:", err);
+        res.send({
+            status: "error",
+            data: "Something went wrong",
+        });
     }
-
-    let id
-    await pool.query(
-        `INSERT INTO FOODIE(EMAIL, NAME, PASSWORD, PHONE)
-         VALUES($1, $2, $3, $4)
-         returning id
-        `, [email, name, encryptedPassword, phone]
-    ).then((res) => {
-        id = res.rows[0].id
-        console.log("Foodie Account Created")
-    }).catch((e) => console.log("Error creating account: " + e))
-
-
-
-    res.send({ status: "ok", data: "Foodie Registered Successfully" })
-})
+});
 
 //login
 app.post("/login", async (req, res) => {
@@ -901,14 +931,14 @@ app.post("/getAiRecipe", async (req, res) => {
         try {
             aiRecipes = JSON.parse(aiRaw);
         } catch (e) {
-            return res.status(500).json({ error: "Invalid AI JSON output", raw: aiRaw });
+            return res.json({ error: "Invalid AI JSON output", raw: aiRaw });
         }
         console.log(aiRecipes)
         res.json({ recipes: aiRecipes });
 
     } catch (error) {
         console.error("AI Recipe Error:", error.response?.data || error.message);
-        res.status(500).json({ error: "Failed to generate recipes" });
+        res.json({ error: "Failed to generate recipes" });
     }
 });
 
@@ -1143,6 +1173,19 @@ app.post("/donate", async (req, res) => {
         return res.send({ status: "error", data: "Something went wrong" });
     }
 });
+
+app.get("/getStats", async (req, res) => {
+    const id = await getIdFromHeader(req)
+    const stats = await pool.query(`
+        SELECT donationsMade, donationsReceived
+        from DONATED_ITEMS i, FOODIE f 
+        where i.donor_id = f.id
+        AND i.donor_id = $1
+        GROUP BY donationsMade, donationsReceived
+    `, [id])
+    console.log(stats.rows[0])
+    res.send({ status: "ok", data: stats.rows[0] })
+})
 
 //Getting
 app.get("/getDonations", async (req, res) => {
@@ -1391,18 +1434,52 @@ app.get("/getRequestsForMe", async (req, res) => {
         if (!donor_id) return res.json({ status: "error", data: "Unauthorized" });
 
         const result = await pool.query(`
-        SELECT dr.request_id, dr.donation_id, dr.requester_id, dr.donor_id,
-               f.name as requester_name, f.email as requester_email,
-               d.amount, d.sourceTable,
-               COALESCE(fr.name, pa.name) as food_name, COALESCE(fr.photo, pa.photo) as food_photo,
-               dr.STATUS
-        FROM DONATION_REQUEST dr
-        JOIN FOODIE f ON dr.requester_id = f.id
-        JOIN DONATION d ON dr.donation_id = d.donation_id
-        LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
-        LEFT JOIN PANTRY_FOOD pa ON d.pantry_food_id = pa.id
-        WHERE dr.donor_id = $1
-      `, [donor_id]);
+            SELECT 
+                dr.request_id, 
+                dr.donation_id, 
+                dr.requester_id, 
+                dr.donor_id,
+          
+                -- Requester info
+                f.name AS requester_name, 
+                f.email AS requester_email,
+          
+                -- Donation table IDs (added)
+                d.fridge_food_id,
+                d.pantry_food_id,
+                COALESCE(d.fridge_food_id, d.pantry_food_id) AS food_id,
+          
+                -- Donation info
+                d.amount, 
+                d.quantity,
+                d.sourceTable,
+          
+                -- Pantry and Fridge shared fields (fallback logic)
+                COALESCE(fr.name, pa.name) AS food_name,
+                COALESCE(fr.photo, pa.photo) AS food_photo,
+                COALESCE(fr.public_id, pa.public_id) AS photo_public_id,
+                COALESCE(fr.amount, pa.amount) AS food_amount,
+                COALESCE(fr.unitOfMeasure, pa.unitOfMeasure) AS unit_of_measure,
+          
+                -- Pantry-only fields
+                pa.expiry_date AS pantry_expiry_date,
+          
+                -- Fridge-only fields
+                fr.isFresh AS fridge_is_fresh,
+          
+                -- Extra data (for debugging or later expansion)
+                fr.foodie_id AS fridge_owner_id,
+                pa.foodie_id AS pantry_owner_id,
+          
+                dr.status
+          
+            FROM DONATION_REQUEST dr
+            JOIN FOODIE f ON dr.requester_id = f.id
+            JOIN DONATION d ON dr.donation_id = d.donation_id
+            LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
+            LEFT JOIN PANTRY_FOOD pa ON d.pantry_food_id = pa.id
+            WHERE dr.donor_id = $1
+          `, [donor_id]);
 
         res.json({ status: "ok", data: result.rows });
     } catch (err) {
@@ -1473,8 +1550,10 @@ app.get("/getLatestLocation", async (req, res) => {
     }
 });
 
-app.post("/incrementDonatedItem", async (req, res) => {
-    const { donor_id, requester_id } = req.body; // requester_id is the user who received the donation
+app.post("/finaliseDonation", async (req, res) => {
+    const { donor_id, requester_id, donation_id, donation } = req.body; // requester_id is the user who received the donation
+    console.log(donation)
+
     try {
         // --- Donor: increment donationsMade ---
         const donorResult = await pool.query(
@@ -1511,6 +1590,101 @@ app.post("/incrementDonatedItem", async (req, res) => {
                 [requester_id]
             );
         }
+
+        // REMOVING THE DONATION REQUEST
+        await pool.query(
+            `   
+                DELETE FROM DONATION_REQUEST
+                WHERE donation_id = $1
+            `, [donation_id]
+        ).then((res) => {
+            if (res.rowCount >= 1) {
+                console.log("Donation Request deleted")
+            } else {
+                console.error("Failed to delete donation request")
+            }
+        })
+
+
+        // UPDATING THE FOOD QUANTITY AND CREATING A NEW FOOD ENTRY WITH THE DONATED AMOUNT
+        if (donation.sourcetable === 'pantry') {
+            await pool.query(
+                `
+                    INSERT INTO pantry_food(NAME, AMOUNT, EXPIRY_DATE, FOODIE_ID, UNITOFMEASURE, PHOTO, PUBLIC_ID)
+                    VALUES($1, $2, $3, $4, $5, $6, $7)
+                `, [donation.food_name, donation.amount, donation.pantry_expiry_date, requester_id, donation.unit_of_measure, donation.food_photo, donation.photo_public_id]
+            ).then(async (res) => {
+                if (res.rowCount >= 1) {
+                    console.log("New Pantry Food Added")
+
+                    const selR = await pool.query(`
+                        select amount from pantry_food where id = $1    
+                    `, [donation.pantry_food_id])
+
+                    const prevAmount = selR.rows[0].amount
+                    const newAmount = prevAmount - donation.amount
+                    await pool.query(
+                        `
+                            UPDATE PANTRY_FOOD 
+                            SET AMOUNT = $1
+                            WHERE id = $2
+                        `, [newAmount, donation.pantry_food_id]
+                    ).then((res) => {
+                        if (res.rowCount >= 1) {
+                            console.log("New Pantry Food Updated")
+                        } else {
+                            console.error("Failed to update New pantry Food")
+                        }
+                    })
+                } else {
+                    console.error("Failed to add New Pantry Food")
+                }
+            })
+        } else {
+            await pool.query(
+                `
+                    INSERT INTO fridge_food(NAME, AMOUNT, UNITOFMEASURE, ISFRESH, FOODIE_ID, PHOTO, PUBLIC_ID)
+                    VALUES($1, $2, $3, $4, $5, $6, $7)
+                `, [donation.food_name, donation.amount, donation.unit_of_measure, donation.fridge_is_fresh, requester_id, donation.food_photo, donation.photo_public_id]
+            ).then(async (res) => {
+                if (res.rowCount >= 1) {
+                    console.log("New Fridge Food Added")
+
+                    const selR = await pool.query(`
+                        select amount from fridge_food where id = $1    
+                    `, [donation.fridge_food_id])
+
+                    const prevAmount = selR.rows[0].amount
+                    const newAmount = prevAmount - donation.amount
+                    await pool.query(
+                        `
+                            UPDATE FRIDGE_FOOD 
+                            SET AMOUNT = $1
+                            WHERE id = $2
+                        `, [newAmount, donation.fridge_food_id]
+                    ).then((res) => {
+                        if (res.rowCount >= 1) {
+                            console.log("New FRIDGE Food Updated")
+                        } else {
+                            console.error("Failed to update New fridge Food")
+                        }
+                    })
+                } else {
+                    console.error("Failed to add New Fridge Food")
+                }
+            })
+        }
+
+        //REMOVING THE DONATION FROM THE DONATION TABLE
+        await pool.query(`
+            DELETE FROM DONATION WHERE DONATION_ID = $1    
+        `, [donation.donation_id]).then((res) => {
+            if (res.rowCount >= 1) {
+                console.log("Donation Deleted")
+            } else {
+                console.error("Failed to Donation")
+            }
+        })
 
         res.json({ status: "ok" });
     } catch (err) {

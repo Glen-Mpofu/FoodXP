@@ -79,7 +79,7 @@ const Index = () => {
                     Toast.show({ type: "error", text1: res.data.data, useModal: false })
                 }
             })
-            .catch(e => console.log(e))
+            .catch(e => console.error(e))
     }
 
     const openFogotPassWordModal = () => setModalVisible(true);

@@ -108,7 +108,7 @@ const Register = () => {
             phone: phone.trim()
         };
 
-        const baseUrl = Platform.OS === "web" ? "http://localhost:5001" : API_BASE_URL
+        const baseUrl = API_BASE_URL
 
         axios.post(`${baseUrl}/register`, { foodieData, expoPushToken }, { withCredentials: true }).
             then(async res => {

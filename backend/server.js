@@ -325,7 +325,7 @@ app.post("/logout", async (req, res) => {
 app.post("/classifyfood", async (req, res) => {
     try {
         const { photo } = req.body;
-        if (!photo) return res.status(400).json({ error: "No image provided" });
+        if (!photo) return res.json({ error: "No image provided" });
         //console.log("Photo URL:", photo)
         //sending the photo to flask
         const response = await axios.post("https://foodxp-production.up.railway.app/predict", { photo });
@@ -339,7 +339,7 @@ app.post("/classifyfood", async (req, res) => {
             // Flask sent an error response
             res.status(error.response.status).json(error.response.data);
         } else {
-            res.status(500).json({ error: "Classification failed" });
+            res.json({ error: "Classification failed" });
         }
     }
 });

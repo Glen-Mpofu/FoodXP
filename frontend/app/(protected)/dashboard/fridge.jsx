@@ -25,6 +25,7 @@ import { Colors } from '../../../constants/Colors';
 import { useFocusEffect } from "@react-navigation/native";
 import Checkbox from '../../../components/Checkbox';
 import TimePicker from '../../../components/TimePicker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const Fridge = () => {
   const colorScheme = useColorScheme();
@@ -55,6 +56,8 @@ const Fridge = () => {
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('South Africa');
   const [pickupTime, setPickupTime] = useState(null);
+  const [date, setDate] = useState(new Date()); // ✅ Initialize with current date
+  const [show, setShow] = useState(false);
 
   // Fetch fridge food function
   const fetchFridgeFood = async (token) => {
@@ -104,6 +107,11 @@ const Fridge = () => {
       return () => { isActive = false; };
     }, [userToken])
   );
+
+  const onChangeDate = (event, selectedDate) => {
+    setShow(Platform.OS === 'ios')
+    if (selectedDate) setDate(selectedDate)
+  }
 
   // Delete confirmation
   const handleDeleteConfirm = async () => {
@@ -195,12 +203,12 @@ const Fridge = () => {
     }
     try {
       const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id, actualQuantity, from }) => ({
-        id, name, amount: donateQty, photo, foodie_id, actualQuantity, from
+        id, name, amount: donateQty, photo, foodie_id, actualQuantity, from, date
       }));
 
       const result = await axios.post(`${API_BASE_URL}/donate`, {
         items: donationData,
-        street, province, postalCode, city, pickup_id, country, pickupTime
+        street, province, postalCode, city, pickup_id, country, pickupTime, date
       }, { headers: { Authorization: `Bearer ${userToken}` } });
 
       if (result.data.status === "ok") {
@@ -550,12 +558,53 @@ const Fridge = () => {
                 value={pickupTime}
                 onChange={(time) => setPickupTime(time)}
               />
+
+              <ThemedText style={{ marginTop: 10, textAlign: "center" }}>Pickup Date</ThemedText>
+              <View style={{ alignItems: "center" }}>
+                {Platform.OS === "web" ? (
+                  <input
+                    type="date"
+                    value={date.toISOString().split("T")[0]}
+                    onChange={(e) => setDate(new Date(e.target.value))}
+                    style={{
+                      marginVertical: 10,
+                      padding: 8,
+                      fontSize: 16,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: '#ccc',
+                      width: 150
+                    }}
+                  />
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      onPress={() => setShow(true)}
+                      style={styles.dateBox}
+                    >
+                      <ThemedText style={styles.dateText}>
+                        {date.toLocaleDateString()}
+                      </ThemedText>
+                    </TouchableOpacity>
+
+                    {show && (
+                      <DateTimePicker
+                        value={date}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={onChangeDate}
+                        style={{ width: 150, alignSelf: "center" }}
+                      />
+                    )}
+                  </>
+                )}
+              </View>
               <View style={styles.modalButtons}>
                 <ThemedButton
                   style={[styles.btn, { backgroundColor: "#81c995" }]}
                   onPress={async () => {
-                    if (!street || !province || !postalCode || !city) {
-                      Toast.show({ type: "info", text1: "Please fill in all details", useModal: false });
+                    if (!street || !province || !postalCode || !city || !pickupTime) {
+                      Toast.show({ type: "error", text1: "Please fill in all details", });
                       return;
                     }
                     await handleDonateConfirm(); // calls backend

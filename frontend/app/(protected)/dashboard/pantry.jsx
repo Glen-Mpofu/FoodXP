@@ -62,6 +62,8 @@ const Pantry = () => {
   const [city, setCity] = useState('');
 
   const [pickupTime, setPickupTime] = useState(null);
+  const [date, setDate] = useState(new Date()); // ✅ Initialize with current date
+  const [show, setShow] = useState(false);
   const [pickup_id, setPickupID] = useState(null)
   // Fetch pantry food
   const fetchPantryFood = async (token) => {
@@ -130,6 +132,11 @@ const Pantry = () => {
       };
     }, [userToken])
   );
+
+  const onChangeDate = (event, selectedDate) => {
+    setShow(Platform.OS === 'ios')
+    if (selectedDate) setDate(selectedDate)
+  }
 
   const handleUsePreviousLocation = async () => {
     setUsePreviousLocation(prev => !prev); // toggle
@@ -628,6 +635,49 @@ const Pantry = () => {
                 value={pickupTime}
                 onChange={(time) => setPickupTime(time)}
               />
+
+              <ThemedText style={{ marginTop: 10, textAlign: "center" }}>Pickup Date</ThemedText>
+
+              <View style={{ alignItems: "center" }}>
+                {Platform.OS === "web" ? (
+                  <input
+                    type="date"
+                    value={date.toISOString().split("T")[0]}
+                    onChange={(e) => setDate(new Date(e.target.value))}
+                    style={{
+                      marginVertical: 10,
+                      padding: 8,
+                      fontSize: 16,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: '#ccc',
+                      width: 150
+                    }}
+                  />
+                ) : (
+                  <>
+                    <TouchableOpacity
+                      onPress={() => setShow(true)}
+                      style={styles.dateBox}
+                    >
+                      <ThemedText style={styles.dateText}>
+                        {date.toLocaleDateString()}
+                      </ThemedText>
+                    </TouchableOpacity>
+
+                    {show && (
+                      <DateTimePicker
+                        value={date}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        onChange={onChangeDate}
+                        style={{ width: 150, alignSelf: "center" }}
+                      />
+                    )}
+                  </>
+                )}
+              </View>
+
               <View style={styles.modalButtons}>
                 <ThemedButton
                   style={[styles.btn, { backgroundColor: "#81c995" }]}
@@ -640,7 +690,7 @@ const Pantry = () => {
                     }
                     setUsePreviousLocation(false)
                     // Manual address mode
-                    if (!street || !province || !postalCode || !city) {
+                    if (!street || !province || !postalCode || !city || !pickupTime) {
                       Toast.show({ type: "info", text1: "Please fill in all details", useModal: false });
                       return;
                     }

@@ -217,6 +217,9 @@ app.post("/register", async (req, res) => {
         const { email, name, password, phone } = req.body.foodieData;
         const expoPushToken = req.body.expoPushToken;
 
+        if (expoPushToken === null) {
+            expoPushToken = 'None'
+        }
         console.log("Register body:", req.body);
 
         // Encrypt password
@@ -681,10 +684,10 @@ const checkExpiryFoods = async () => {
     }
 };
 
-cron.schedule("*/2 * * * *", async () => {
-    console.log("🔔 Checking expiring foods...")
+cron.schedule("0 10,13,17 * * *", async () => {
+    console.log("🔔 Checking expiring foods...");
     await checkExpiryFoods();
-})
+});
 
 //fridge
 //saving
@@ -1086,6 +1089,7 @@ app.post("/donate", async (req, res) => {
         const foodie_id = await getIdFromHeader(req);
         const donations = req.body.items;
         const { street, city, province, postalCode, country, pickupTime } = req.body;
+        const pickUpDate = req.body.date
         const prevLoc = req.body.pickup_id;
         console.log(req.body)
 
@@ -1098,10 +1102,13 @@ app.post("/donate", async (req, res) => {
         hours = hours % 12 || 12;  // convert 0 -> 12
 
         const finalTime = `${hours}:${minutes} ${ampm}`;
+        console.log(finalTime)
+
+        const finalDate = pickUpDate.substring(0, 10)
+        console.log(finalDate)
 
         // Handle location
         if (prevLoc === null) {
-            console.log("If loc is null")
             const coords = await forwardGeocode({
                 street,
                 city,
@@ -1115,8 +1122,8 @@ app.post("/donate", async (req, res) => {
 
             const r = await pool.query(
                 `
-                    INSERT INTO DONATION_PICKUP(latitude, longitude, city, province, zipcode, country, street, foodie_id, pickupTime)
-                    VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                    INSERT INTO DONATION_PICKUP(latitude, longitude, city, province, zipcode, country, street, foodie_id, pickupTime, pickUpDate)
+                    VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                     RETURNING id
                 `,
                 [
@@ -1128,7 +1135,8 @@ app.post("/donate", async (req, res) => {
                     country,
                     street,
                     foodie_id,
-                    finalTime
+                    finalTime,
+                    finalDate
                 ]
             );
 
@@ -1345,6 +1353,7 @@ app.get("/getMyDonationRequests", async (req, res) => {
                 p.country,
                 p.zipcode,
                 p.pickupTime,
+                p.pickUpDate,
                 donor.name AS donor_name,
                 donor.email AS donor_email,
                 donor.phone AS donor_phone
@@ -1374,13 +1383,11 @@ app.post("/requestDonation", async (req, res) => {
             return res.status(400).json({ status: "error", data: "Donation not provided" });
         }
 
-        // Get requester ID from JWT or session
-        const requester_id = await getIdFromHeader(req); // Authenticated user's ID
+        const requester_id = await getIdFromHeader(req);
         if (!requester_id) {
-            return res.json({ status: "error", data: "Unauthorized" });
+            return res.status(401).json({ status: "error", data: "Unauthorized" });
         }
 
-        // Check if the donation exists
         const donationCheck = await pool.query(
             `SELECT * FROM DONATION WHERE donation_id = $1`,
             [donation.donation_id]
@@ -1391,9 +1398,8 @@ app.post("/requestDonation", async (req, res) => {
         }
 
         const donationRow = donationCheck.rows[0];
-        const donor_id = donationRow.foodie_id; // <-- assuming DONATION table has donor_id column
+        const donor_id = donationRow.foodie_id; // donor of the donation
 
-        // Check if the user already requested this donation
         const existingRequest = await pool.query(
             `SELECT * FROM DONATION_REQUEST WHERE donation_id = $1 AND requester_id = $2`,
             [donation.donation_id, requester_id]
@@ -1403,13 +1409,27 @@ app.post("/requestDonation", async (req, res) => {
             return res.status(400).json({ status: "error", data: "You have already requested this donation" });
         }
 
-        // Insert request with donor_id
+        // Insert the donation request
         await pool.query(
             `INSERT INTO DONATION_REQUEST(donation_id, requester_id, donor_id) VALUES($1, $2, $3)`,
             [donation.donation_id, requester_id, donor_id]
         );
 
-        res.json({ status: "ok", data: `You successfully requested ${donation.name}` });
+        // 🔔 Fetch donor push tokens
+        const donorTokensResult = await pool.query(
+            `SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1`,
+            [donor_id]
+        );
+
+        const donorTokens = donorTokensResult.rows;
+        console.log(donationRow)
+        // Send notification to each token
+        const message = `Someone requested your donation.`;
+        for (const row of donorTokens) {
+            await sendNotification(row.token, message);
+        }
+
+        res.json({ status: "ok", data: `You successfully requested ${donationRow.name}` });
     } catch (error) {
         console.error("Error requesting donation:", error);
         res.status(500).json({ status: "error", data: "Something went wrong" });
@@ -1419,11 +1439,28 @@ app.post("/requestDonation", async (req, res) => {
 // DELETING THE REJECTED REQUEST
 app.post("/rejectRequest", async (req, res) => {
     const request_id = req.body.request_id
+    const requester_id = req.body.requester_id
+
+    console.log(req.body)
+
     const result = await pool.query(`
         DELETE 
         FROM DONATION_REQUEST
         WHERE request_id = $1    
     `, [request_id])
+
+    const donorTokensResult = await pool.query(
+        `SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1`,
+        [requester_id]
+    );
+
+    const donorTokens = donorTokensResult.rows;
+
+    // Send notification to each token
+    const message = ` Your request for a donation was rejected.`;
+    for (const row of donorTokens) {
+        await sendNotification(row.token, message);
+    }
 
     res.send({ status: "ok", data: "Request Rejected" })
 })
@@ -1490,7 +1527,7 @@ app.get("/getRequestsForMe", async (req, res) => {
 
 app.post("/acceptRequest", async (req, res) => {
     try {
-        const { request_id } = req.body;
+        const { request_id, requester_id } = req.body;
         if (!request_id) return res.status(400).json({ status: "error", data: "Request ID missing" });
 
         const donor_id = await getIdFromHeader(req);
@@ -1517,6 +1554,18 @@ app.post("/acceptRequest", async (req, res) => {
             `DELETE FROM DONATION_REQUEST WHERE donation_id = $1 AND request_id != $2`,
             [requestResult.rows[0].donation_id, request_id]
         );
+        const donorTokensResult = await pool.query(
+            `SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1`,
+            [requester_id]
+        );
+
+        const donorTokens = donorTokensResult.rows;
+
+        // Send notification to each token
+        const message = ` Your request for a donation was accepted.`;
+        for (const row of donorTokens) {
+            await sendNotification(row.token, message);
+        }
 
         res.json({ status: "ok", data: "Request accepted successfully" });
     } catch (err) {
@@ -1541,7 +1590,6 @@ app.get("/getLatestLocation", async (req, res) => {
         if (result.rows.length <= 0) {
             return res.send({ status: "error", data: null });
         }
-        console.log("Prev location" + result.rows[0].id)
 
         res.send({ status: "ok", data: result.rows[0] });
     } catch (err) {

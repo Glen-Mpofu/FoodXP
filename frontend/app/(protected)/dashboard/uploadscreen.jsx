@@ -28,7 +28,7 @@ const UploadFood = () => {
   const [date, setDate] = useState(new Date())
   const [show, setShow] = useState(false)
   const [userToken, setUserToken] = useState(null)
-  const [selectedUnit, setSelectedUnit] = useState("unit");
+  const [selectedUnit, setSelectedUnit] = useState("quantity");
 
   useEffect(() => {
     const init = async () => {
@@ -139,9 +139,20 @@ const UploadFood = () => {
   }
 
   const saveFood = async () => {
-    if (!name.trim()) return Toast.show({ type: "error", text1: "Please enter the food's name", useModal: false })
-    if (!amount.trim()) return Toast.show({ type: "error", text1: "Please enter the food's amount", useModal: false })
-    if (!date && prediction === "pantry") return Toast.show({ type: "error", text1: "Please select expiration date", useModal: false })
+    if (!name.trim()) {
+      Toast.show({ type: "error", text1: "Please enter the food's name" });
+      return; // <-- STOP execution
+    }
+
+    if (!amount.trim()) {
+      Toast.show({ type: "error", text1: "Please enter the food's amount" });
+      return; // <-- STOP execution
+    }
+
+    if (!date && prediction === "pantry") {
+      Toast.show({ type: "error", text1: "Please select expiration date" });
+      return; // <-- STOP execution
+    }
 
     //uploading the image to cloudinary 
     const { url: url, public_id: public_id } = await uploadToCloudinary(photo)

@@ -101,6 +101,7 @@ async function initialiseTables(pool) {
                 COUNTRY VARCHAR(100),
                 STREET VARCHAR(100), 
                 pickUpTime VARCHAR(100),
+                pickUpDate VARCHAR(100),
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
         `
@@ -160,7 +161,7 @@ async function initialiseTables(pool) {
         `
         CREATE TABLE IF NOT EXISTS PUSH_TOKENS (
             foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
-            token TEXT NOT NULL,
+            token TEXT,
             is_valid BOOLEAN DEFAULT TRUE,
             updated_at TIMESTAMPTZ DEFAULT NOW(),
             PRIMARY KEY (foodie_id, token)

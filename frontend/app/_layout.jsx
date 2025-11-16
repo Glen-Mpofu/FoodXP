@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text } from 'react-native'
+import { StyleSheet, View, Text, useColorScheme } from 'react-native'
 import { router, Stack } from 'expo-router'
 import { useFonts } from "expo-font"
 import { Dimensions } from 'react-native'
@@ -7,8 +7,11 @@ import * as Notifications from 'expo-notifications';
 //toast
 import ToastManager, { Toast } from "toastify-react-native"
 import { useEffect } from 'react';
+import { Colors } from '../constants/Colors';
 
 const FoodXPLayout = () => {
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme] ?? Colors.light;
   useEffect(() => {
     // Listener for foreground notifications
     const subscription = Notifications.addNotificationReceivedListener(notification => {
@@ -43,19 +46,19 @@ const FoodXPLayout = () => {
 
   const toastConfig = {
     success: (props) => (
-      <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: toastPlacement }}>
+      <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: toastPlacement, backgroundColor: theme.background }}>
         <Text style={{ fontFamily: "Raleway", color: 'green', fontWeight: 'bold' }}>{props.text1}</Text>
         {props.text2 && <Text style={{ color: 'green' }}>{props.text2}</Text>}
       </View>
     ),
     error: (props) => (
-      <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: toastPlacement }}>
+      <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: toastPlacement, backgroundColor: theme.background }}>
         <Text style={{ fontFamily: "Raleway", color: 'red', fontWeight: 'bold' }}>{props.text1}</Text>
         {props.text2 && <Text style={{ color: 'red' }}>{props.text2}</Text>}
       </View>
     ),
     info: (props) => (
-      <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: toastPlacement }}>
+      <View style={{ backgroundColor: 'transparent', padding: 16, borderRadius: 10, position: "absolute", top: toastPlacement, backgroundColor: theme.background }}>
         <Text style={{ fontFamily: "Raleway", color: 'blue', fontWeight: 'bold' }}>{props.text1}</Text>
         {props.text2 && <Text style={{ color: 'blue' }}>{props.text2}</Text>}
       </View>
@@ -64,6 +67,17 @@ const FoodXPLayout = () => {
 
   return (
     <>
+      <ToastManager
+        config={toastConfig}
+        style={{
+          position: "absolute",
+          top: 50,
+          width: "100%",
+          zIndex: 99999, // still useful
+          elevation: 99999
+        }}
+      />
+
       <Stack
         screenOptions={{
           headerTitleAlign: "center",
@@ -72,16 +86,14 @@ const FoodXPLayout = () => {
             fontSize: 40,
             fontFamily: "AlanSans"
           },
-
         }}
       >
-        <Stack.Screen name={"index"} options={{ title: "Login", headerShown: false }} />
-        <Stack.Screen name={"register"} options={{ title: "Register", headerShown: false }} />
-        <Stack.Screen name={"(protected)"} options={{ headerShown: false }} />
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="register" options={{ headerShown: false }} />
+        <Stack.Screen name="(protected)" options={{ headerShown: false }} />
       </Stack>
-      <ToastManager config={toastConfig} style={{ position: "absolute", top: 50, width: "100%", zIndex: 999 }} />
     </>
-  )
+  );
 }
 
 export default FoodXPLayout

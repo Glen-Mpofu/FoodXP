@@ -55,7 +55,6 @@ const DonateMap = () => {
           (d) => !requestedIds.has(d.donation_id)
         );
 
-
         setMyRequests(requestedDonations);
         setAvailableDonations(remainingDonations);
 
@@ -99,7 +98,10 @@ const DonateMap = () => {
     try {
       await axios.post(
         `${API_BASE_URL}/acceptRequest`,
-        { request_id: request.request_id },
+        {
+          request_id: request.request_id,
+          requester_id: request.requester_id
+        },
         { headers: { Authorization: `Bearer ${userToken}` } }
       );
       Toast.show({
@@ -149,7 +151,10 @@ const DonateMap = () => {
     try {
       await axios.post(
         `${API_BASE_URL}/rejectRequest`,
-        { request_id: request.request_id },
+        {
+          request_id: request.request_id,
+          requester_id: request.requester_id
+        },
         { headers: { Authorization: `Bearer ${userToken}` } }
       );
       Toast.show({
@@ -198,7 +203,7 @@ const DonateMap = () => {
                 {item.street}, {item.city}, {item.province}, {item.zipcode}, {item.country}
               </ThemedText>
               <ThemedText>
-                Pick Up at {item.pickuptime}
+                Pick Up at {item.pickuptime} on {item.pickupdate}
               </ThemedText>
             </View>
           )}

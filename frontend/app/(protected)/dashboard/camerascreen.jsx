@@ -14,6 +14,7 @@ import ThemedView from "../../../components/ThemedView"
 import ThemedText from "../../../components/ThemedText"
 
 import { API_BASE_URL } from "@env"
+import FoodUnits from "../../../components/UnitsOfMeasure"
 
 //icons
 import { Ionicons } from "@expo/vector-icons";
@@ -25,11 +26,13 @@ import { router, useRouter } from "expo-router";
 import ThemedTextInput from "../../../components/ThemedTextInput";
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { Colors } from "../../../constants/Colors";
+import UnitDropDown from "../../../components/UnitDropDown";
 
 export default function CameraScreen() {
   const [facing, setFacing] = useState("back");
   const [permission, requestPermission] = useCameraPermissions();
 
+  const [selectedUnit, setSelectedUnit] = useState("quantity");
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
   const cameraRef = useRef(null)
@@ -202,7 +205,20 @@ export default function CameraScreen() {
   };
 
   const saveFood = async () => {
-    if (!name.trim() || !amount.trim()) return;
+    if (!name.trim()) {
+      Toast.show({ type: "error", text1: "Please enter the food's name" });
+      return; // <-- STOP execution
+    }
+
+    if (!amount.trim()) {
+      Toast.show({ type: "error", text1: "Please enter the food's amount" });
+      return; // <-- STOP execution
+    }
+
+    if (!date && prediction === "pantry") {
+      Toast.show({ type: "error", text1: "Please select expiration date" });
+      return; // <-- STOP execution
+    }
 
     // 1️⃣ Upload to Cloudinary first
     const { url: url, public_id: public_id } = await uploadToCloudinary(photo);
@@ -216,7 +232,6 @@ export default function CameraScreen() {
       token: userToken,
       ...(prediction === "pantry" && { date })
     };
-    alert(url + " " + public_id)
     await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }).then((res) => {
       if (res.data.status === "ok") {
         Toast.show({ type: "success", text1: res.data.data, })
@@ -326,6 +341,12 @@ export default function CameraScreen() {
 
             <ThemedTextInput placeholder="Name" value={name} onChangeText={onNameChange} />
             <ThemedTextInput placeholder="Amount" value={amount} onChangeText={onAmountChange} keyboardType="numeric" />
+
+            <UnitDropDown
+              selectedUnit={selectedUnit}
+              setSelectedUnit={setSelectedUnit}
+              options={FoodUnits}
+            />
 
             {prediction === "pantry" && (
               <React.Fragment>

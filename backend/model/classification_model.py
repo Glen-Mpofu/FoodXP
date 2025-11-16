@@ -12,8 +12,8 @@ import os
 IMG_SIZE = (224, 224)           # MobileNetV2 input size
 BATCH_SIZE = 32
 EPOCHS = 10                     # adjust as needed
-DATASET_PATH = r"C:\Users\Tshepo Mpofu\Desktop\i.am.mgt\Projects Programming\Wil Project\model data-20250923T084920Z-1-001\model data"
-MODEL_SAVE_PATH = r"C:\Users\Tshepo Mpofu\Desktop\i.am.mgt\Projects Programming\Wil Project\FoodXP\backend\model\fridge_pantry_model.keras"
+DATASET_PATH = r"C:\Projects Programming\Wil Project\model data-20250923T084920Z-1-001\model data"
+MODEL_SAVE_PATH = r"C:\Projects Programming\Wil Project\FoodXP\backend\model\fridge_pantry_model.keras"
 
 # ---------------------------
 # LOAD DATASETS

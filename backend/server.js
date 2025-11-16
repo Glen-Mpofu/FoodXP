@@ -48,9 +48,10 @@ const cors = require("cors");
 const { type } = require("os");
 const { title } = require("process");
 app.use(cors({
-    origin: ["http://localhost:8081", "http://10.0.0.104:8081"],
+    origin: true,
     credentials: true
-}))
+}));
+
 
 /*
     APP USE
@@ -325,10 +326,9 @@ app.post("/classifyfood", async (req, res) => {
     try {
         const { photo } = req.body;
         if (!photo) return res.status(400).json({ error: "No image provided" });
-        console.log("Photo URL:", photo)
-
+        //console.log("Photo URL:", photo)
         //sending the photo to flask
-        const response = await axios.post("http://192.168.101.103:5002/predict", { photo });
+        const response = await axios.post("https://foodxp-production.up.railway.app/predict", { photo });
 
         console.log("Python result: ", response.data)
         res.json(response.data)

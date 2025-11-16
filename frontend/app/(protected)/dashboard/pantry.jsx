@@ -219,11 +219,11 @@ const Pantry = () => {
       }
 
       const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id, actualQuantity, from, unitofmeasure }) => ({
-        id, name, amount: donateQty, photo, foodie_id, actualQuantity, from, unitofmeasure, date
+        id, name, amount: donateQty, photo, foodie_id, actualQuantity, from, unitofmeasure
       }));
 
       const result = await axios.post(
-        `${API_BASE_URL}/donate`,
+        `http://192.168.101.103:5001/donate`,
         {
           items: donationData,
           street,
@@ -232,7 +232,8 @@ const Pantry = () => {
           city,
           pickup_id,
           country,
-          pickupTime
+          pickupTime,
+          date
         },
         { headers: { Authorization: `Bearer ${userToken}` } }
       );

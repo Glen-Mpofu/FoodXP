@@ -128,7 +128,7 @@ const UploadFood = () => {
       const { Confidence, Prediction } = response.data
       if (Prediction) {
         setPrediction(Prediction)
-        Toast.show({ type: "success", text1: `${Prediction} item added`, useModal: false })
+        Toast.show({ type: "success", text1: `${Prediction} item classified` })
       } else {
         Toast.show({ type: "error", text1: "Prediction failed", useModal: false })
       }
@@ -179,6 +179,12 @@ const UploadFood = () => {
             await AsyncStorage.setItem("refreshFridge", "true");
           }
           Toast.show({ type: "success", text1: res.data.data, })
+
+
+          onAmountChange("")
+          onNameChange("")
+          setPrediction(null)
+          setSelectedUnit("quantity")
         } else {
           Toast.show({ type: "error", text1: res.data.data, })
         }

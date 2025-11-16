@@ -1036,7 +1036,7 @@ app.get("/get-recipes", async (req, res) => {
                 })
             )
         );
-
+        console.log(mealDetails)
         // --- 4. Return filtered results ---
         res.json({ status: "ok", data: mealDetails.filter(Boolean) });
 

@@ -203,7 +203,7 @@ const Fridge = () => {
     }
     try {
       const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id, actualQuantity, from }) => ({
-        id, name, amount: donateQty, photo, foodie_id, actualQuantity, from, date
+        id, name, amount: donateQty, photo, foodie_id, actualQuantity, from
       }));
 
       const result = await axios.post(`${API_BASE_URL}/donate`, {

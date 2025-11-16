@@ -219,7 +219,7 @@ const Pantry = () => {
       }
 
       const donationData = selectedItems.map(({ id, name, donateQty, photo, foodie_id, actualQuantity, from, unitofmeasure }) => ({
-        id, name, amount: donateQty, photo, foodie_id, actualQuantity, from, unitofmeasure
+        id, name, amount: donateQty, photo, foodie_id, actualQuantity, from, unitofmeasure, date
       }));
 
       const result = await axios.post(

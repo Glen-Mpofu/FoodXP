@@ -232,9 +232,20 @@ export default function CameraScreen() {
       token: userToken,
       ...(prediction === "pantry" && { date })
     };
-    await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }).then((res) => {
+    await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }).then(async (res) => {
       if (res.data.status === "ok") {
+        await AsyncStorage.setItem("refreshRecipes", "true");
+        if (prediction === "pantry") {
+          await AsyncStorage.setItem("refreshPantry", "true");
+        } else {
+          await AsyncStorage.setItem("refreshFridge", "true");
+        }
         Toast.show({ type: "success", text1: res.data.data, })
+
+        onAmountChange("")
+        onNameChange("")
+        setPrediction(null)
+        setSelectedUnit("quantity")
       } else {
         Toast.show({ type: "error", text1: res.data.data, })
       }
@@ -267,7 +278,7 @@ export default function CameraScreen() {
 
       if (Prediction) {
         setPrediction(Prediction)
-        Toast.show({ type: "success", text1: `${Prediction} item added`, })
+        Toast.show({ type: "success", text1: `${Prediction} item classified` })
       } else {
         Toast.show({ type: "error", text1: "Prediction failed" })
       }

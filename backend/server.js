@@ -218,8 +218,8 @@ app.post("/register", async (req, res) => {
         const { email, name, password, phone } = req.body.foodieData;
         let expoPushToken = req.body.expoPushToken;
 
-        if (expoPushToken === null) {
-            expoPushToken = 'None'
+        if (!expoPushToken || expoPushToken === "" || expoPushToken === "null") {
+            expoPushToken = "None-" + email;
         }
         //console.log("Register body:", req.body);
 
@@ -992,19 +992,51 @@ async function axiosWithRetry(url, options = {}, delay = 5000) {
         }
     }
 }
+cron.schedule("* * * * *", async () => {
+    try {
+        await sendUpcomingDonationNotifications();
+        console.log("Sending donation notification")
+    } catch (err) {
+        console.error("Error sending scheduled notifications:", err);
+    }
+});
 
-const scheduleDonationNotifications = async (pool, sendNotification) => {
+async function sendUpcomingDonationNotifications() {
     const now = new Date();
 
-    // Get all upcoming pickups
+    // Get all upcoming pickups within the next 24 hours
     const result = await pool.query(`
-        SELECT dp.*, d.foodie_id AS donor_id, dr.requester_id, f.email AS donor_email, fr.email AS requester_email
-        FROM DONATION_PICKUP dp
-        JOIN DONATION d ON d.pickup_id = dp.id
-        JOIN DONATION_REQUEST dr ON dr.donation_id = d.donation_id AND dr.status = 'Accepted'
-        JOIN FOODIE f ON f.id = d.foodie_id
-        JOIN FOODIE fr ON fr.id = dr.requester_id
-        WHERE dp.pickUpDate::DATE >= CURRENT_DATE
+        SELECT dp.*, d.foodie_id AS donor_id, dr.requester_id
+FROM DONATION_PICKUP dp
+JOIN DONATION d ON d.pickup_id = dp.id
+JOIN DONATION_REQUEST dr 
+    ON dr.donation_id = d.donation_id 
+    AND dr.status = 'Accepted'
+WHERE 
+(
+    dp.pickUpDate::DATE 
+    + (
+        -- Convert invalid AM/PM times into valid 24h time
+        CASE 
+            WHEN RIGHT(TRIM(dp.pickUpTime), 2) = 'PM' 
+                THEN (LEFT(dp.pickUpTime, 5))::time + INTERVAL '12 hours'
+            WHEN RIGHT(TRIM(dp.pickUpTime), 2) = 'AM' 
+                THEN (LEFT(dp.pickUpTime, 5))::time
+        END
+    )
+) >= NOW()
+AND 
+(
+    dp.pickUpDate::DATE 
+    + (
+        CASE 
+            WHEN RIGHT(TRIM(dp.pickUpTime), 2) = 'PM' 
+                THEN (LEFT(dp.pickUpTime, 5))::time + INTERVAL '12 hours'
+            WHEN RIGHT(TRIM(dp.pickUpTime), 2) = 'AM' 
+                THEN (LEFT(dp.pickUpTime, 5))::time
+        END
+    )
+) <= NOW() + INTERVAL '24 hours';
     `);
 
     const pickups = result.rows;
@@ -1012,44 +1044,40 @@ const scheduleDonationNotifications = async (pool, sendNotification) => {
     for (const pickup of pickups) {
         const pickupDateTime = new Date(`${pickup.pickUpDate}T${pickup.pickUpTime}`);
 
-        // Define notification times
-        const notifications = [
-            { label: "close", offset: 24 * 60 }, // 24 hours before
-            { label: "1 hour before", offset: 60 }, // 1 hour before
-            { label: "now", offset: 0 } // exact time
+        const offsets = [
+            { label: "24 hours before", minutes: 24 * 60 },
+            { label: "1 hour before", minutes: 60 },
+            { label: "now", minutes: 0 }
         ];
 
-        for (const note of notifications) {
-            const notifTime = new Date(pickupDateTime.getTime() - note.offset * 60 * 1000);
-            const delay = notifTime - now;
+        for (const offset of offsets) {
+            const notifTime = new Date(pickupDateTime.getTime() - offset.minutes * 60 * 1000);
+            const diff = pickupDateTime - now;
 
-            if (delay > 0) {
-                setTimeout(async () => {
-                    const message = `Donation pickup for ${pickup.street}, ${pickup.city} is ${note.label}!`;
+            // Only send notifications within 1 minute window
+            if (Math.abs(notifTime - now) <= 60000) {
+                const message = `Donation pickup for ${pickup.street}, ${pickup.city} is ${offset.label}!`;
 
-                    // Send to donor
-                    const donorTokens = await pool.query(
-                        "SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1 AND is_valid = TRUE",
-                        [pickup.donor_id]
-                    );
-                    for (const row of donorTokens.rows) {
-                        await sendNotification(row.token, `Donor Alert: ${message}`);
-                    }
+                const donorTokens = await pool.query(
+                    "SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1 AND is_valid = TRUE",
+                    [pickup.donor_id]
+                );
+                for (const row of donorTokens.rows) {
+                    await sendNotification(row.token, `Donor Alert: ${message}`);
+                }
 
-                    // Send to requester
-                    const requesterTokens = await pool.query(
-                        "SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1 AND is_valid = TRUE",
-                        [pickup.requester_id]
-                    );
-                    for (const row of requesterTokens.rows) {
-                        await sendNotification(row.token, `Requester Alert: ${message}`);
-                    }
-
-                }, delay);
+                const requesterTokens = await pool.query(
+                    "SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1 AND is_valid = TRUE",
+                    [pickup.requester_id]
+                );
+                for (const row of requesterTokens.rows) {
+                    await sendNotification(row.token, `Requester Alert: ${message}`);
+                }
             }
         }
     }
-};
+}
+
 
 //recipes from themealdb
 app.get("/get-recipes", async (req, res) => {
@@ -1673,7 +1701,6 @@ app.post("/acceptRequest", async (req, res) => {
         for (const row of donorTokens) {
             await sendNotification(row.token, message);
         }
-        await scheduleDonationNotifications(pool, sendNotification);
 
         res.json({ status: "ok", data: "Request accepted successfully" });
     } catch (err) {

@@ -61,7 +61,7 @@ async function initialiseTables(pool) {
             foodie_id uuid REFERENCES FOODIE(id) ON DELETE CASCADE,
             fridge_food_id UUID REFERENCES FRIDGE_FOOD(id) ON DELETE CASCADE,
             pantry_food_id UUID REFERENCES PANTRY_FOOD(id) ON DELETE CASCADE,
-            pickup_id UUID REFERENCES DONATION_PICKUP(id),
+            pickup_id UUID REFERENCES DONATION_PICKUP(id) ON DELETE CASCADE,
             QUANTITY INT,
             AMOUNT INT,
             sourceTable VARCHAR(10)
@@ -92,7 +92,7 @@ async function initialiseTables(pool) {
         `
             CREATE TABLE IF NOT EXISTS DONATION_PICKUP(
                 ID UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                FOODIE_ID UUID REFERENCES FOODIE(id),
+                FOODIE_ID UUID REFERENCES FOODIE(id) ON DELETE CASCADE ,
                 LATITUDE double precision, 
                 LONGITUDE double precision,
                 CITY VARCHAR(100),
@@ -127,7 +127,7 @@ async function initialiseTables(pool) {
     });*/
     await pool.query(`
         CREATE TABLE IF NOT EXISTS DONATED_ITEMS(
-            donor_id UUID REFERENCES FOODIE(id),
+            donor_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
             donationsMade INT,
             donationsReceived INT
         );    
@@ -146,7 +146,7 @@ async function initialiseTables(pool) {
                 street VARCHAR(100),
                 CITY VARCHAR(100),
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                foodie_id UUID REFERENCES FOODIE(id) UNIQUE,
+                foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE UNIQUE,
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             )
         `

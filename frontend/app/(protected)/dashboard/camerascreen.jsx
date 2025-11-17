@@ -230,7 +230,8 @@ export default function CameraScreen() {
       photo: url,
       public_id: public_id,// use Cloudinary URL
       token: userToken,
-      ...(prediction === "pantry" && { date })
+      ...(prediction === "pantry" && { date }),
+      unitOfMeasure: selectedUnit
     };
     await axios.post(`${API_BASE_URL}/save${prediction}food`, { foodData }).then(async (res) => {
       if (res.data.status === "ok") {

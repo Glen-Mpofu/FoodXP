@@ -223,7 +223,7 @@ const Pantry = () => {
       }));
 
       const result = await axios.post(
-        `http://192.168.101.103:5001/donate`,
+        `${API_BASE_URL}/donate`,
         {
           items: donationData,
           street,

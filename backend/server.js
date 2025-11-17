@@ -216,7 +216,7 @@ function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
 app.post("/register", async (req, res) => {
     try {
         const { email, name, password, phone } = req.body.foodieData;
-        const expoPushToken = req.body.expoPushToken;
+        let expoPushToken = req.body.expoPushToken;
 
         if (expoPushToken === null) {
             expoPushToken = 'None'

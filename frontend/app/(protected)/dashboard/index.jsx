@@ -140,7 +140,7 @@ export default function Dashboard() {
                   <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                     <Image source={{ uri: item.photo }} style={styles.img} />
                     <ThemedText style={styles.nameTxt}>{item.name}</ThemedText>
-                    <ThemedText style={styles.qty}>Qty: {item.amount}</ThemedText>
+                    <ThemedText style={styles.qty}>Amt: {item.amount} {item.unitofmeasure}</ThemedText>
                   </View>
                 )
               }
@@ -168,7 +168,7 @@ export default function Dashboard() {
                   <View style={[styles.foodItem, { backgroundColor: theme.cardColor }]}>
                     <Image source={{ uri: item.photo }} style={styles.img} />
                     <ThemedText style={styles.nameTxt}>{item.name}</ThemedText>
-                    <ThemedText style={styles.qty}>Qty: {item.amount}</ThemedText>
+                    <ThemedText style={styles.qty}>Amt: {item.amount} {item.unitofmeasure}</ThemedText>
                   </View>
                 )
               }
@@ -217,13 +217,15 @@ export default function Dashboard() {
         </View>
 
         {/* Fun Fact */}
-        <ThemedText style={[styles.funFactText]}>
-          In South Africa, 10 million tonnes of food go to waste every year. This accounts for a third of the 31 million tonnes that are produced annually in South Africa.
-          Together, fruits, vegetables and cereals account for 70% of the wastage and loss. This wastage and loss primarily occur early in the food supply chain.
-          As the South African diet continues to shift towards one that is higher in processed foods and lower in fruit and vegetables,
-          malnutrition will increase as well. Reducing food waste in South Africa can improve the health and well-being of the majority of South Africans
-        </ThemedText>
-        <ThemedText style={styles.funFactText}>WWF</ThemedText>
+        <View style={[styles.funBox]}>
+          <ThemedText style={[styles.funFactText]}>
+            In South Africa, 10 million tonnes of food go to waste every year. This accounts for a third of the 31 million tonnes that are produced annually in South Africa.
+            Together, fruits, vegetables and cereals account for 70% of the wastage and loss. This wastage and loss primarily occur early in the food supply chain.
+            As the South African diet continues to shift towards one that is higher in processed foods and lower in fruit and vegetables,
+            malnutrition will increase as well. Reducing food waste in South Africa can improve the health and well-being of the majority of South Africans.
+          </ThemedText>
+          <ThemedText style={styles.funFactText}>WWF</ThemedText>
+        </View>
       </View>
     </ScrollView>
   );
@@ -305,6 +307,10 @@ const styles = StyleSheet.create({
   },
   funFactText: {
     textAlign: "center",
+    padding: 5,
+    width: "100%"
+  },
+  funBox: {
     padding: 10,
     flex: 0.3,
     width: "100%"

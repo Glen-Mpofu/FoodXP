@@ -49,7 +49,6 @@ const Register = () => {
     const [expoPushToken, setExpoPushToken] = React.useState(null);
     const { width, height } = Dimensions.get("window")
 
-
     async function handleSubmit() {
 
         //valid email check

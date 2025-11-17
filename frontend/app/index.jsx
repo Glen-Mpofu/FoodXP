@@ -59,13 +59,13 @@ const Index = () => {
         const foodieData = { email: email.trim(), password: password.trim(), expoPushToken: expoPushToken }
         const baseURL = API_BASE_URL
 
-        axios.post(`${baseURL}/login`, foodieData, { withCredentials: true })
+        await axios.post(`${baseURL}/login`, foodieData, { withCredentials: true })
             .then(async res => {
-                console.log(res.data);
 
                 if (res.data.status === "ok") {
                     Toast.show({ type: "success", text1: res.data.data, useModal: false })
                     await AsyncStorage.setItem("userToken", res.data.token)
+                    //await AsyncStorage.setItem("user_id", res.data.user_id)
 
                     await AsyncStorage.setItem("refreshRecipes", "false")
                     await AsyncStorage.setItem("refreshPantry", "false")

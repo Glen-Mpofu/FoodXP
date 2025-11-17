@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { API_BASE_URL } from "@env"
 import axios from 'axios';
 import ThemedButton from '../../../components/ThemedButton';
+import { Toast } from 'toastify-react-native';
 
 const Recipes = () => {
   const colorScheme = useColorScheme();
@@ -87,6 +88,10 @@ const Recipes = () => {
       setAiRecipes(result.data.recipes);
       setShowFoodModal(false);
     } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Error generating AI recipes"
+      })
       console.error("Error generating AI recipes:", error);
     }
   }
@@ -98,7 +103,6 @@ const Recipes = () => {
       </ThemedButton>
       <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ padding: 10, flexGrow: 1 }}>
 
-        {/* --- AI Recipes --- */}
         {/* --- AI Recipes --- */}
         {aiRecipes.length > 0 ? (
           <View style={{ marginVertical: 20, width: "100%" }}>

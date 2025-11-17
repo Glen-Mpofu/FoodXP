@@ -327,7 +327,6 @@ app.post("/login", async (req, res) => {
     });
 });
 
-
 //logout 
 app.post("/logout", async (req, res) => {
     req.session.destroy(err => {
@@ -670,37 +669,58 @@ const checkExpiryFoods = async () => {
         const pantryFood = await getPantryFood(foodie.id);
         const fridgeFood = await getFridgeFood(foodie.id);
 
-        const checkFoodList = async (foodList, category) => {
+        const aboutToExpireItems = [];
+
+        const checkFoodList = (foodList, category) => {
             for (const item of foodList.data) {
                 const expiryDate = new Date(item.expiry_date);
-                const daysLeft = (expiryDate - now) / (1000 * 60 * 60 * 24);
-
-                console.log(daysLeft)
+                const daysLeft = Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24));
 
                 if (daysLeft <= 2) {
-                    const message = `${item.name} in your ${category} will expire in ${Math.ceil(daysLeft)} day(s)!`;
+                    let messageItem;
 
-                    console.log(`Sending notification to ${foodie.email}:`, message);
-
-                    const foodieTokens = await pool.query(
-                        `SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1`,
-                        [foodie.id]
-                    );
-
-                    for (const row of foodieTokens.rows) {
-                        await sendNotification(row.token, message);
+                    if (daysLeft === 0) {
+                        messageItem = `${item.name} in your ${category} will expire today`;
+                    } else if (daysLeft < 0) {
+                        messageItem = `${item.name} in your ${category} expired ${Math.abs(daysLeft)} day(s) ago`;
+                    } else {
+                        messageItem = `${item.name} in your ${category} will expire in ${daysLeft} day(s)`;
                     }
+
+                    aboutToExpireItems.push(messageItem);
                 }
             }
         };
 
         // Check both pantry & fridge foods for this foodie
-        await checkFoodList(pantryFood, "Pantry");
-        await checkFoodList(fridgeFood, "Fridge");
+        checkFoodList(pantryFood, "Pantry");
+        checkFoodList(fridgeFood, "Fridge");
+
+        if (aboutToExpireItems.length > 0) {
+            let finalMessage;
+            if (aboutToExpireItems.length > 2) {
+                finalMessage = `You have ${aboutToExpireItems.length} items about to expire soon. Check your pantry and fridge!`;
+            } else {
+                // Join individual item messages
+                finalMessage = aboutToExpireItems.join(". ") + ".";
+            }
+
+            console.log(`Sending notification to ${foodie.email}:`, finalMessage);
+
+            const foodieTokens = await pool.query(
+                `SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1`,
+                [foodie.id]
+            );
+
+            await Promise.all(
+                foodieTokens.rows.map(row => sendNotification(row.token, finalMessage))
+            );
+        }
     }
 };
 
-cron.schedule("0 10,13,14 * * *", async () => {
+
+cron.schedule("0 10,13,18 * * *", async () => {
     console.log("🔔 Checking expiring foods...");
     await checkExpiryFoods();
 });
@@ -972,6 +992,64 @@ async function axiosWithRetry(url, options = {}, delay = 5000) {
         }
     }
 }
+
+const scheduleDonationNotifications = async (pool, sendNotification) => {
+    const now = new Date();
+
+    // Get all upcoming pickups
+    const result = await pool.query(`
+        SELECT dp.*, d.foodie_id AS donor_id, dr.requester_id, f.email AS donor_email, fr.email AS requester_email
+        FROM DONATION_PICKUP dp
+        JOIN DONATION d ON d.pickup_id = dp.id
+        JOIN DONATION_REQUEST dr ON dr.donation_id = d.donation_id AND dr.status = 'Accepted'
+        JOIN FOODIE f ON f.id = d.foodie_id
+        JOIN FOODIE fr ON fr.id = dr.requester_id
+        WHERE dp.pickUpDate::DATE >= CURRENT_DATE
+    `);
+
+    const pickups = result.rows;
+
+    for (const pickup of pickups) {
+        const pickupDateTime = new Date(`${pickup.pickUpDate}T${pickup.pickUpTime}`);
+
+        // Define notification times
+        const notifications = [
+            { label: "close", offset: 24 * 60 }, // 24 hours before
+            { label: "1 hour before", offset: 60 }, // 1 hour before
+            { label: "now", offset: 0 } // exact time
+        ];
+
+        for (const note of notifications) {
+            const notifTime = new Date(pickupDateTime.getTime() - note.offset * 60 * 1000);
+            const delay = notifTime - now;
+
+            if (delay > 0) {
+                setTimeout(async () => {
+                    const message = `Donation pickup for ${pickup.street}, ${pickup.city} is ${note.label}!`;
+
+                    // Send to donor
+                    const donorTokens = await pool.query(
+                        "SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1 AND is_valid = TRUE",
+                        [pickup.donor_id]
+                    );
+                    for (const row of donorTokens.rows) {
+                        await sendNotification(row.token, `Donor Alert: ${message}`);
+                    }
+
+                    // Send to requester
+                    const requesterTokens = await pool.query(
+                        "SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1 AND is_valid = TRUE",
+                        [pickup.requester_id]
+                    );
+                    for (const row of requesterTokens.rows) {
+                        await sendNotification(row.token, `Requester Alert: ${message}`);
+                    }
+
+                }, delay);
+            }
+        }
+    }
+};
 
 //recipes from themealdb
 app.get("/get-recipes", async (req, res) => {
@@ -1496,8 +1574,9 @@ app.get("/getRequestsForMe", async (req, res) => {
                 -- Requester info
                 f.name AS requester_name, 
                 f.email AS requester_email,
-          
-                -- Donation table IDs (added)
+                f.phone AS requester_phone,
+
+                -- Donation table IDs
                 d.fridge_food_id,
                 d.pantry_food_id,
                 COALESCE(d.fridge_food_id, d.pantry_food_id) AS food_id,
@@ -1507,7 +1586,7 @@ app.get("/getRequestsForMe", async (req, res) => {
                 d.quantity,
                 d.sourceTable,
           
-                -- Pantry and Fridge shared fields (fallback logic)
+                -- Pantry and Fridge shared fields
                 COALESCE(fr.name, pa.name) AS food_name,
                 COALESCE(fr.photo, pa.photo) AS food_photo,
                 COALESCE(fr.public_id, pa.public_id) AS photo_public_id,
@@ -1520,9 +1599,20 @@ app.get("/getRequestsForMe", async (req, res) => {
                 -- Fridge-only fields
                 fr.isFresh AS fridge_is_fresh,
           
-                -- Extra data (for debugging or later expansion)
+                -- Extra data
                 fr.foodie_id AS fridge_owner_id,
                 pa.foodie_id AS pantry_owner_id,
+          
+                -- Donation pickup info
+                p.street AS pickup_street,
+                p.city AS pickup_city,
+                p.province AS pickup_province,
+                p.zipcode AS pickup_zipcode,
+                p.country AS pickup_country,
+                p.latitude AS pickup_latitude,
+                p.longitude AS pickup_longitude,
+                p.pickUpDate AS pickup_date,
+                p.pickUpTime AS pickup_time,
           
                 dr.status
           
@@ -1531,8 +1621,9 @@ app.get("/getRequestsForMe", async (req, res) => {
             JOIN DONATION d ON dr.donation_id = d.donation_id
             LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
             LEFT JOIN PANTRY_FOOD pa ON d.pantry_food_id = pa.id
+            LEFT JOIN DONATION_PICKUP p ON d.pickup_id = p.id
             WHERE dr.donor_id = $1
-          `, [donor_id]);
+        `, [donor_id]);
 
         res.json({ status: "ok", data: result.rows });
     } catch (err) {
@@ -1582,6 +1673,7 @@ app.post("/acceptRequest", async (req, res) => {
         for (const row of donorTokens) {
             await sendNotification(row.token, message);
         }
+        await scheduleDonationNotifications(pool, sendNotification);
 
         res.json({ status: "ok", data: "Request accepted successfully" });
     } catch (err) {

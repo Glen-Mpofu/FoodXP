@@ -19,6 +19,7 @@ import { Toast } from "toastify-react-native";
 import { Colors } from "../../../constants/Colors";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getCurrentLocation } from '../../../components/locantion';
+import { RefreshControl } from "react-native";
 
 const DonateMap = () => {
   const [userToken, setUserToken] = useState(null);
@@ -27,9 +28,12 @@ const DonateMap = () => {
   const [selectedDonation, setSelectedDonation] = useState(null);
   const [donorRequests, setDonorRequests] = useState([]);
 
+  const [refreshing, setRefreshing] = useState(false);
+
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
   const [stats, setStats] = useState([])
+
   useEffect(() => {
     async function init() {
       try {
@@ -74,6 +78,40 @@ const DonateMap = () => {
     fetchDonorRequests();
     init();
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchDonorRequests();
+
+      const token = await AsyncStorage.getItem("userToken");
+      if (!token) return;
+
+      const donationsResult = await axios.get(`${API_BASE_URL}/getDonations`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const donations = donationsResult.data.data || [];
+
+      const requestsResult = await axios.get(
+        `${API_BASE_URL}/getMyDonationRequests`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const requestedDonations = requestsResult.data.data || [];
+      const requestedIds = new Set(requestedDonations.map((d) => d.donation_id));
+
+      const remainingDonations = donations.filter(
+        (d) => !requestedIds.has(d.donation_id)
+      );
+      fetchDonorRequests()
+      setMyRequests(requestedDonations);
+      setAvailableDonations(remainingDonations);
+    } catch (err) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Failed to refresh" });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   async function fetchDonorRequests() {
     try {
@@ -234,7 +272,26 @@ const DonateMap = () => {
     <ThemedView
       style={[styles.container, { backgroundColor: theme.uiBackground }]}
     >
-      <ScrollView contentContainerStyle={{ paddingBottom: 50 }}>
+      <TouchableOpacity
+        onPress={onRefresh}
+        style={{
+          position: "absolute",
+          top: 10,
+          left: 10,
+          zIndex: 10,
+          backgroundColor: "transparent",
+          padding: 5,
+        }}
+      >
+        <MaterialCommunityIcons name="reload" size={28} color={theme.iconColor} />
+      </TouchableOpacity>
+
+      <ScrollView contentContainerStyle={{ paddingBottom: 50 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+
         {/* My Requests */}
         <ThemedText style={styles.heading}>My Donation Requests</ThemedText>
         {myRequests.length === 0 ? (
@@ -265,7 +322,7 @@ const DonateMap = () => {
                 <View style={styles.donationDetailsColumn}>
                   <ThemedText style={styles.donationName}>{item.food_name}</ThemedText>
                   <ThemedText>Requester: {item.requester_name}</ThemedText>
-                  <ThemedText>Email: {item.requester_email}</ThemedText>
+                  <ThemedText>Contact: {item.requester_email} ({item.requester_phone}) </ThemedText>
                   <ThemedText>Status: {item.status ?? "Pending"}</ThemedText>
 
                   {item.status !== "Accepted" && (
@@ -287,39 +344,54 @@ const DonateMap = () => {
                   )}
 
                   {item.status === "Accepted" && (
-                    <TouchableOpacity
-                      style={[styles.heartIconContainer, { marginTop: 10 }]}
-                      onPress={async () => {
-                        try {
-                          await axios.post(
-                            `${API_BASE_URL}/finaliseDonation`,
-                            {
-                              donor_id: item.donor_id,
-                              requester_id: item.requester_id,
-                              donation_id: item.donation_id,
-                              donation: item
-                            },
-                            { headers: { Authorization: `Bearer ${userToken}` } }
-                          );
-                          Toast.show({
-                            type: "success",
-                            text1: "Donation count incremented!",
-                          });
-                        } catch (err) {
-                          console.error(err);
-                          Toast.show({
-                            type: "error",
-                            text1: "Failed to increment donation",
-                          });
-                        }
-                      }}
-                    >
-                      <MaterialCommunityIcons
-                        name="hand-heart-outline"
-                        size={28}
-                        color="#34a853"
-                      />
-                    </TouchableOpacity>
+                    <>
+                      <TouchableOpacity
+                        style={[styles.heartIconContainer, { marginTop: 10 }]}
+                        onPress={async () => {
+                          try {
+                            await axios.post(
+                              `${API_BASE_URL}/finaliseDonation`,
+                              {
+                                donor_id: item.donor_id,
+                                requester_id: item.requester_id,
+                                donation_id: item.donation_id,
+                                donation: item
+                              },
+                              { headers: { Authorization: `Bearer ${userToken}` } }
+                            );
+                            Toast.show({
+                              type: "success",
+                              text1: "Donation count incremented!",
+                            });
+                          } catch (err) {
+                            console.error(err);
+                            Toast.show({
+                              type: "error",
+                              text1: "Failed to increment donation",
+                            });
+                          }
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name="hand-heart-outline"
+                          size={28}
+                          color="#34a853"
+                        />
+                      </TouchableOpacity>
+
+                      <View style={{ marginTop: 5 }}>
+                        <ThemedText style={{ fontSize: 13, color: "#444", fontWeight: "bold" }}>
+                          Drop off Location:
+                        </ThemedText>
+                        <ThemedText style={{ fontSize: 13, color: "#555" }}>
+                          {item.pickup_street}, {item.pickup_city}, {item.pickup_province}, {item.pickup_zipcode}, {item.pickup_country}
+                        </ThemedText>
+                        <ThemedText>
+                          Drop off at {item.pickup_time} on {item.pickup_date}
+                        </ThemedText>
+                      </View>
+                    </>
+
                   )}
                 </View>
               </View>

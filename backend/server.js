@@ -221,7 +221,7 @@ app.post("/register", async (req, res) => {
         if (expoPushToken === null) {
             expoPushToken = 'None'
         }
-        console.log("Register body:", req.body);
+        //console.log("Register body:", req.body);
 
         // Encrypt password
         const encryptedPassword = await bcrypt.hash(password, 10);
@@ -250,7 +250,7 @@ app.post("/register", async (req, res) => {
         );
 
         const foodieId = newFoodie.rows[0].id;
-        console.log("Foodie account created with ID:", foodieId);
+        //console.log("Foodie account created with ID:", foodieId);
 
         // Insert the Expo push token
         await pool.query(
@@ -277,7 +277,7 @@ app.post("/register", async (req, res) => {
 
 //login
 app.post("/login", async (req, res) => {
-    console.log(req.body)
+    //console.log(req.body)
     const { email, password } = req.body;
 
     //check if the user exists firs
@@ -306,7 +306,7 @@ app.post("/login", async (req, res) => {
 
     //SAVING USER IN SESSION
     req.session.user = { email };
-    console.log("Session Created: ", req.session)
+    //console.log("Session Created: ", req.session)
 
     // else move to dashboard
     return res.send({ status: "ok", data: "Login Successful", token: token })
@@ -367,9 +367,9 @@ app.get("/session", async (req, res) => {
                 password: result.rows[0].password,
                 phone: result.rows[0].phone
             }
-            console.log(foodie)
+            //console.log(foodie)
             res.send({ status: "ok", data: foodie })
-            console.log("Foodie", foodie)
+            //console.log("Foodie", foodie)
         })
 
     } catch (error) {
@@ -402,7 +402,7 @@ app.post("/namechange", async (req, res) => {
 
 //password updating
 app.post("/passwordchange", async (req, res) => {
-    console.log(req.body)
+    //console.log(req.body)
     const email = req.body.email
     const password = req.body.password
 
@@ -684,7 +684,7 @@ const checkExpiryFoods = async () => {
     }
 };
 
-cron.schedule("0 10,13,17 * * *", async () => {
+cron.schedule("0 10,13,14 * * *", async () => {
     console.log("🔔 Checking expiring foods...");
     await checkExpiryFoods();
 });
@@ -875,7 +875,7 @@ app.get("/test-notification", async (req, res) => {
 
 ///getting recipes
 app.post("/getAiRecipe", async (req, res) => {
-    console.log(req.body)
+    //console.log(req.body)
     try {
         const ingredients = req.body;
 
@@ -1036,7 +1036,7 @@ app.get("/get-recipes", async (req, res) => {
                 })
             )
         );
-        console.log(mealDetails)
+        //console.log(mealDetails)
         // --- 4. Return filtered results ---
         res.json({ status: "ok", data: mealDetails.filter(Boolean) });
 
@@ -1091,7 +1091,7 @@ app.post("/donate", async (req, res) => {
         const { street, city, province, postalCode, country, pickupTime } = req.body;
         const pickUpDate = req.body.date
         const prevLoc = req.body.pickup_id;
-        console.log(req.body)
+        //console.log(req.body)
 
         let pickup_id;
         const dateObj = new Date(pickupTime);
@@ -1102,10 +1102,10 @@ app.post("/donate", async (req, res) => {
         hours = hours % 12 || 12;  // convert 0 -> 12
 
         const finalTime = `${hours}:${minutes} ${ampm}`;
-        console.log(finalTime)
+        //console.log(finalTime)
 
         const finalDate = pickUpDate.substring(0, 10)
-        console.log(finalDate)
+        //console.log(finalDate)
 
         // Handle location
         if (prevLoc === null) {

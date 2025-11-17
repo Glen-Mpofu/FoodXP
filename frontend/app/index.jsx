@@ -20,8 +20,12 @@ import { Toast } from 'toastify-react-native'
 
 import { API_BASE_URL } from "@env"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { registerForPushNotificationsAsync } from '../components/notificationsSetup'
 
 const Index = () => {
+    useEffect(() => {
+        registerForPushNotificationsAsync().then(token => setExpoPushToken(token));
+    }, []);
     const colorScheme = useColorScheme();
     const theme = Colors[colorScheme] ?? Colors.light;
 
@@ -35,6 +39,7 @@ const Index = () => {
 
     const [modalVisible, setModalVisible] = useState(false)
     const { width, height } = Dimensions.get("window")
+    const [expoPushToken, setExpoPushToken] = useState(null);
 
     // Handle login
     async function handleSubmit() {
@@ -51,7 +56,7 @@ const Index = () => {
         setEmailBorderColor(theme.borderColor)
         setPasswordBorderColor(theme.borderColor)
 
-        const foodieData = { email: email.trim(), password: password.trim() }
+        const foodieData = { email: email.trim(), password: password.trim(), expoPushToken: expoPushToken }
         const baseURL = API_BASE_URL
 
         axios.post(`${baseURL}/login`, foodieData, { withCredentials: true })

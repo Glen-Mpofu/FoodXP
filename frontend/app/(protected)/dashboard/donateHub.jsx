@@ -126,7 +126,7 @@ const DonateMap = () => {
       );
       Toast.show({
         type: "success",
-        text1: `You claimed ${donation.name}!`,
+        text1: `You requested ${donation.name}!`,
       });
 
       setAvailableDonations((prev) =>

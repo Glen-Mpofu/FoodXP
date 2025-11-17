@@ -275,42 +275,58 @@ app.post("/register", async (req, res) => {
     }
 });
 
-//login
+// LOGIN
 app.post("/login", async (req, res) => {
-    //console.log(req.body)
-    const { email, password } = req.body;
+    const { email, password, expoPushToken } = req.body;
 
-    //check if the user exists firs
+    // Get user + push token
     const storedFoodie = await pool.query(`
-            SELECT EMAIL, PASSWORD FROM FOODIE WHERE EMAIL = $1
-        `, [email]
-    )
+        SELECT f.email, f.password, p.token AS push_token, f.id
+        FROM FOODIE f
+        LEFT JOIN push_tokens p 
+            ON f.id = p.foodie_id
+        WHERE f.email = $1
+    `, [email]);
 
-    //if the email is not in the db it means the user doesn't exist
-    if (storedFoodie.rowCount <= 0) {
-        return res.send({ status: "no account", data: "Foodie has no account yet" })
+    // No account?
+    if (storedFoodie.rowCount === 0) {
+        return res.send({ status: "no account", data: "Foodie has no account yet" });
     }
 
-    //checking the password
-    const hashedPassword = storedFoodie.rows[0].password
+    const foodie = storedFoodie.rows[0];
 
-    //comparing the passwords
-    const comparePasswords = await bcrypt.compare(password, hashedPassword)
-    console.log(comparePasswords)
-    if (!comparePasswords) {
-        return res.send({ status: "wrong password", data: "Wrong Password. Try another" })
+    // Check password
+    const match = await bcrypt.compare(password, foodie.password);
+    if (!match) {
+        return res.send({ status: "wrong password", data: "Wrong Password. Try another" });
     }
 
-    // CREATING A TOKEN FOR THE USER
-    const token = jwt.sign({ email: email }, "SECRET_KEY", { expiresIn: "7d" })
+    // Reset push token if changed
+    if (expoPushToken && expoPushToken !== foodie.push_token) {
+        await pool.query(`
+            UPDATE push_tokens
+            SET token = $1
+            WHERE foodie_id = $2
+        `, [expoPushToken, foodie.id]);
+    }
 
-    //SAVING USER IN SESSION
-    req.session.user = { email };
-    //console.log("Session Created: ", req.session)
+    // Generate JWT
+    const token = jwt.sign(
+        { email: foodie.email },
+        "SECRET_KEY",  // replace later with process.env.JWT_SECRET
+        { expiresIn: "7d" }
+    );
 
-    // else move to dashboard
-    return res.send({ status: "ok", data: "Login Successful", token: token })
-})
+    // Create session
+    req.session.user = { email: foodie.email };
+
+    return res.send({
+        status: "ok",
+        data: "Login Successful",
+        token
+    });
+});
+
 
 //logout 
 app.post("/logout", async (req, res) => {
@@ -936,7 +952,7 @@ app.post("/getAiRecipe", async (req, res) => {
         } catch (e) {
             return res.json({ error: "Invalid AI JSON output", raw: aiRaw });
         }
-        console.log(aiRecipes)
+        //console.log(aiRecipes)
         res.json({ recipes: aiRecipes });
 
     } catch (error) {

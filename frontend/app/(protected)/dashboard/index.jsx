@@ -312,7 +312,7 @@ const styles = StyleSheet.create({
   },
   funBox: {
     padding: 10,
-    flex: 0.3,
+    flex: 1,
     width: "100%"
   }
 });

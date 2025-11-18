@@ -110,7 +110,10 @@ const Settings = () => {
   }
 
   async function deleteAccount() {
-    if (value === 'no') return closeModal();
+    if (value === 'no') {
+      closeModal()
+      return;
+    }
 
     try {
       const foodieData = { email: foodie?.email };

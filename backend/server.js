@@ -359,6 +359,88 @@ app.post("/classifyfood", async (req, res) => {
     }
 });
 
+app.post("/api/classify", async (req, res) => {
+    const { image } = req.body;
+    const prompt = `
+      You are a food recognition AI. Analyze the image and respond ONLY with valid JSON.
+        Do NOT include commentary, explanations, or brand names.
+
+        Allowed units of measure are strictly limited to this exact list:
+        ["quantity", "piece", "serving", "portion", "slice", "pack", "can", "bottle", "bag", "jar", 
+        "g", "kg", "mg", "oz", "lb", "ml", "L", "tsp", "tbsp", "cup", "pint", "quart", "gallon", 
+        "pinch", "dash"]
+
+        You MUST choose exactly one unit from this list.
+
+        Identify the food as a generic item only:
+        "apple", "rice", "bread", "tomato"
+        No brand names (e.g., “KFC chicken”, “Coca-Cola”, “Kellogg’s cereal”)
+
+        Return JSON using this exact structure:
+
+        {
+            "name": "string",                 // generic food name only
+            "amount": number,                 // numeric amount only (no units)
+            "unitOfMeasure": "string",        // one unit selected from the allowed list
+            "storageLocation": "fridge | pantry"
+        }
+
+        Rules:
+        - Always return a single JSON object.
+        - Never mention a brand or restaurant.
+        - If multiple items appear, identify the main food item.
+        - If the exact quantity is unknown:
+            - Estimate using the best-fitting allowed unit.
+            - Examples: { "amount": 2, "unitOfMeasure": "L" } or { "amount": 500, "unitOfMeasure": "g" }
+        - If no reasonable unit can be determined, fall back to:
+            { "amount": 1, "unitOfMeasure": "quantity" }
+        - "name" must remain simple and generic.
+
+      `
+        ;
+
+    const groqResponse = await axios.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+            model: "meta-llama/llama-4-scout-17b-16e-instruct",
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: prompt },
+                        {
+                            type: "image_url",
+                            image_url: { url: image }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            headers: {
+                Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            }
+        }
+    );
+    console.log(groqResponse.data.choices[0].message.content)
+
+    const rawWithQuotes = groqResponse.data.choices[0].message.content
+
+    const cleanedUp = rawWithQuotes
+        .replace(/```json/gi, "")
+        .replace(/```/g, "")
+        .trim()
+    let finalJson
+    try {
+        finalJson = JSON.parse(cleanedUp)
+    } catch (error) {
+        console.error("Failed to parse the message returned by the AI model: " + error)
+    }
+
+    res.json(finalJson);
+});
+
+
 // session getter
 app.get("/session", async (req, res) => {
     try {

@@ -227,6 +227,7 @@ const styles = StyleSheet.create({
         backdropFilter: "blur(10px)",
         alignItems: "center",
         justifyContent: "center",
+        flex: 1
     },
 
     footerHeading: {
@@ -245,6 +246,7 @@ const styles = StyleSheet.create({
         textAlign: "center",
         lineHeight: 18,
         marginBottom: 8,
+        flex: 1
     },
 
     footerCredit: {

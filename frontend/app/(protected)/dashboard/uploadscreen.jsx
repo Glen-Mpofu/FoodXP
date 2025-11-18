@@ -14,6 +14,7 @@ import UnitDropDown from '../../../components/UnitDropDown';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { API_BASE_URL } from "@env"
+import { GROQ_API_KEY } from "@env"
 import { Colors } from '../../../constants/Colors';
 import FoodUnits from "../../../components/UnitsOfMeasure"
 import { Picker } from '@react-native-picker/picker';
@@ -120,23 +121,22 @@ const UploadFood = () => {
   };
 
   const classifyFood = async (photoData) => {
-    if (!photoData) return Toast.show({ type: "error", text1: "No photo selected" })
+    if (!photoData) {
+      return Toast.show({ type: "error", text1: "No photo selected" });
+    }
 
     try {
-      //const baseUrl = Platform.OS === "web" ? "http://localhost:5001/classifyfood" : "http://192.168.137.1:5001/classifyfood"
-      const response = await axios.post(`${API_BASE_URL}/classifyfood`, { photo: photoData })
-      const { Confidence, Prediction } = response.data
-      if (Prediction) {
-        setPrediction(Prediction)
-        Toast.show({ type: "success", text1: `${Prediction} item classified` })
-      } else {
-        Toast.show({ type: "error", text1: "Prediction failed", useModal: false })
-      }
+      const response = await axios.post(`${API_BASE_URL}/api/classify`, {
+        image: photoData,
+      });
+      onNameChange(response.data.name)
+      onAmountChange(response.data.amount)
+      setSelectedUnit(response.data.unitOfMeasure)
     } catch (error) {
-      console.error("Classification error:", error)
-      Toast.show({ type: "error", text1: "Classification failed", useModal: false })
+      console.log("Groq LLM Error:", error.response?.data || error);
+      Toast.show({ type: "error", text1: "Image analysis failed" });
     }
-  }
+  };
 
   const saveFood = async () => {
     if (!name.trim()) {

@@ -74,11 +74,11 @@ def predict():
 # Run server (cloud-ready)
 # -------------------------------
 
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, threaded=True)
-# --    
-# if __name__ == "__main__": 
-#    app.run(host="192.168.101.103", port=5002, threaded = True)
+#if __name__ == "__main__":
+ #   import os
+  #  port = int(os.environ.get("PORT", 5000))
+   # app.run(host="0.0.0.0", port=port, threaded=True)
+#    
+if __name__ == "__main__": 
+    app.run(host="10.235.33.179", port=5002, threaded = True)
 # ---

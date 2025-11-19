@@ -271,45 +271,58 @@ export default function CameraScreen() {
   const saveFood = async () => {
     if (!name.trim()) {
       Toast.show({ type: "error", text1: "Please enter the food's name" });
-      return; // <-- STOP execution
+      return;
     }
 
     if (!amount.trim()) {
       Toast.show({ type: "error", text1: "Please enter the food's amount" });
-      return; // <-- STOP execution
+      return;
     }
 
-    // 1️⃣ Upload to Cloudinary first
-    const { url: url, public_id: public_id } = await uploadToCloudinary(photo);
+    // Upload to Cloudinary
+    const { url, public_id } = await uploadToCloudinary(photo);
 
-    // 2️⃣ Then send the secure URL to backend
+    // Auto-calc expiry if shelf life exists
+    let finalExpiryDate = expiryDate;
+
+    if (estimatedShelfLife != null && estimatedShelfLife !== "") {
+      const today = new Date();
+
+      const newDate = new Date(today);
+      newDate.setDate(today.getDate() + Number(estimatedShelfLife));
+
+      finalExpiryDate = newDate;
+    }
+
     const foodData = {
       name: name.trim(),
       amount: amount.trim(),
       photo: url,
-      public_id: public_id,// use Cloudinary URL
+      public_id,
       token: userToken,
       unitOfMeasure: selectedUnit,
       estimatedShelfLife,
-      expiryDate
+      expiryDate: finalExpiryDate,        // ⬅ IMPORTANT: send the computed date
     };
 
     await axios.post(`${API_BASE_URL}/save${storagelocation}food`, { foodData }).then(async (res) => {
       if (res.data.status === "ok") {
         await AsyncStorage.setItem("refreshRecipes", "true");
+
         if (storagelocation === "pantry") {
           await AsyncStorage.setItem("refreshPantry", "true");
         } else {
           await AsyncStorage.setItem("refreshFridge", "true");
         }
-        Toast.show({ type: "success", text1: res.data.data, })
 
-        onAmountChange("")
-        onNameChange("")
-        setStorageLocation(null)
-        setSelectedUnit("quantity")
+        Toast.show({ type: "success", text1: res.data.data });
+
+        onAmountChange("");
+        onNameChange("");
+        setStorageLocation(null);
+        setSelectedUnit("quantity");
       } else {
-        Toast.show({ type: "error", text1: res.data.data, })
+        Toast.show({ type: "error", text1: res.data.data });
       }
     });
   };
@@ -592,5 +605,4 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "rgba(0,0,0,0.1)"
   },
-
 });

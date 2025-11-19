@@ -335,7 +335,7 @@ app.post("/logout", async (req, res) => {
         return res.send({ status: "ok", data: "Logged out successfully" });
     })
 })
-
+/*
 // Classifying food
 app.post("/classifyfood", async (req, res) => {
     try {
@@ -357,7 +357,7 @@ app.post("/classifyfood", async (req, res) => {
             res.json({ error: "Classification failed" });
         }
     }
-});
+});*/
 
 app.post("/api/classify", async (req, res) => {
     const { image } = req.body;
@@ -735,7 +735,7 @@ app.post("/editPantryFood", async (req, res) => {
     await pool.query(
         `
             UPDATE PANTRY_FOOD 
-            SET name = $1, amount = $2, expiry_date = $3
+            SET name = $1, amount = $2, expiryDate = $3
             WHERE id = $4;
         `, [newFood.name, newFood.amount, newFood.expiry_date, newFood.id]
     ).then((result) => {
@@ -763,7 +763,7 @@ const checkExpiryFoods = async () => {
 
         const checkFoodList = (foodList, category) => {
             for (const item of foodList.data) {
-                const expiryDate = new Date(item.expiry_date);
+                const expiryDate = new Date(item.expirydate);
                 const daysLeft = Math.floor((expiryDate - now) / (1000 * 60 * 60 * 24));
 
                 if (daysLeft <= 2) {
@@ -771,10 +771,13 @@ const checkExpiryFoods = async () => {
 
                     if (daysLeft === 0) {
                         messageItem = `${item.name} in your ${category} will expire today`;
+                        console.log(messageItem)
                     } else if (daysLeft < 0) {
                         messageItem = `${item.name} in your ${category} expired ${Math.abs(daysLeft)} day(s) ago`;
+                        console.log(messageItem)
                     } else {
                         messageItem = `${item.name} in your ${category} will expire in ${daysLeft} day(s)`;
+                        console.log(messageItem)
                     }
 
                     aboutToExpireItems.push(messageItem);
@@ -809,8 +812,12 @@ const checkExpiryFoods = async () => {
     }
 };
 
+/*
+* * * * *
 
-cron.schedule("0 10,13,18 * * *", async () => {
+0 10,13,18 * * *
+*/
+cron.schedule("0 11,14,19 * * *", async () => {
     console.log("🔔 Checking expiring foods...");
     await checkExpiryFoods();
 });
@@ -1044,10 +1051,10 @@ app.post("/editFridgeFood", async (req, res) => {
     const newFood = req.body.newFood
     await pool.query(
         `
-            UPDATE FRIDGE_FOOD 
-            SET name = $1, amount = $2
-            WHERE id = $3;
-        `, [newFood.name, newFood.amount, newFood.id]
+            UPDATE FRIDGE_FOOD
+            SET name = $1, amount = $2, expiryDate = $3
+            WHERE id = $4;
+        `, [newFood.name, newFood.amount, newFood.expiryDate, newFood.id]
     ).then((result) => {
         if (result.rowCount <= 0) {
             res.send({ status: "error", data: "Failed to update food item" })
@@ -1083,18 +1090,6 @@ app.post("/get-ngos", async (req, res) => {
     } catch (error) {
         console.error("Something went wrong!", error);
         res.send({ status: "error", data: "Something went wrong when fetching NGO data" });
-    }
-});
-
-// For testing only:
-app.get("/test-notification", async (req, res) => {
-    const testToken = "ExponentPushToken[cqNbu3EE_e7YAHO7H8g8w8]"; // Replace with your real token
-    try {
-        await sendNotification(testToken, "🔔 This is a test notification!");
-        res.send("Test notification sent!");
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Failed to send notification");
     }
 });
 
@@ -1169,6 +1164,124 @@ app.post("/getAiRecipe", async (req, res) => {
         res.json({ error: "Failed to generate recipes" });
     }
 });
+
+app.get("/getSuggestedRecipes", async (req, res) => {
+    try {
+        const id = await getIdFromHeader(req);
+        if (!id) return res.status(401).json({ error: "Unauthorized" });
+
+        // Fetch fridge & pantry items from database
+        const fridgeItems = (await getFridgeFood(id)).data
+        const pantryItems = (await getPantryFood(id)).data
+
+        const allItems = [...fridgeItems, ...pantryItems];
+
+        if (allItems.length === 0) {
+            return res.json({ error: "No ingredients found in fridge or pantry." });
+        }
+
+        // Format ingredients for AI
+        const formattedIngredients = allItems
+            .map(item => `${item.name} (${item.amount} ${item.unitofmeasure || ""})`)
+            .join(", ");
+
+        const prompt = `
+            Return ONLY valid JSON. No explanations. No formatting. No markdown.
+                
+                You are a creative and budget-friendly chef AI. Create exactly 3 recipes using ONLY these ingredients:
+                ${formattedIngredients}
+                
+                Each recipe MUST follow this exact structure:
+                
+                [
+                {
+                    "name": "string",
+                    "description": "string",
+                    "ingredients": [
+                    { "ingredient": "string", "measure": "string" }
+                    // number of ingredients can be ANY length
+                    ],
+                    "instructions": [
+                    "string"
+                    // number of steps can be ANY length (3–10 typical)
+                    ],
+                    "time": "string",
+                    "difficulty": "Easy | Medium | Hard"
+                }
+                ]
+                
+                Rules:
+                - The number of ingredients is flexible.
+                - The number of instruction steps is flexible.
+                - Return only the JSON array with exactly 3 recipe objects.
+                
+        `;
+
+        const response = await axios.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            {
+                model: "llama-3.1-8b-instant",
+                messages: [{ role: "user", content: prompt }],
+            },
+            {
+                headers: {
+                    "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
+                    "Content-Type": "application/json",
+                },
+            }
+        );
+
+        const aiRaw = response.data.choices[0].message.content;
+
+        let aiRecipes = [];
+        try {
+            aiRecipes = JSON.parse(aiRaw);
+        } catch (e) {
+            return res.json({ error: "Invalid AI JSON output", raw: aiRaw });
+        }
+
+        return res.json({ recipes: aiRecipes });
+
+    } catch (error) {
+        console.error("Suggested Recipes Error:", error.response?.data || error.message);
+        res.json({ error: "Failed to generate suggested recipes" });
+    }
+});
+
+cron.schedule("* * * * *", async () => {
+    await sendTryRecipes();
+});
+
+async function sendTryRecipes() {
+    try {
+        // 1. Get users who have fridge or pantry items
+        const usersWithItems = await pool.query(`
+            SELECT DISTINCT f.id, pt.token
+            FROM foodie f
+            JOIN push_tokens pt ON pt.foodie_id = f.id
+            LEFT JOIN pantry_food pf ON pf.foodie_id = f.id
+            LEFT JOIN fridge_food ff ON ff.foodie_id = f.id
+            WHERE (pf.id IS NOT NULL OR ff.id IS NOT NULL)
+              AND pt.is_valid = TRUE
+        `);
+
+        if (!usersWithItems.rows.length) return;
+
+        for (let user of usersWithItems.rows) {
+            // 2. Optionally generate suggested recipes for the user
+            // Here you can call your AI endpoint:
+            // const suggested = await axios.get(`${API_BASE_URL}/getSuggestedRecipes`, { headers: { Authorization: `Bearer ${userToken}` } });
+
+            // 3. Send push notification
+            await sendNotification(user.token, "We found some suggested recipes based on your pantry & fridge items!");
+        }
+
+        console.log("Try recipes notifications sent successfully!");
+    } catch (error) {
+        console.error("Error sending try recipes notifications:", error);
+    }
+}
+
 
 async function axiosWithRetry(url, options = {}, delay = 5000) {
     while (true) {

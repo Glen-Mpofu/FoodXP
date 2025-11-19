@@ -78,7 +78,7 @@ export default function DashboardLayout() {
       <Drawer.Screen
         name="recipes"
         options={{
-          drawerLabel: "Recipes", title: "AI/Classic Recipes",
+          drawerLabel: "Recipes", title: "Recipes",
           drawerIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="chef-hat" size={size} color={color} />
           )

@@ -178,8 +178,6 @@ const UploadFood = () => {
       } else {
         Toast.error("Could not detect expiry date.");
       }
-
-
     } catch (error) {
       console.log("scanExpiryImage error:", error);
       Toast.error("Something went wrong.");
@@ -265,9 +263,15 @@ const UploadFood = () => {
       return; // <-- STOP execution
     }
 
-    if (!date && storagelocation === "pantry") {
-      Toast.show({ type: "error", text1: "Please select expiration date" });
-      return; // <-- STOP execution
+    let finalExpiryDate = expiryDate;
+
+    if (estimatedShelfLife != null && estimatedShelfLife !== "") {
+      const today = new Date();
+
+      const newDate = new Date(today);
+      newDate.setDate(today.getDate() + Number(estimatedShelfLife));
+
+      finalExpiryDate = newDate;
     }
 
     //uploading the image to cloudinary 
@@ -279,7 +283,7 @@ const UploadFood = () => {
       photo: url,
       public_id: public_id,
       token: userToken,
-      ...(storagelocation === "pantry" && { date }),
+      expiryDate: finalExpiryDate,
       unitOfMeasure: selectedUnit,
       estimatedShelfLife
     }

@@ -20,6 +20,7 @@ const Recipes = () => {
 
   const [recipes, setRecipes] = useState([]);
   const [aiRecipes, setAiRecipes] = useState([]);
+  const [suggestedRecipes, setSuggestedRecipes] = useState([]);
 
   const [showFoodModal, setShowFoodModal] = useState(false)
   const [pantryFood, setPantryFood] = useState([]);
@@ -42,15 +43,8 @@ const Recipes = () => {
       }
       setUserToken(token);
 
-      if (recipes.length === 0) {
-        const recipeResults = await axios.get(`${API_BASE_URL}/get-recipes`, {
-          withCredentials: true,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setRecipes(recipeResults.data.data);
-      }
+      loadSuggestedRecipes(token);
+
     };
     init();
   }, []);
@@ -59,6 +53,24 @@ const Recipes = () => {
     const exists = selectedFoods.find(f => f.id === item.id);
     if (exists) setSelectedFoods(selectedFoods.filter(f => f.id !== item.id));
     else setSelectedFoods([...selectedFoods, item]);
+  }
+
+  async function loadSuggestedRecipes(token) {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/getSuggestedRecipes`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.data.recipes) {
+        setSuggestedRecipes(res.data.recipes);
+      } else {
+        setSuggestedRecipes([]);
+      }
+
+    } catch (error) {
+      console.error("Suggested recipe error:", error);
+      setSuggestedRecipes([]);
+    }
   }
 
   const loadPantry = async (token) => {
@@ -82,24 +94,32 @@ const Recipes = () => {
     await loadPantry(userToken)
   }
 
+  // When generating AI recipes
   async function generateRecipes() {
     try {
       const result = await axios.post(`${API_BASE_URL}/getAiRecipe`, selectedFoods);
-      setAiRecipes(result.data.recipes);
+
+      if (result.data.error) {
+        Toast.show({ type: "error", text1: result.data.error });
+        setAiRecipes([]); // <-- always reset to empty array
+        return;
+      }
+
+      setAiRecipes(Array.isArray(result.data.recipes) ? result.data.recipes : []);
       setShowFoodModal(false);
+
     } catch (error) {
-      Toast.show({
-        type: "error",
-        text1: "Error generating AI recipes"
-      })
+      Toast.show({ type: "error", text1: "Error generating AI recipes" });
       console.error("Error generating AI recipes:", error);
+      setAiRecipes([]); // <-- fallback
     }
   }
+
 
   return (
     <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground, width: screenWidth }]}>
       <ThemedButton style={styles.btn} onPress={openFoodModal}>
-        <ThemedText>Generate AI Recipes</ThemedText>
+        <ThemedText>Generate Recipes</ThemedText>
       </ThemedButton>
       <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ padding: 10, flexGrow: 1 }}>
 
@@ -153,54 +173,60 @@ const Recipes = () => {
         ) : (
           <ThemedView style={styles.emptyContainer}>
             <ThemedText style={styles.eHeading}>
-              Click Generate AI Recipes and Select Food Items to get recipes using.
+              Click Generate Recipes and Select Food Items to get recipes using.
             </ThemedText>
           </ThemedView>
         )}
 
+        {/* --- Suggested Recipes --- */}
+        {suggestedRecipes.length > 0 && (
+          <View style={{ marginVertical: 20, width: "100%" }}>
+            <ThemedText style={styles.heading}>
+              Suggested Recipes (Based on Your Pantry & Fridge)
+            </ThemedText>
 
-        <ThemedText style={styles.heading}>
-          Classic Recipes
-        </ThemedText>
-        {/* --- MealDB Recipes --- */}
-        {rows.length > 0 ? rows.map((row, rowIndex) => (
-          <View key={rowIndex} style={{ width: "100%" }}>
-            {row.map(item => (
-              <View key={item.idMeal} style={[styles.foodItem, { backgroundColor: theme.background }]}>
-                <Image source={{ uri: item.strMealThumb }} style={styles.img} />
-                <ThemedText style={{ fontSize: 20, textAlign: "center" }}>{item.strMeal}</ThemedText>
-                <ThemedText style={{ textAlign: "center" }}>{item.strCategory}</ThemedText>
+            {suggestedRecipes.map((recipe, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.foodItem,
+                  { backgroundColor: theme.background, marginBottom: 20 }
+                ]}
+              >
+                <ThemedText style={{ fontSize: 20, fontWeight: "bold", marginBottom: 8, textAlign: "center" }}>
+                  {recipe.name}
+                </ThemedText>
 
-                <View style={{ width: "100%", flex: 1 }}>
-                  {/* Instructions */}
-                  {formatInstructions(item.strInstructions).map((step, index) => (
-                    <ThemedText key={index} style={{ fontSize: 14, lineHeight: 20, marginBottom: 6, textAlign: "center" }}>
-                      {index + 1}) {step}
+                <ThemedText style={{ fontStyle: "italic", marginBottom: 12, textAlign: "center" }}>
+                  {recipe.description}
+                </ThemedText>
+
+                {/* Instructions */}
+                <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.background, marginBottom: 10 }}>
+                  <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Instructions:</ThemedText>
+                  {recipe.instructions.map((step, i) => (
+                    <ThemedText key={i} style={{ textAlign: "center", marginBottom: 4 }}>
+                      {i + 1}) {step}
                     </ThemedText>
                   ))}
-                  <View style={{ backgroundColor: theme.navBackground, padding: 10, borderRadius: 10 }}>
-                    {/* Ingredients */}
-                    <ThemedText style={{ textAlign: "center", fontSize: 18 }}>Ingredients</ThemedText>
-                    {Array.from({ length: 20 }, (_, i) => {
-                      const ingredient = item[`strIngredient${i + 1}`];
-                      const measure = item[`strMeasure${i + 1}`];
-                      if (!ingredient) return null;
-                      return (
-                        <ThemedText key={`${item.idMeal}-ingredient-${i}`
-                        } style={{ marginBottom: 4, textAlign: "center" }}>
-                          • {ingredient} - <ThemedText style={{ fontStyle: "italic", textAlign: "center" }}>({measure})</ThemedText>
-                        </ThemedText>
-                      );
-                    })}
-                  </View>
                 </View>
+
+                {/* Ingredients */}
+                <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.navBackground }}>
+                  <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Ingredients:</ThemedText>
+                  {recipe.ingredients.map((ing, i) => (
+                    <ThemedText key={i} style={{ textAlign: "center", marginBottom: 2 }}>
+                      • {ing.ingredient} ({ing.measure})
+                    </ThemedText>
+                  ))}
+                </View>
+
+                <ThemedText style={{ marginTop: 8, textAlign: "center" }}>
+                  ⏱ {recipe.time} | ⚡ {recipe.difficulty}
+                </ThemedText>
               </View>
             ))}
           </View>
-        )) : (
-          <ThemedView style={styles.emptyContainer}>
-            <ThemedText style={styles.eHeading}>No recipes found with items you have. Add more food items to get recipes</ThemedText>
-          </ThemedView>
         )}
 
       </ScrollView>

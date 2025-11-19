@@ -59,6 +59,9 @@ const Fridge = () => {
   const [date, setDate] = useState(new Date()); // ✅ Initialize with current date
   const [show, setShow] = useState(false);
 
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showEditDatePicker, setShowEditDatePicker] = useState(false);
+  const [editExpiry, setEditExpiry] = useState(new Date());
   // Fetch fridge food function
   const fetchFridgeFood = async (token) => {
     try {
@@ -113,6 +116,11 @@ const Fridge = () => {
     if (selectedDate) setDate(selectedDate)
   }
 
+  const onChangeExpiryDate = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios')
+    if (selectedDate) setEditExpiry(selectedDate)
+  }
+
   // Delete confirmation
   const handleDeleteConfirm = async () => {
     if (!deletingItem) return;
@@ -143,7 +151,7 @@ const Fridge = () => {
   // Edit confirmation
   const handleEditConfirm = async () => {
     if (!editingItem) return;
-    const newFood = { name: editName.trim(), amount: parseInt(editAmount.trim()), id: editingItem.id };
+    const newFood = { name: editName.trim(), amount: parseInt(editAmount.trim()), id: editingItem.id, expiryDate: editExpiry };
 
     try {
       const res = await axios.post(`${API_BASE_URL}/editFridgeFood`, { newFood }, {
@@ -236,6 +244,8 @@ const Fridge = () => {
     setEditName(item.name);
     setEditAmount(item.amount.toString());
     setShowEditModal(true);
+    // When setting date from backend or item
+    setEditExpiry(item.expirydate ? new Date(item.expirydate) : new Date());
   };
 
   const openDeleteModal = (item) => {
@@ -252,13 +262,62 @@ const Fridge = () => {
     });
   };
 
-  const adjustAmount = (id, delta, maxQty) => {
+  // Helper: get step based on unit (you already have this)
+  const getStep = (unit) => {
+    switch (unit?.toLowerCase()) {
+      case "g":
+      case "ml":
+        return 10;
+      case "kg":
+      case "l":
+        return 0.1;
+      default:
+        return 1; // default piece/unit
+    }
+  };
+
+  const incrementEditAmount = () => {
+    if (!editingItem) return;
+    const step = getStep(editingItem.unitofmeasure);
+    let current = parseFloat(editAmount) || 0;
+    let newValue = current + step;
+
+    const precision = (step.toString().split(".")[1] || "").length;
+    setEditAmount(newValue.toFixed(precision));
+  };
+
+  const decrementEditAmount = () => {
+    if (!editingItem) return;
+    const step = getStep(editingItem.unitofmeasure);
+    let current = parseFloat(editAmount) || 0;
+    let newValue = current - step;
+    if (newValue < 0) newValue = 0;
+
+    const precision = (step.toString().split(".")[1] || "").length;
+    setEditAmount(newValue.toFixed(precision));
+  };
+
+  // Manual input handler without max lock
+  const handleEditAmountChange = (val) => {
+    if (!editingItem) return;
+    // Allow only digits and optional decimal
+    if (/^\d*\.?\d*$/.test(val)) {
+      setEditAmount(val);
+    }
+  };
+
+  // Adjust donation quantity for selected items
+  const adjustAmount = (id, delta) => {
     setSelectedItems(prev =>
-      prev.map(item =>
-        item.id === id
-          ? { ...item, donateQty: Math.min(Math.max(1, item.donateQty + delta), maxQty) }
-          : item
-      )
+      prev.map(item => {
+        if (item.id === id) {
+          const step = getStep(item.unitofmeasure);
+          let newQty = item.donateQty + delta * step;
+          newQty = Math.max(step, Math.min(newQty, item.amount)); // min step, max item.amount
+          return { ...item, donateQty: newQty };
+        }
+        return item;
+      })
     );
   };
 
@@ -336,15 +395,30 @@ const Fridge = () => {
 
                       {selected && (
                         <View style={styles.qtyControl}>
-                          <TouchableOpacity onPress={() => adjustAmount(item.id, -1, item.amount)}>
+                          <TouchableOpacity onPress={() => adjustAmount(item.id, -1)}>
                             <ThemedText style={styles.qtyBtn}>−</ThemedText>
                           </TouchableOpacity>
-                          <ThemedText style={styles.qtyValue}>{selected.donateQty}</ThemedText>
-                          <TouchableOpacity onPress={() => adjustAmount(item.id, 1, item.amount)}>
+
+                          <ThemedTextInput
+                            value={selected.donateQty.toString()}
+                            keyboardType="numeric"
+                            onChangeText={(val) => {
+                              const num = parseFloat(val);
+                              if (!isNaN(num)) {
+                                setSelectedItems(prev =>
+                                  prev.map(i => i.id === item.id ? { ...i, donateQty: Math.min(num, item.amount) } : i)
+                                );
+                              }
+                            }}
+                            style={[styles.qtyValue, { width: 100, textAlign: "center" }]}
+                          />
+
+                          <TouchableOpacity onPress={() => adjustAmount(item.id, 1)}>
                             <ThemedText style={styles.qtyBtn}>＋</ThemedText>
                           </TouchableOpacity>
                         </View>
                       )}
+
                     </TouchableOpacity>
                   );
                 })}
@@ -391,33 +465,67 @@ const Fridge = () => {
                       placeholder="Food Name"
                     />
 
-                    <ThemedText style={{ marginTop: 10 }}>Amount</ThemedText>
+                    <ThemedText style={{ marginTop: 10 }}>
+                      Amount ({editingItem.unitofmeasure})
+                    </ThemedText>
 
-                    {/* Amount + / - Controls */}
-                    <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
-                      <TouchableOpacity
-                        onPress={() =>
-                          setEditAmount(prev => {
-                            const value = parseInt(prev || "0");
-                            return Math.max(1, value - 1).toString();
-                          })
-                        }
-                      >
+                    <View style={[styles.qtyControl, { marginTop: 10 }]}>
+                      <TouchableOpacity onPress={decrementEditAmount}>
                         <ThemedText style={styles.qtyBtn}>−</ThemedText>
                       </TouchableOpacity>
 
-                      <ThemedText style={styles.qtyValue}>{editAmount}</ThemedText>
+                      <ThemedTextInput
+                        value={editAmount.toString()}
+                        keyboardType="numeric"
+                        onChangeText={handleEditAmountChange}
+                        style={[styles.qtyValue, { width: 100, textAlign: "center" }]}
+                      />
 
-                      <TouchableOpacity
-                        onPress={() =>
-                          setEditAmount(prev => {
-                            const value = parseInt(prev || "0");
-                            return (value + 1).toString();
-                          })
-                        }
-                      >
+                      <TouchableOpacity onPress={incrementEditAmount}>
                         <ThemedText style={styles.qtyBtn}>＋</ThemedText>
                       </TouchableOpacity>
+                    </View>
+
+
+                    <ThemedText>Expiry Date</ThemedText>
+                    <View style={{ alignItems: "center" }}>
+                      {Platform.OS === "web" ? (
+                        <input
+                          type="date"
+                          value={editExpiry.toLocaleDateString('en-CA')}
+                          onChange={(e) => setEditExpiry(new Date(e.target.value))}
+                          style={{
+                            marginVertical: 10,
+                            padding: 8,
+                            fontSize: 16,
+                            borderRadius: 8,
+                            borderWidth: 1,
+                            borderColor: '#ccc',
+                            width: 150
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <TouchableOpacity
+                            onPress={() => setShowDatePicker(true)}
+                            style={styles.dateBox}
+                          >
+                            <ThemedText style={styles.dateText}>
+                              {editExpiry.toLocaleDateString('en-CA')}
+                            </ThemedText>
+                          </TouchableOpacity>
+
+                          {showDatePicker && (
+                            <DateTimePicker
+                              value={editExpiry}
+                              mode="date"
+                              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                              onChange={onChangeExpiryDate}
+                              style={{ width: 150, alignSelf: "center" }}
+                            />
+                          )}
+                        </>
+                      )}
                     </View>
                   </ScrollView>
                 </>
@@ -456,17 +564,31 @@ const Fridge = () => {
               {deletingItem && (
                 <>
                   <ThemedText style={{ textAlign: "center", marginBottom: 10 }}>
-                    {deletingItem.name}
+                    {deletingItem.name} ({deletingItem.unitofmeasure})
                   </ThemedText>
 
                   <ThemedText style={{ textAlign: "center" }}>Select amount to remove</ThemedText>
 
                   <View style={[styles.qtyControl, { marginTop: 10, alignSelf: "center" }]}>
-                    <TouchableOpacity onPress={() => setDeleteAmount(q => Math.max(1, q - 1))}>
+                    <TouchableOpacity
+                      onPress={() => setDeleteAmount(prev => Math.max(getStep(deletingItem.unitofmeasure), prev - getStep(deletingItem.unitofmeasure)))}
+                    >
                       <ThemedText style={styles.qtyBtn}>−</ThemedText>
                     </TouchableOpacity>
-                    <ThemedText style={styles.qtyValue}>{deleteAmount}</ThemedText>
-                    <TouchableOpacity onPress={() => setDeleteAmount(q => Math.min(deletingItem.amount, q + 1))}>
+
+                    <ThemedTextInput
+                      value={deleteAmount.toString()}
+                      keyboardType="numeric"
+                      onChangeText={(val) => {
+                        const num = parseFloat(val);
+                        if (!isNaN(num)) setDeleteAmount(Math.min(num, deletingItem.amount));
+                      }}
+                      style={[styles.qtyValue, { width: 100, textAlign: "center" }]}
+                    />
+
+                    <TouchableOpacity
+                      onPress={() => setDeleteAmount(prev => Math.min(deletingItem.amount, prev + getStep(deletingItem.unitofmeasure)))}
+                    >
                       <ThemedText style={styles.qtyBtn}>＋</ThemedText>
                     </TouchableOpacity>
                   </View>

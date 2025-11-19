@@ -6,7 +6,8 @@ import {
   TouchableOpacity,
   useColorScheme,
   ScrollView,
-  Platform
+  Platform,
+  Modal
 } from "react-native";
 import React, { useEffect, useState } from "react";
 import axios from "axios";
@@ -20,6 +21,8 @@ import { Colors } from "../../../constants/Colors";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getCurrentLocation } from '../../../components/locantion';
 import { RefreshControl } from "react-native";
+import QRCode from 'react-native-qrcode-svg';
+import { CameraView, useCameraPermissions, CameraType, BarCodeScanner, Camera } from "expo-camera";
 
 const DonateHub = () => {
   const [userToken, setUserToken] = useState(null);
@@ -34,12 +37,24 @@ const DonateHub = () => {
   const theme = Colors[colorScheme] ?? Colors.light;
   const [stats, setStats] = useState([])
 
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [scannedData, setScannedData] = useState(null);
+  const [hasPermission, setHasPermission] = useState(null);
+
+  const [permission, requestPermission] = useCameraPermissions();
+
   useEffect(() => {
     async function init() {
       try {
         const token = await AsyncStorage.getItem("userToken");
         if (!token) return;
         setUserToken(token);
+        if (!permission) return;
+        if (permission.status !== 'granted') {
+          requestPermission();
+        } else {
+          setHasPermission(true);
+        }
 
         const donationsResult = await axios.get(`${API_BASE_URL}/getDonations`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -77,7 +92,7 @@ const DonateHub = () => {
 
     fetchDonorRequests();
     init();
-  }, []);
+  }, [permission]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -243,6 +258,10 @@ const DonateHub = () => {
               <ThemedText>
                 Pick Up at {item.pickuptime} on {item.pickupdate}
               </ThemedText>
+
+              <ThemedButton onPress={() => setIsScannerOpen(true)}>
+                <ThemedText>Scan QR Code</ThemedText>
+              </ThemedButton>
             </View>
           )}
         </View>
@@ -345,40 +364,6 @@ const DonateHub = () => {
 
                   {item.status === "Accepted" && (
                     <>
-                      <TouchableOpacity
-                        style={[styles.heartIconContainer, { marginTop: 10 }]}
-                        onPress={async () => {
-                          try {
-                            await axios.post(
-                              `${API_BASE_URL}/finaliseDonation`,
-                              {
-                                donor_id: item.donor_id,
-                                requester_id: item.requester_id,
-                                donation_id: item.donation_id,
-                                donation: item
-                              },
-                              { headers: { Authorization: `Bearer ${userToken}` } }
-                            );
-                            Toast.show({
-                              type: "success",
-                              text1: "Donation count incremented!",
-                            });
-                          } catch (err) {
-                            console.error(err);
-                            Toast.show({
-                              type: "error",
-                              text1: "Failed to increment donation",
-                            });
-                          }
-                        }}
-                      >
-                        <MaterialCommunityIcons
-                          name="hand-heart-outline"
-                          size={28}
-                          color="#34a853"
-                        />
-                      </TouchableOpacity>
-
                       <View style={{ marginTop: 5 }}>
                         <ThemedText style={{ fontSize: 13, color: "#444", fontWeight: "bold" }}>
                           Drop off Location:
@@ -389,6 +374,32 @@ const DonateHub = () => {
                         <ThemedText>
                           Drop off at {item.pickup_time} on {item.pickup_date}
                         </ThemedText>
+
+                        <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                          <QRCode
+                            value={JSON.stringify({
+                              donation_id: item.donation_id,
+                              donor_id: item.donor_id,
+                              requester_id: item.requester_id, // optional
+                              qr_token: item.qr_token,
+                              donation: {
+                                sourcetable: item.sourcetable,
+                                food_name: item.food_name,
+                                amount: item.amount,
+                                unit_of_measure: item.unit_of_measure,
+                                pantry_food_id: item.pantry_food_id,
+                                fridge_food_id: item.fridge_food_id,
+                                food_photo: item.food_photo,
+                                photo_public_id: item.photo_public_id,
+                                pantry_expiry_date: item.pantry_expiry_date,
+                                estimatedshelflife: item.estimatedshelflife
+                              }
+                            })}         // data encoded in the QR
+                            size={150}              // size of the QR code
+                            color={theme.text}           // QR code color
+                            backgroundColor={theme.background}  // background color
+                          />
+                        </View>
                       </View>
                     </>
 
@@ -424,6 +435,74 @@ const DonateHub = () => {
           Donations Received: {stats?.donationsreceived || 0}
         </ThemedText>
       </View>
+      <Modal
+        visible={isScannerOpen}
+        animationType="slide"
+        onRequestClose={() => setIsScannerOpen(false)}
+      >
+        {hasPermission ? (
+          <CameraView
+            style={{ flex: 1 }}
+            facing="back"
+            barcodeScannerSettings={{
+              barcodeTypes: ["qr"],
+            }}
+            onBarcodeScanned={async (result) => {
+              if (!result?.data) return;
+
+              setIsScannerOpen(false);
+
+              let parsed;
+              try {
+                parsed = JSON.parse(result.data); // parse QR JSON
+              } catch (e) {
+                Toast.show({ type: "error", text1: "Invalid QR code format" });
+                return;
+              }
+
+              // Validate required fields exist
+              const requiredFields = ["donation_id", "donor_id", "requester_id", "qr_token", "donation"];
+              const missing = requiredFields.filter(f => !(f in parsed));
+              if (missing.length > 0) {
+                Toast.show({ type: "error", text1: `QR is missing: ${missing.join(", ")}` });
+                return;
+              }
+
+              try {
+                const response = await axios.post(
+                  `${API_BASE_URL}/claimDonation`,
+                  parsed,
+                  { headers: { Authorization: `Bearer ${userToken}` } }
+                );
+
+                if (response.data.status === "ok") {
+                  Toast.show({ type: "success", text1: response.data.message });
+                } else {
+                  Toast.show({ type: "error", text1: response.data.data });
+                }
+              } catch (err) {
+                console.error(err);
+                Toast.show({ type: "error", text1: "Failed to claim donation" });
+              }
+            }}
+
+          >
+            <View style={styles.overlay}>
+              <View style={styles.scanBox} />
+              <MaterialCommunityIcons
+                name="camera"
+                size={50}
+                color={theme.iconColor}
+              />
+            </View>
+          </CameraView>
+        ) : (
+          <ThemedText style={{ flex: 1, textAlign: "center", marginTop: 20 }}>
+            No camera access
+          </ThemedText>
+        )}
+      </Modal>
+
     </ThemedView>
   );
 };
@@ -487,5 +566,19 @@ const styles = StyleSheet.create({
   actionContainer: {
     alignItems: "center",
     padding: 5
-  }
+  },
+  overlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+
+  },
+  scanBox: {
+    width: 200,
+    height: 200,
+    borderColor: '#34a853',
+    borderWidth: 2,
+    borderRadius: 10,
+    backgroundColor: "transparent"
+  },
 });

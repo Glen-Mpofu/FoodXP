@@ -28,7 +28,7 @@ async function initialiseTables(pool) {
             estimatedShelfLife INT, 
             foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
             photo VARCHAR(150),
-            public_id VARCHAR(100) NOT NULL 
+            public_id VARCHAR(100) NOT NULL
         );
     `).then((res) => {
         console.log("Pantry_Food Table Ready")
@@ -82,7 +82,9 @@ async function initialiseTables(pool) {
             donation_id uuid REFERENCES DONATION(donation_id) ON DELETE CASCADE,
             requester_id uuid REFERENCES FOODIE(id) ON DELETE CASCADE,
             donor_id uuid REFERENCES FOODIE(id) ON DELETE CASCADE,
-            STATUS VARCHAR(50)
+            STATUS VARCHAR(50),
+            qr_token UUID DEFAULT gen_random_uuid(),
+            collected_at TIMESTAMPTZ
         )
     `).then((res) => {
         console.log("DONATION_REQUESTS Table Ready")

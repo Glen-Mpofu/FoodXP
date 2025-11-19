@@ -1192,7 +1192,7 @@ app.get("/getSuggestedRecipes", async (req, res) => {
                 ${formattedIngredients}
                 
                 Each recipe MUST follow this exact structure:
-                
+                Only include the ingredients provide to come up with the meals. No extra ingredients
                 [
                 {
                     "name": "string",
@@ -1248,7 +1248,7 @@ app.get("/getSuggestedRecipes", async (req, res) => {
     }
 });
 
-cron.schedule("* * * * *", async () => {
+cron.schedule("0 10,13,18 * * *", async () => {
     await sendTryRecipes();
 });
 
@@ -1780,7 +1780,8 @@ app.get("/getMyDonationRequests", async (req, res) => {
                 p.pickUpDate,
                 donor.name AS donor_name,
                 donor.email AS donor_email,
-                donor.phone AS donor_phone
+                donor.phone AS donor_phone,
+                qr_token
             FROM DONATION_REQUEST dr
             JOIN DONATION d ON dr.donation_id = d.donation_id
             LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
@@ -1860,6 +1861,176 @@ app.post("/requestDonation", async (req, res) => {
     }
 });
 
+app.post("/claimDonation", async (req, res) => {
+    try {
+        const id = await getIdFromHeader(req);
+        const { donation_id, donor_id, requester_id, qr_token, donation } = req.body;
+
+        console.log("Claim body:", req.body);
+
+        // 1. Ensure requester is the one scanning
+        if (id !== requester_id) {
+            return res.send({
+                status: "error",
+                data: "You are NOT the accepted requester for this donation.",
+            });
+        }
+
+        // 2. Validate that QR belongs to an accepted request
+        const result = await pool.query(
+            `SELECT * FROM DONATION_REQUEST
+             WHERE donation_id = $1
+               AND donor_id = $2
+               AND requester_id = $3
+               AND status = 'Accepted'
+               AND qr_token = $4`,
+            [donation_id, donor_id, requester_id, qr_token]
+        );
+
+        if (result.rows.length === 0) {
+            return res.send({ status: "error", data: "Invalid QR or request not accepted." });
+        }
+
+        const request = result.rows[0];
+
+        // 3. Mark donation as collected
+        await pool.query(
+            `UPDATE DONATION_REQUEST 
+             SET status = 'Collected', collected_at = NOW()
+             WHERE request_id = $1`,
+            [request.request_id]
+        );
+
+        console.log("Donation marked as collected.");
+
+        // 4. Update donor donation stats
+        const donorStats = await pool.query(
+            "SELECT * FROM DONATED_ITEMS WHERE donor_id = $1",
+            [donor_id]
+        );
+
+        if (donorStats.rows.length === 0) {
+            await pool.query(
+                "INSERT INTO DONATED_ITEMS(donor_id, donationsMade, donationsReceived) VALUES($1, 1, 0)",
+                [donor_id]
+            );
+        } else {
+            await pool.query(
+                "UPDATE DONATED_ITEMS SET donationsMade = donationsMade + 1 WHERE donor_id = $1",
+                [donor_id]
+            );
+        }
+
+        // 5. Update requester donation stats
+        const requesterStats = await pool.query(
+            "SELECT * FROM DONATED_ITEMS WHERE donor_id = $1",
+            [requester_id]
+        );
+
+        if (requesterStats.rows.length === 0) {
+            await pool.query(
+                "INSERT INTO DONATED_ITEMS(donor_id, donationsMade, donationsReceived) VALUES($1, 0, 1)",
+                [requester_id]
+            );
+        } else {
+            await pool.query(
+                "UPDATE DONATED_ITEMS SET donationsReceived = donationsReceived + 1 WHERE donor_id = $1",
+                [requester_id]
+            );
+        }
+
+        console.log("Donation stats updated.");
+
+        // 6. Move food to requester, deduct from donor
+        if (donation.sourcetable === "pantry") {
+
+            // Add to requester pantry
+            await pool.query(
+                `INSERT INTO pantry_food(NAME, AMOUNT, EXPIRYDATE, FOODIE_ID, UNITOFMEASURE, PHOTO, PUBLIC_ID)
+                 VALUES($1, $2, $3, $4, $5, $6, $7)`,
+                [
+                    donation.food_name,
+                    donation.amount,
+                    donation.pantry_expiry_date,
+                    requester_id,
+                    donation.unit_of_measure,
+                    donation.food_photo,
+                    donation.photo_public_id
+                ]
+            );
+
+            // Deduct from donor
+            const donorFood = await pool.query(
+                `SELECT amount FROM pantry_food WHERE id = $1`,
+                [donation.pantry_food_id]
+            );
+
+            const newAmount = donorFood.rows[0].amount - donation.amount;
+
+            await pool.query(
+                `UPDATE pantry_food SET amount = $1 WHERE id = $2`,
+                [newAmount, donation.pantry_food_id]
+            );
+
+        } else {
+
+            // Add to requester fridge
+            await pool.query(
+                `INSERT INTO fridge_food(NAME, AMOUNT, UNITOFMEASURE, estimatedshelflife, FOODIE_ID, PHOTO, PUBLIC_ID)
+                 VALUES($1, $2, $3, $4, $5, $6, $7)`,
+                [
+                    donation.food_name,
+                    donation.amount,
+                    donation.unit_of_measure,
+                    donation.estimatedshelflife,
+                    requester_id,
+                    donation.food_photo,
+                    donation.photo_public_id
+                ]
+            );
+
+            // Deduct from donor
+            const donorFood = await pool.query(
+                `SELECT amount FROM fridge_food WHERE id = $1`,
+                [donation.fridge_food_id]
+            );
+
+            const newAmount = donorFood.rows[0].amount - donation.amount;
+
+            await pool.query(
+                `UPDATE fridge_food SET amount = $1 WHERE id = $2`,
+                [newAmount, donation.fridge_food_id]
+            );
+        }
+
+        console.log("Food transferred.");
+
+        // 7. Delete donation request(s)
+        await pool.query(
+            `DELETE FROM DONATION_REQUEST WHERE donation_id = $1`,
+            [donation_id]
+        );
+
+        // 8. Delete actual donation row
+        await pool.query(
+            `DELETE FROM DONATION WHERE donation_id = $1`,
+            [donation_id]
+        );
+
+        console.log("Donation & requests cleared.");
+
+        return res.send({
+            status: "ok",
+            message: "Donation successfully collected and finalised."
+        });
+
+    } catch (err) {
+        console.error("ClaimDonation Error:", err);
+        return res.status(500).send({ status: "error", data: err.message });
+    }
+});
+
+
 // DELETING THE REJECTED REQUEST
 app.post("/rejectRequest", async (req, res) => {
     const request_id = req.body.request_id
@@ -1915,7 +2086,7 @@ app.get("/getRequestsForMe", async (req, res) => {
                 d.amount, 
                 d.quantity,
                 d.sourceTable,
-          
+            
                 -- Pantry and Fridge shared fields
                 COALESCE(fr.name, pa.name) AS food_name,
                 COALESCE(fr.photo, pa.photo) AS food_photo,
@@ -1925,10 +2096,12 @@ app.get("/getRequestsForMe", async (req, res) => {
           
                 -- Pantry-only fields
                 pa.expirydate AS pantry_expiry_date,
+                pa.estimatedshelflife AS pantry_estimatedshelflife,
           
                 -- Fridge-only fields
                 fr.estimatedshelflife AS estimatedshelflife,
-          
+                fr.expirydate AS fridge_expiry_date,
+
                 -- Extra data
                 fr.foodie_id AS fridge_owner_id,
                 pa.foodie_id AS pantry_owner_id,
@@ -1944,7 +2117,8 @@ app.get("/getRequestsForMe", async (req, res) => {
                 p.pickUpDate AS pickup_date,
                 p.pickUpTime AS pickup_time,
           
-                dr.status
+                dr.status,
+                qr_token
           
             FROM DONATION_REQUEST dr
             JOIN FOODIE f ON dr.requester_id = f.id
@@ -2034,7 +2208,7 @@ app.get("/getLatestLocation", async (req, res) => {
         res.status(500).send({ status: "error", data: "Server error" });
     }
 });
-
+/*
 app.post("/finaliseDonation", async (req, res) => {
     const { donor_id, requester_id, donation_id, donation } = req.body; // requester_id is the user who received the donation
     console.log(donation)
@@ -2176,4 +2350,4 @@ app.post("/finaliseDonation", async (req, res) => {
         console.error(err);
         res.status(500).json({ status: "error", message: err.message });
     }
-});
+});*/

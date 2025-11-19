@@ -107,6 +107,8 @@ async function initialiseTables(pool) {
                 STREET VARCHAR(100), 
                 pickUpTime VARCHAR(100),
                 pickUpDate VARCHAR(100),
+                NAME VARCHAR(100),
+                TYPE VARCHAR(100),
                 created_at TIMESTAMPTZ DEFAULT NOW()
             )
         `
@@ -159,6 +161,30 @@ async function initialiseTables(pool) {
         console.log("Location Table Ready")
     }).catch(error => {
         console.error("Something went wrong when creating Location table", error)
+    });
+
+    //SUGGESTED_LOCATIONS
+    await pool.query(
+        `
+            CREATE TABLE IF NOT EXISTS SUGGESTED_LOCATION (
+                ID VARCHAR(100) PRIMARY KEY,
+                latitude double precision,
+                longitude double precision,
+                street VARCHAR(100),
+                CITY VARCHAR(100),
+                PROVINCE VARCHAR(100),
+                COUNTRY VARCHAR(100), 
+                POSTALCODE VARCHAR(100),
+                DISTANCE DOUBLE PRECISION,
+                NAME VARCHAR(100),
+                TYPE VARCHAR(100),
+                FOODIE_ID UUID REFERENCES FOODIE(ID)
+            )
+        `
+    ).then((res) => {
+        console.log("SUGGESTED_LOCATION Table Ready")
+    }).catch(error => {
+        console.error("Something went wrong when creating SUGGESTED_LOCATION table", error)
     });
 
     // NOTIFICATIONS TOKEN

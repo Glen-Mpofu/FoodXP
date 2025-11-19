@@ -1066,6 +1066,212 @@ app.post("/editFridgeFood", async (req, res) => {
     })
 })
 
+// Backend endpoint - add this to your server
+app.post('/getRecommendedPickupLocations', async (req, res) => {
+    try {
+        const id = await getIdFromHeader(req);
+
+        const results = await pool.query(
+            `SELECT LATITUDE, LONGITUDE FROM LOCATION WHERE foodie_id = $1`,
+            [id]
+        );
+
+        if (!results.rows[0]) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'User location not found'
+            });
+        }
+
+        const latitude = results.rows[0].latitude;
+        const longitude = results.rows[0].longitude;
+        const radius = 5000;
+        const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
+        async function getPlaceDetails(placeId) {
+            try {
+                const detailsResponse = await axios.get(
+                    `https://maps.googleapis.com/maps/api/place/details/json`,
+                    {
+                        params: {
+                            place_id: placeId,
+                            fields: 'formatted_address,address_components,name,geometry,rating,user_ratings_total',
+                            key: GOOGLE_API_KEY
+                        }
+                    }
+                );
+                return detailsResponse.data.result;
+            } catch (error) {
+                console.error('Error fetching place details:', error);
+                return null;
+            }
+        }
+
+        function parseAddressComponents(addressComponents) {
+            const addressData = {
+                street: '',
+                city: '',
+                province: '',
+                postalCode: '',
+                country: 'South Africa'
+            };
+            if (!addressComponents) return addressData;
+
+            addressComponents.forEach(component => {
+                const types = component.types;
+                if (types.includes('street_number')) addressData.street = component.long_name + ' ';
+                if (types.includes('route')) addressData.street += component.long_name;
+                if (types.includes('sublocality') || types.includes('locality')) {
+                    if (!addressData.city) addressData.city = component.long_name;
+                }
+                if (types.includes('administrative_area_level_1')) addressData.province = component.long_name;
+                if (types.includes('postal_code')) addressData.postalCode = component.long_name;
+                if (types.includes('country')) addressData.country = component.long_name;
+            });
+
+            addressData.street = addressData.street.trim();
+            return addressData;
+        }
+
+        // Helper to search nearby places
+        async function searchPlaces(type, limit) {
+            const response = await axios.get(
+                `https://maps.googleapis.com/maps/api/place/nearbysearch/json`,
+                {
+                    params: {
+                        location: `${latitude},${longitude}`,
+                        radius,
+                        type,
+                        key: GOOGLE_API_KEY
+                    }
+                }
+            );
+
+            return Promise.all(
+                response.data.results.slice(0, limit).map(async place => {
+                    const details = await getPlaceDetails(place.place_id);
+                    const addressData = details ? parseAddressComponents(details.address_components) : {};
+
+                    return {
+                        id: place.place_id,
+                        name: place.name,
+                        address: details?.formatted_address || place.vicinity,
+                        street: addressData.street || place.vicinity || '',
+                        city: addressData.city || '',
+                        province: addressData.province || '',
+                        postalCode: addressData.postalCode || '',
+                        country: addressData.country || 'South Africa',
+                        type,
+                        latitude: place.geometry.location.lat,
+                        longitude: place.geometry.location.lng,
+                        distance: calculateDistance(
+                            latitude,
+                            longitude,
+                            place.geometry.location.lat,
+                            place.geometry.location.lng
+                        ).toFixed(2),
+                        rating: details?.rating || null,
+                        userRatingsTotal: details?.user_ratings_total || 0
+                    };
+                })
+            );
+        }
+
+        // Get places (adjust limits as desired)
+        const parks = await searchPlaces('park', 3);
+        const malls = await searchPlaces('shopping_mall', 2);
+        const centers = await searchPlaces('community_center', 2);
+
+        // Combine, sort by distance, and take top 3
+        const allLocations = [...parks, ...malls, ...centers]
+            .filter(loc => loc.street)
+            .sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance))
+            .slice(0, 3); // <-- only closest 3
+
+        // Save to SUGGESTED_LOCATION table
+        for (const loc of allLocations) {
+            try {
+                await pool.query(
+                    `
+                    INSERT INTO SUGGESTED_LOCATION (
+                        ID, latitude, longitude, street, CITY, PROVINCE, COUNTRY, POSTALCODE, DISTANCE, NAME, TYPE, FOODIE_ID
+                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+                    ON CONFLICT (ID) DO UPDATE
+                    SET latitude = EXCLUDED.latitude,
+                        longitude = EXCLUDED.longitude,
+                        street = EXCLUDED.street,
+                        city = EXCLUDED.city,
+                        province = EXCLUDED.province,
+                        country = EXCLUDED.country,
+                        postalcode = EXCLUDED.postalcode,
+                        distance = EXCLUDED.distance,
+                        name = EXCLUDED.name,
+                        type = EXCLUDED.type,
+                        foodie_id = EXCLUDED.foodie_id
+                    `,
+                    [
+                        loc.id,
+                        loc.latitude,
+                        loc.longitude,
+                        loc.street,
+                        loc.city,
+                        loc.province,
+                        loc.country,
+                        loc.postalCode,
+                        loc.distance,
+                        loc.name,
+                        loc.type,
+                        id
+                    ]
+                );
+            } catch (error) {
+                console.error(`Failed to save location ${loc.name} (${loc.id})`, error);
+            }
+        }
+        console.log("Saved the suggested locations")
+        res.json({
+            status: 'ok',
+            locations: allLocations,
+            userLocation: { latitude, longitude }
+        });
+
+    } catch (error) {
+        console.error('Error fetching locations:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch recommended locations',
+            error: error.message
+        });
+    }
+});
+
+app.get("/getSuggestedLocations", async (req, res) => {
+    const id = await getIdFromHeader(req)
+
+    const suggestedLocs = await pool.query(
+        `
+            SELECT * 
+            FROM SUGGESTED_LOCATION
+            WHERE FOODIE_ID = $1
+        `, [id]
+    )
+    console.log(suggestedLocs.rows)
+    res.send({ status: "ok", data: suggestedLocs.rows })
+})
+
+// Helper function to calculate distance (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
 /////////////////////////
 app.post("/get-ngos", async (req, res) => {
     try {
@@ -1749,6 +1955,8 @@ app.post("/userLocation", async (req, res) => {
             console.log("User location updated");
         } else {
             console.log("Location change too small, no update");
+            res.send({ status: "none", data: "Location change too small, no update" })
+            return;
         }
 
         res.send({ status: "ok", data: "Location processed" });

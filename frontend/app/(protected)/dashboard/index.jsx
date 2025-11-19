@@ -17,7 +17,7 @@ import { Colors } from "../../../constants/Colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import axios from "axios";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { API_BASE_URL } from "@env";
 import { useFocusEffect } from "@react-navigation/native";
 import { getCurrentLocation } from "../../../components/locantion";
@@ -86,7 +86,12 @@ export default function Dashboard() {
           withCredentials: true,
           headers: { Authorization: `Bearer ${token}` },
         }
-      );
+      ).then(async (res) => {
+        if (res.data.status === "ok") {
+          const sugPickups = await axios.post(`${API_BASE_URL}/getRecommendedPickupLocations`, {}, { headers: { Authorization: `Bearer ${token}` } })
+        }
+      })
+
     } catch (err) {
       // ignore location errors gracefully
       console.warn("userLocation error:", err?.message || err);
@@ -100,7 +105,14 @@ export default function Dashboard() {
       if (!token) return router.replace("/");
       setUserToken(token);
 
-      await Promise.all([loadPantry(token), loadFridge(token), loadSuggestedRecipes(token), userLocation(token)]);
+      await Promise.all(
+        [
+          loadPantry(token),
+          loadFridge(token),
+          loadSuggestedRecipes(token),
+          userLocation(token)
+        ]
+      );
     } catch (err) {
       console.error("loadData error:", err);
     } finally {
@@ -239,9 +251,7 @@ export default function Dashboard() {
         </View>
 
         <View style={styles.headerButtons}>
-          <TouchableOpacity onPress={() => router.push("/dashboard/search")} style={styles.iconButton}>
-            <Ionicons name="search" size={20} color={theme.iconColor} />
-          </TouchableOpacity>
+          <MaterialCommunityIcons name="chef-hat" size={30} color={theme.iconColor} />
         </View>
       </ThemedView>
 

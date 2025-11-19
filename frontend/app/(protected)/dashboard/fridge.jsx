@@ -62,6 +62,10 @@ const Fridge = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showEditDatePicker, setShowEditDatePicker] = useState(false);
   const [editExpiry, setEditExpiry] = useState(new Date());
+
+  const [suggestedLocation, setSuggestedLocation] = useState([])
+  const [selectedLocation, setSelectedLocation] = useState(null);
+
   // Fetch fridge food function
   const fetchFridgeFood = async (token) => {
     try {
@@ -76,6 +80,16 @@ const Fridge = () => {
     }
   };
 
+  const fetchSuggestedLocations = async (token) => {
+    try {
+      const result = await axios.get(`${API_BASE_URL}/getSuggestedLocations`, { headers: { Authorization: `Bearer ${token}` } })
+      setSuggestedLocation(result.data.data || [])
+    } catch (error) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Failed to fetch Suggested Locations", useModal: false });
+    }
+  }
+
   // Initialize token and fetch
   useEffect(() => {
     async function init() {
@@ -84,6 +98,7 @@ const Fridge = () => {
         if (!token) return router.replace("/");
         setUserToken(token);
         fetchFridgeFood(token);
+        fetchSuggestedLocations(token)
       } catch (err) {
         console.error(err);
         Toast.show({ type: "error", text1: "Something went wrong", useModal: false });
@@ -216,20 +231,17 @@ const Fridge = () => {
 
       const result = await axios.post(`${API_BASE_URL}/donate`, {
         items: donationData,
-        street, province, postalCode, city, pickup_id, country, pickupTime, date
+        selectedLocation, pickupTime, date
       }, { headers: { Authorization: `Bearer ${userToken}` } });
 
       if (result.data.status === "ok") {
         Toast.show({ type: "success", text1: "Donation recorded successfully!", useModal: false });
         await AsyncStorage.setItem("refreshFridge", "true");
         setSelectedItems([]);
-        setStreet('');
-        setPostalCode('');
-        setProvince('');
-        setCity('');
+        setSelectedLocation([])
+
         setUsePreviousLocation(false);
         setPickupID(null);
-        setCountry("South Africa");
       } else {
         Toast.show({ type: "error", text1: result.data.data, useModal: false });
       }
@@ -356,7 +368,9 @@ const Fridge = () => {
             </ScrollView>
 
             <View style={{ justifyContent: "center", alignItems: "center", height: 50, marginBottom: 20 }}>
-              <ThemedButton style={[styles.btn, { backgroundColor: "#81c995" }]} onPress={() => setShowDonateModal(true)}>
+              <ThemedButton style={[styles.btn, { backgroundColor: "#81c995" }]} onPress={async () => {
+                setShowDonateModal(true)
+              }}>
                 <ThemedText>Donate Food</ThemedText>
               </ThemedButton>
             </View>
@@ -625,55 +639,44 @@ const Fridge = () => {
             <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
 
               <ThemedText style={styles.modalTitle}>Pickup Location Details</ThemedText>
-              {useCurrentLocation === false && (
-                <ScrollView contentContainerStyle={{ paddingVertical: 10, width: "100%" }}>
-                  <ThemedText>Street Address</ThemedText>
-                  <ThemedTextInput
-                    placeholder="Enter street address"
-                    value={street}
-                    onChangeText={setStreet}
-                    style={styles.input}
-                  />
+              {/* Suggested Locations */}
+              <ScrollView
+                horizontal
+                contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 5 }}
+                showsHorizontalScrollIndicator={false}
+              >
+                {suggestedLocation.length > 0 ? (
+                  suggestedLocation.map((loc) => (
+                    <TouchableOpacity
+                      key={loc.id}
+                      onPress={() => {
+                        setStreet(loc.street);
+                        setCity(loc.city);
+                        setProvince(loc.province);
+                        setCountry(loc.country);
+                        setPostalCode(loc.postalCode);
+                        setSelectedLocation(loc);
+                      }}
+                      style={[
+                        styles.locationCard,
+                        {
+                          backgroundColor:
+                            street === loc.street ? theme.selected : theme.background,
+                        },
+                      ]}
+                    >
+                      <ThemedText style={styles.locationText}>{loc.name} ({loc.type})</ThemedText>
+                      <ThemedText style={styles.locationText}>{loc.street}</ThemedText>
+                      <ThemedText style={styles.locationText}>
+                        {loc.city}, {loc.province}, {loc.postalcode}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <ThemedText>No suggested locations found</ThemedText>
+                )}
+              </ScrollView>
 
-                  <ThemedText style={{ marginTop: 10 }}>City</ThemedText>
-                  <ThemedTextInput
-                    placeholder="Enter city"
-                    value={city}
-                    onChangeText={setCity}
-                    style={styles.input}
-                  />
-
-                  <ThemedText style={{ marginTop: 10 }}>Province</ThemedText>
-                  <ThemedTextInput
-                    placeholder="Enter province"
-                    value={province}
-                    onChangeText={setProvince}
-                    style={styles.input}
-                  />
-
-                  <ThemedText style={{ marginTop: 10 }}>Country</ThemedText>
-                  <ThemedTextInput
-                    placeholder="Enter country"
-                    value={country}
-                    onChangeText={setCountry}
-                    style={styles.input}
-                  />
-
-                  <ThemedText style={{ marginTop: 10 }}>Postal Code</ThemedText>
-
-                  <ThemedTextInput
-                    placeholder="Enter postal code"
-                    keyboardType="numeric"
-                    value={postalCode}
-                    onChangeText={setPostalCode}
-                    style={styles.input}
-                  />
-                </ScrollView>
-              )}
-              <Checkbox
-                checked={usePreviousLocation}
-                onPress={handleUsePreviousLocation}
-              />
               <ThemedText style={{ marginTop: 10, textAlign: "center" }}>Pickup Time</ThemedText>
 
               <TimePicker
@@ -785,5 +788,7 @@ const styles = StyleSheet.create({
   qtyControl: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#aaa", borderRadius: 6, paddingHorizontal: 6 },
   qtyBtn: { fontSize: 20, fontWeight: "bold", color: "#34a853", paddingHorizontal: 6 },
   qtyValue: { fontSize: 16, fontWeight: "bold", marginHorizontal: 4 },
-  input: { width: "100%", margin: 1 }
+  input: { width: "100%", margin: 1 },
+  locationCard: { width: "45%", padding: 10, margin: 4, borderRadius: 5 },
+  locationText: { textAlign: "center" }
 });

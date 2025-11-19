@@ -18,6 +18,7 @@ import { GROQ_API_KEY } from "@env"
 import { Colors } from '../../../constants/Colors';
 import FoodUnits from "../../../components/UnitsOfMeasure"
 import { Picker } from '@react-native-picker/picker';
+import { extractExpiryFromText } from '../../../components/extractExpiry';
 
 const UploadFood = () => {
   const colorScheme = useColorScheme();
@@ -68,7 +69,8 @@ const UploadFood = () => {
     setStorageLocation(null)
     setSelectedUnit("quantity")
     setEstimatedShelfLife(null)
-    setExpiryDate(null)
+
+
     try {
       if (Platform.OS === "web") {
         const input = document.createElement("input");
@@ -124,18 +126,17 @@ const UploadFood = () => {
 
             // ⬅️ Save expiry image separately
             setExpiryScanPhoto(fullDataUrl);
+            const expiry = await sendToOCR(base64Image); // now already ISO string
 
-            const text = await sendToOCR(base64);
-
-            const detected = extractExpiryFromText(text);
-            if (detected) {
-              setExpiryDate(detected);
-              setReviewStep(true);
+            if (expiry && expiry !== "null") {
+              setExpiryDate(expiry);                // ISO string “2024-11-18”
+              setReviewStep(true);                  // <--- THIS NOW SHOWS
               setExpiryScanStep(false);
               Toast.success("Expiry date detected!");
             } else {
               Toast.error("Could not detect expiry date.");
             }
+
           };
 
           reader.readAsDataURL(file);
@@ -167,11 +168,10 @@ const UploadFood = () => {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      const text = await sendToOCR(base64Image);
-      const detected = extractExpiryFromText(text);
+      const expiry = await sendToOCR(base64);
 
-      if (detected) {
-        setExpiryDate(detected);
+      if (expiry && expiry !== "null") {
+        setExpiryDate(expiry);
         setReviewStep(true);
         setExpiryScanStep(false);
         Toast.success("Expiry date detected!");
@@ -179,48 +179,11 @@ const UploadFood = () => {
         Toast.error("Could not detect expiry date.");
       }
 
+
     } catch (error) {
       console.log("scanExpiryImage error:", error);
       Toast.error("Something went wrong.");
     }
-  };
-
-
-  const extractExpiryFromText = (text) => {
-    // Match common expiry date formats:
-    const patterns = [
-      /\b(20\d{2})[-/\.](0[1-9]|1[0-2])[-/\.]([0-2]\d|3[01])\b/,   // 2025-02-18 or 2025/02/18
-      /\b([0-2]\d|3[01])[-/\.](0[1-9]|1[0-2])[-/\.](20\d{2})\b/,   // 18-02-2025
-      /\b(0[1-9]|1[0-2])[-/\.]([0-2]\d|3[01])[-/\.](20\d{2})\b/,   // 02-18-2025
-      /\b(?:EXP|Expiry|Best Before|BB)\s*[:\-]?\s*(\d{2}\/\d{2}\/\d{4})\b/i // EXP 18/02/2025
-    ];
-
-    for (const p of patterns) {
-      const match = text.match(p);
-      if (match) {
-        let cleaned = match[0]
-          .replace("EXP", "")
-          .replace("Expiry", "")
-          .replace("Best Before", "")
-          .trim();
-
-        // Normalize to yyyy-mm-dd
-        const parts = cleaned.split(/[-/\.]/);
-
-        if (parts[0].length === 4) {
-          // yyyy mm dd
-          return `${parts[0]}-${parts[1]}-${parts[2]}`;
-        }
-        if (parts[2].length === 4) {
-          // dd mm yyyy or mm dd yyyy → detect
-          const [a, b, year] = parts;
-          if (a > 12) return `${year}-${b}-${a}`; // dd-mm-yyyy
-          return `${year}-${a}-${b}`; // mm-dd-yyyy
-        }
-      }
-    }
-
-    return null;
   };
 
   const sendToOCR = async (base64Image) => {

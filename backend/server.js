@@ -869,7 +869,7 @@ app.post("/ocrExpiry", async (req, res) => {
         const image = req.body.image;
 
         if (!image) {
-            return res.status(400).json({ error: "No image provided" });
+            return res.json({ error: "No image provided" });
         }
         const prompt = `
             You are an expiry-date extractor. Extract ONLY the expiry / best-before / "use by" date from the supplied text and OUTPUT exactly one value and nothing else.
@@ -953,7 +953,7 @@ app.post("/ocrExpiry", async (req, res) => {
         return res.json({ expiryDate: finalDate });
     } catch (err) {
         console.error("OCR Expiry Error:", err.response?.data || err.message);
-        return res.status(500).json({ error: "Failed to process image" });
+        return res.json({ error: "Failed to process image" });
     }
 });
 

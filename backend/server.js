@@ -71,8 +71,8 @@ app.use(session({
 const port = process.env.PORT ?? 5001
 const pLimit = require("p-limit");
 const { default: reverseGeocode } = require("./reverseGeocode");
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // ------------------------------
 
@@ -365,7 +365,7 @@ app.post("/api/classify", async (req, res) => {
       You are a food recognition AI. Analyze the image and respond ONLY with valid JSON.
         Do NOT include commentary, explanations, or brand names.
 
-        Allowed units of measure are strictly limited to this exact list:
+        Allowed units of measure are limited to this exact list
         ["quantity", "piece", "serving", "portion", "slice", "pack", "can", "bottle", "bag", "jar", 
         "g", "kg", "mg", "oz", "lb", "ml", "L", "tsp", "tbsp", "cup", "pint", "quart", "gallon", 
         "pinch", "dash"]
@@ -376,26 +376,35 @@ app.post("/api/classify", async (req, res) => {
         "apple", "rice", "bread", "tomato"
         No brand names (e.g., “KFC chicken”, “Coca-Cola”, “Kellogg’s cereal”)
 
+        You must also return an estimated shelf life for the fresh produce foods and if it's not a fresh
+        produce return a null in the estimated shelf life e.g. ...{"name": "apple","amount": 1,"unitOfMeasure": "quantity","storageLocation": "fridge",
+        "estimatedShelfLife": "3"} or {"name": "coffee","amount": 100,"unitOfMeasure": "g","storageLocation": "pantry",
+        "estimatedShelfLife": null}
+
+        The estimatedShelfLife should only be in days and if it happens that the item has a shelf life of weeks or months, that value should be converted to 
+        days.
+
         Return JSON using this exact structure:
 
         {
-            "name": "string",                 // generic food name only
-            "amount": number,                 // numeric amount only (no units)
-            "unitOfMeasure": "string",        // one unit selected from the allowed list
-            "storageLocation": "fridge | pantry"
+            "name": "string",
+            "amount": number,
+            "unitOfMeasure": "string",
+            "storageLocation": "fridge | pantry",
+            "estimatedShelfLife": number
         }
 
         Rules:
         - Always return a single JSON object.
-        - Never mention a brand or restaurant.
+        - Never mention any brand name or restaurant.
         - If multiple items appear, identify the main food item.
         - If the exact quantity is unknown:
-            - Estimate using the best-fitting allowed unit.
+            - Estimate using the best fitting allowed unit.
             - Examples: { "amount": 2, "unitOfMeasure": "L" } or { "amount": 500, "unitOfMeasure": "g" }
         - If no reasonable unit can be determined, fall back to:
             { "amount": 1, "unitOfMeasure": "quantity" }
         - "name" must remain simple and generic.
-
+        
       `
         ;
 
@@ -422,7 +431,6 @@ app.post("/api/classify", async (req, res) => {
             }
         }
     );
-    console.log(groqResponse.data.choices[0].message.content)
 
     const rawWithQuotes = groqResponse.data.choices[0].message.content
 
@@ -436,10 +444,9 @@ app.post("/api/classify", async (req, res) => {
     } catch (error) {
         console.error("Failed to parse the message returned by the AI model: " + error)
     }
-
+    console.log(finalJson)
     res.json(finalJson);
 });
-
 
 // session getter
 app.get("/session", async (req, res) => {
@@ -603,10 +610,11 @@ app.post("/savepantryfood", async (req, res) => {
         const pantryFood = {
             name: foodData.name,
             amount: foodData.amount,
-            date: foodData.date,
             photo: foodData.photo,
             unitOfMeasure: foodData.unitOfMeasure,
-            public_id: foodData.public_id
+            public_id: foodData.public_id,
+            estimatedShelfLife: foodData.estimatedShelfLife,
+            expiryDate: foodData.expiryDate
         };
 
         if (!pantryFood.photo) {
@@ -623,10 +631,10 @@ app.post("/savepantryfood", async (req, res) => {
         // --- Save pantry food to DB ---
         const result = await pool.query(
             `
-        INSERT INTO PANTRY_FOOD (NAME, AMOUNT, EXPIRY_DATE, FOODIE_ID, PHOTO, PUBLIC_ID, unitOfMeasure)
-        VALUES ($1, $2, $3, $4, $5, $6, $7);
+        INSERT INTO PANTRY_FOOD (NAME, AMOUNT, expiryDate, FOODIE_ID, PHOTO, PUBLIC_ID, unitOfMeasure, estimatedShelfLife)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
       `,
-            [pantryFood.name, pantryFood.amount, pantryFood.date, foodie.data.id, pantryFood.photo, pantryFood.public_id, pantryFood.unitOfMeasure]
+            [pantryFood.name, pantryFood.amount, pantryFood.expiryDate, foodie.data.id, pantryFood.photo, pantryFood.public_id, pantryFood.unitOfMeasure, pantryFood.estimatedShelfLife]
         );
 
         if (result.rowCount <= 0) {
@@ -819,7 +827,9 @@ app.post("/savefridgefood", async (req, res) => {
             amount: foodData.amount,
             photo: foodData.photo,
             unitOfMeasure: foodData.unitOfMeasure,
-            public_id: foodData.public_id
+            public_id: foodData.public_id,
+            estimatedShelfLife: foodData.estimatedShelfLife,
+            expiryDate: foodData.expiryDate
         }
         if (!fridgeFood.photo) {
             return res.send({ status: "error", data: "No photo sent" })
@@ -831,10 +841,10 @@ app.post("/savefridgefood", async (req, res) => {
 
         await pool.query(
             `
-                INSERT INTO FRIDGE_FOOD (NAME, AMOUNT, ISFRESH, FOODIE_ID, PHOTO, PUBLIC_ID, unitOfMeasure)
-                VALUES($1, $2, $3, $4, $5, $6, $7)
+                INSERT INTO FRIDGE_FOOD (NAME, AMOUNT, estimatedShelfLife, FOODIE_ID, PHOTO, PUBLIC_ID, unitOfMeasure, expiryDate)
+                VALUES($1, $2, $3, $4, $5, $6, $7, $8)
             `,
-            [fridgeFood.name, fridgeFood.amount, true, foodie.data.id, fridgeFood.photo, fridgeFood.public_id, fridgeFood.unitOfMeasure]
+            [fridgeFood.name, fridgeFood.amount, fridgeFood.estimatedShelfLife, foodie.data.id, fridgeFood.photo, fridgeFood.public_id, fridgeFood.unitOfMeasure, fridgeFood.expiryDate]
         ).then((result) => {
             if (result.rowCount != 1) {
                 return res.send({ status: "error", data: "Failed to add the food" })
@@ -849,6 +859,103 @@ app.post("/savefridgefood", async (req, res) => {
         console.log(error)
     }
 })
+
+const GROQ_API_KEY = process.env.GROQ_API_KEY
+const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+const MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+
+app.post("/ocrExpiry", async (req, res) => {
+    try {
+        const image = req.body.image;
+
+        if (!image) {
+            return res.status(400).json({ error: "No image provided" });
+        }
+        const prompt = `
+            You are an expiry-date extractor. Extract ONLY the expiry / best-before / "use by" date from the supplied text and OUTPUT exactly one value and nothing else.
+
+            OUTPUT RULES:
+            - Return exactly ONE token: either a date in ISO format YYYY-MM-DD or the literal null.
+            - No extra words, explanation, punctuation, or whitespace.
+
+            LABEL PRIORITY:
+            - Only treat dates as expiry if they appear with explicit labels, including:
+            EXP, EXP:, Expires, Expires:, Expiry, Best Before, Best-Before, BestBefore, BB, Use By, Use-By, UseBy.
+            - If ANY labeled expiry/best-before/use-by date exists, ignore all other dates.
+
+            DATE FORMATS YOU MUST SUPPORT:
+            - Full-year formats: YYYY-MM-DD, YYYY/MM/DD, YYYY.MM.DD, YYYYMMDD.
+            - Short-year formats: DD-MM-YY, MM-DD-YY, DD/MM/YY, MM/DD/YY, DD.MM.YY, DDMMYY, MMDDYY.
+            - Textual months: 04 SEP 2017, 4 Sep 17, Sep 04 2017.
+            - Allow separators -, /, ., spaces, or none.
+
+            DISAMBIGUATION RULES (CRITICAL):
+            1. Labeled dates ALWAYS override unlabeled ones.
+            2. For 6-digit numbers (NNNNNN):
+            - DEFAULT: interpret as DDMMYY.
+            - Only if DDMMYY is invalid (day > 31 OR month > 12), then try MMDDYY.
+            3. For 8-digit numbers (YYYYMMDD): parse as YYYY-MM-DD.
+            4. Two-digit years:
+            - If YY <= 25 → 20YY
+            - If YY > 25 → 19YY
+            5. If multiple labeled dates exist, output the LATEST valid one.
+            6. If no labeled dates exist, choose the latest valid date among all candidates.
+            7. If no valid expiry-style date exists, output null.
+
+            NORMALIZATION:
+            - Output ONLY the final date in strict ISO format: YYYY-MM-DD.
+
+            Remember: Your final response MUST be exactly one token: either YYYY-MM-DD or null.
+
+        `
+
+        const payload = {
+            model: MODEL,
+            messages: [
+                {
+                    role: "user",
+                    content: [
+                        {
+                            type: "text",
+                            text: prompt
+                        },
+                        {
+                            type: "image_url",
+                            image_url: { url: `data:image/jpeg;base64,${image}` }
+                        }
+                    ]
+                }
+            ],
+            temperature: 0,
+            max_tokens: 20
+        };
+
+        const response = await axios.post(GROQ_URL, payload, {
+            headers: {
+                "Authorization": `Bearer ${GROQ_API_KEY}`,
+                "Content-Type": "application/json"
+            }
+        });
+
+        const result = response.data.choices[0].message.content.trim();
+        console.log(result)
+        let finalDate = null;
+
+        if (result && result !== "null") {
+            const parsed = new Date(result);
+
+            // Ensure it's a valid date
+            if (!isNaN(parsed.getTime())) {
+                finalDate = parsed;
+            }
+        }
+
+        return res.json({ expiryDate: finalDate });
+    } catch (err) {
+        console.error("OCR Expiry Error:", err.response?.data || err.message);
+        return res.status(500).json({ error: "Failed to process image" });
+    }
+});
 
 // Route
 app.get("/getfridgefood", async (req, res) => {
@@ -1074,6 +1181,7 @@ async function axiosWithRetry(url, options = {}, delay = 5000) {
         }
     }
 }
+
 cron.schedule("* * * * *", async () => {
     try {
         await sendUpcomingDonationNotifications();
@@ -1159,7 +1267,6 @@ AND
         }
     }
 }
-
 
 //recipes from themealdb
 app.get("/get-recipes", async (req, res) => {
@@ -1704,10 +1811,10 @@ app.get("/getRequestsForMe", async (req, res) => {
                 COALESCE(fr.unitOfMeasure, pa.unitOfMeasure) AS unit_of_measure,
           
                 -- Pantry-only fields
-                pa.expiry_date AS pantry_expiry_date,
+                pa.expirydate AS pantry_expiry_date,
           
                 -- Fridge-only fields
-                fr.isFresh AS fridge_is_fresh,
+                fr.estimatedshelflife AS estimatedshelflife,
           
                 -- Extra data
                 fr.foodie_id AS fridge_owner_id,
@@ -1908,9 +2015,9 @@ app.post("/finaliseDonation", async (req, res) => {
         } else {
             await pool.query(
                 `
-                    INSERT INTO fridge_food(NAME, AMOUNT, UNITOFMEASURE, ISFRESH, FOODIE_ID, PHOTO, PUBLIC_ID)
+                    INSERT INTO fridge_food(NAME, AMOUNT, UNITOFMEASURE, estimatedshelflife, FOODIE_ID, PHOTO, PUBLIC_ID)
                     VALUES($1, $2, $3, $4, $5, $6, $7)
-                `, [donation.food_name, donation.amount, donation.unit_of_measure, donation.fridge_is_fresh, requester_id, donation.food_photo, donation.photo_public_id]
+                `, [donation.food_name, donation.amount, donation.unit_of_measure, donation.estimatedshelflife, requester_id, donation.food_photo, donation.photo_public_id]
             ).then(async (res) => {
                 if (res.rowCount >= 1) {
                     console.log("New Fridge Food Added")

@@ -113,6 +113,24 @@ export default function DashboardLayout() {
         }}
       />
       <Drawer.Screen
+        name="expiryCameraScreen"
+        options={{
+          drawerLabel: "Expiry Camera",
+          title: "Capture Expiry Date",
+          drawerItemStyle: { display: "none" },
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="ExpiryCameraScreen"
+        options={{
+          drawerLabel: "Expiry Camera",
+          title: "Capture Expiry Date",
+          drawerItemStyle: { display: "none" },
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
         name="uploadscreen"
         options={{
           drawerLabel: "Upload",

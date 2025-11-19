@@ -21,7 +21,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getCurrentLocation } from '../../../components/locantion';
 import { RefreshControl } from "react-native";
 
-const DonateMap = () => {
+const DonateHub = () => {
   const [userToken, setUserToken] = useState(null);
   const [availableDonations, setAvailableDonations] = useState([]);
   const [myRequests, setMyRequests] = useState([]);
@@ -184,7 +184,7 @@ const DonateMap = () => {
     );
   };
 
-  // Inside DonateMap component
+  // Inside DonateHub component
   const rejectRequest = async (request) => {
     try {
       await axios.post(
@@ -428,7 +428,7 @@ const DonateMap = () => {
   );
 };
 
-export default DonateMap;
+export default DonateHub;
 
 const styles = StyleSheet.create({
   container: { flex: 1, width: "100%" },

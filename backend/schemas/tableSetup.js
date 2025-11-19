@@ -23,8 +23,9 @@ async function initialiseTables(pool) {
             id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
             name VARCHAR(20) NOT NULL,
             amount DOUBLE PRECISION DEFAULT 1,
-            expiry_date DATE,
+            expiryDate DATE,
             unitOfMeasure VARCHAR(10),
+            estimatedShelfLife INT, 
             foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
             photo VARCHAR(150),
             public_id VARCHAR(100) NOT NULL 
@@ -43,10 +44,12 @@ async function initialiseTables(pool) {
             name VARCHAR(20) NOT NULL,
             amount DOUBLE PRECISION DEFAULT 1,
             unitOfMeasure VARCHAR(10),
-            isFresh BOOLEAN, 
+            estimatedShelfLife INT, 
+            expiryDate DATE,
             foodie_id UUID REFERENCES FOODIE(id) ON DELETE CASCADE,
             photo VARCHAR(150),
-            public_id VARCHAR(100) NOT NULL
+            public_id VARCHAR(100) NOT NULL,
+            date_entered TIMESTAMPTZ DEFAULT NOW()
         );
     `).then((res) => {
         console.log("Fridge_Food Table Ready")

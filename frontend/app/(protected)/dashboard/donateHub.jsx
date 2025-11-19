@@ -489,11 +489,7 @@ const DonateHub = () => {
           >
             <View style={styles.overlay}>
               <View style={styles.scanBox} />
-              <MaterialCommunityIcons
-                name="camera"
-                size={50}
-                color={theme.iconColor}
-              />
+
             </View>
           </CameraView>
         ) : (

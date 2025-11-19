@@ -18,7 +18,6 @@ import { GROQ_API_KEY } from "@env"
 import { Colors } from '../../../constants/Colors';
 import FoodUnits from "../../../components/UnitsOfMeasure"
 import { Picker } from '@react-native-picker/picker';
-import { extractExpiryFromText } from '../../../components/extractExpiry';
 
 const UploadFood = () => {
   const colorScheme = useColorScheme();
@@ -69,8 +68,7 @@ const UploadFood = () => {
     setStorageLocation(null)
     setSelectedUnit("quantity")
     setEstimatedShelfLife(null)
-
-
+    setExpiryDate(null)
     try {
       if (Platform.OS === "web") {
         const input = document.createElement("input");
@@ -117,72 +115,66 @@ const UploadFood = () => {
           if (!file) return;
 
           const reader = new FileReader();
-
           reader.onloadend = async () => {
             const fullDataUrl = reader.result;
             const base64 = fullDataUrl.split(",")[1];
-
-            base64Image = base64;
-
-            // ⬅️ Save expiry image separately
             setExpiryScanPhoto(fullDataUrl);
-            const expiry = await sendToOCR(base64Image); // now already ISO string
 
-            if (expiry && expiry !== "null") {
-              setExpiryDate(expiry);                // ISO string “2024-11-18”
-              setReviewStep(true);                  // <--- THIS NOW SHOWS
-              setExpiryScanStep(false);
+            const detected = await sendToOCR(base64);
+
+            if (detected) {
+              setExpiryDate(detected); // store ISO string
+              setDate(new Date(detected));
               Toast.success("Expiry date detected!");
             } else {
-              Toast.error("Could not detect expiry date.");
+              setExpiryDate(null);
+              setDate(new Date());
+              Toast.error("Could not detect expiry date. Please enter manually.");
             }
-
           };
-
           reader.readAsDataURL(file);
         };
-
         input.click();
         return;
       }
 
       // ---------- MOBILE ----------
       await ImagePicker.requestMediaLibraryPermissionsAsync();
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 1,
-        base64: false,
       });
-
       if (result.canceled) return;
 
       const uri = result.assets[0].uri;
-
-      // ⬅️ Save expiry image separately
       setExpiryScanPhoto(uri);
 
       base64Image = await FileSystem.readAsStringAsync(uri, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      const expiry = await sendToOCR(base64);
+      const detected = await sendToOCR(base64Image);
 
-      if (expiry && expiry !== "null") {
-        setExpiryDate(expiry);
-        setReviewStep(true);
-        setExpiryScanStep(false);
+      if (detected) {
+        setExpiryDate(detected); // store ISO string
+        setDate(new Date(detected));
         Toast.success("Expiry date detected!");
       } else {
-        Toast.error("Could not detect expiry date.");
+        setExpiryDate(null);
+        setDate(new Date());
+        Toast.error("Could not detect expiry date. Please enter manually.");
       }
+
+      setExpiryScanStep(false);
+      setReviewStep(true);
     } catch (error) {
       console.log("scanExpiryImage error:", error);
       Toast.error("Something went wrong.");
     }
   };
+
 
   const sendToOCR = async (base64Image) => {
     try {
@@ -263,15 +255,9 @@ const UploadFood = () => {
       return; // <-- STOP execution
     }
 
-    let finalExpiryDate = expiryDate;
-
-    if (estimatedShelfLife != null && estimatedShelfLife !== "") {
-      const today = new Date();
-
-      const newDate = new Date(today);
-      newDate.setDate(today.getDate() + Number(estimatedShelfLife));
-
-      finalExpiryDate = newDate;
+    if (!date && storagelocation === "pantry") {
+      Toast.show({ type: "error", text1: "Please select expiration date" });
+      return; // <-- STOP execution
     }
 
     //uploading the image to cloudinary 
@@ -283,7 +269,7 @@ const UploadFood = () => {
       photo: url,
       public_id: public_id,
       token: userToken,
-      expiryDate: finalExpiryDate,
+      ...(storagelocation === "pantry" && { date }),
       unitOfMeasure: selectedUnit,
       estimatedShelfLife
     }

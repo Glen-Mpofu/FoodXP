@@ -1192,7 +1192,7 @@ app.get("/getSuggestedRecipes", async (req, res) => {
                 ${formattedIngredients}
                 
                 Each recipe MUST follow this exact structure:
-                Only include the ingredients provide to come up with the meals. No extra ingredients
+                Only include the ingredients provide to come up with the meals. No extra ingredients. Only 3 Recipes
                 [
                 {
                     "name": "string",

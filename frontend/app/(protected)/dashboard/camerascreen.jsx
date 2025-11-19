@@ -9,6 +9,7 @@ import * as ImagePicker from "expo-image-picker"
 import * as FileSystem from "expo-file-system/legacy";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import { ActivityIndicator } from "react-native";
 
 //themed components 
 import ThemedButton from "../../../components/ThemedButton"
@@ -42,6 +43,7 @@ export default function CameraScreen() {
   const [enableTorch, setEnableTorch] = useState(false);
   const [torchIcon, setTorchIcon] = useState("flash-off")
   const expiryCameraRef = useRef(null);
+  const [loading, setLoading] = useState(false);
 
   //only renders the camera when the camera screen is open
   const isFocused = useIsFocused();
@@ -142,6 +144,7 @@ export default function CameraScreen() {
 
   const scanExpiryImage = async (uri) => {
     try {
+      setLoading(true);
       const base64Img = await FileSystem.readAsStringAsync(uri, { encoding: "base64" });
 
       const response = await axios.post(`${API_BASE_URL}/ocrExpiry`, {
@@ -167,6 +170,8 @@ export default function CameraScreen() {
       setExpiryDate(new Date());;
       setExpiryScanStep(false);
       setReviewStep(true);
+    } finally {
+      setLoading(false); // stop loading
     }
   };
 
@@ -333,6 +338,7 @@ export default function CameraScreen() {
     }
 
     try {
+      setLoading(true);
       // Convert image → base64
       const base64Img = await FileSystem.readAsStringAsync(photoUri, {
         encoding: "base64",
@@ -352,6 +358,8 @@ export default function CameraScreen() {
     } catch (error) {
       console.log("Groq LLM Error:", error.response?.data || error);
       Toast.show({ type: "error", text1: "Image analysis failed" });
+    } finally {
+      setLoading(false); // stop loading
     }
   };
 
@@ -533,6 +541,13 @@ export default function CameraScreen() {
             )}
 
           </ThemedView>
+
+          {loading && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color={theme.camera} />
+              <ThemedText style={{ marginTop: 10 }}>Processing...</ThemedText>
+            </View>
+          )}
         </Modal>
       )}
 
@@ -605,4 +620,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "rgba(0,0,0,0.1)"
   },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  },
+
 });

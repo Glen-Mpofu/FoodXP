@@ -457,7 +457,8 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    elevation: 3,
+    margin: 3
   },
   img: {
     height: 80,
@@ -485,6 +486,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000",
     shadowOpacity: 0.06,
     elevation: 3,
+    margin: 3
   },
   emptyCard: {
     width: 120,
@@ -542,6 +544,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowOffset: { width: 0, height: 4 },
     elevation: 3,
+    margin: 3
   },
   suggestedTitle: {
     fontSize: 15,

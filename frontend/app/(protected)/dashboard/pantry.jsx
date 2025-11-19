@@ -65,6 +65,9 @@ const Pantry = () => {
   const [date, setDate] = useState(new Date()); // ✅ Initialize with current date
   const [show, setShow] = useState(false);
   const [pickup_id, setPickupID] = useState(null)
+
+  const [suggestedLocation, setSuggestedLocation] = useState([])
+  const [selectedLocation, setSelectedLocation] = useState(null);
   // Fetch pantry food
   const fetchPantryFood = async (token) => {
     try {
@@ -83,6 +86,16 @@ const Pantry = () => {
     }
   };
 
+  const fetchSuggestedLocations = async (token) => {
+    try {
+      const result = await axios.get(`${API_BASE_URL}/getSuggestedLocations`, { headers: { Authorization: `Bearer ${token}` } })
+      setSuggestedLocation(result.data.data || [])
+    } catch (error) {
+      console.error(err);
+      Toast.show({ type: "error", text1: "Failed to fetch Suggested Locations", useModal: false });
+    }
+  }
+
   useEffect(() => {
     async function init() {
       try {
@@ -93,6 +106,7 @@ const Pantry = () => {
         }
         setUserToken(token);
         fetchPantryFood(token);
+        fetchSuggestedLocations(token);
 
       } catch (err) {
         console.error(err);
@@ -274,12 +288,7 @@ const Pantry = () => {
         `${API_BASE_URL}/donate`,
         {
           items: donationData,
-          street,
-          province,
-          postalCode,
-          city,
-          pickup_id,
-          country,
+          selectedLocation,
           pickupTime,
           date
         },
@@ -674,53 +683,44 @@ const Pantry = () => {
             <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
 
               <ThemedText style={styles.modalTitle}>Pickup Location Details</ThemedText>
-              <ScrollView contentContainerStyle={{ paddingVertical: 10, width: "100%" }}>
-                <ThemedText>Street Address</ThemedText>
-                <ThemedTextInput
-                  placeholder="Enter street address"
-                  value={street}
-                  onChangeText={setStreet}
-                  style={styles.input}
-                />
-
-                <ThemedText style={{ marginTop: 10 }}>City</ThemedText>
-                <ThemedTextInput
-                  placeholder="Enter city"
-                  value={city}
-                  onChangeText={setCity}
-                  style={styles.input}
-                />
-
-                <ThemedText style={{ marginTop: 10 }}>Province</ThemedText>
-                <ThemedTextInput
-                  placeholder="Enter province"
-                  value={province}
-                  onChangeText={setProvince}
-                  style={styles.input}
-                />
-
-                <ThemedText style={{ marginTop: 10 }}>Country</ThemedText>
-                <ThemedTextInput
-                  placeholder="Enter country"
-                  value={country}
-                  onChangeText={setCountry}
-                  style={styles.input}
-                />
-
-                <ThemedText style={{ marginTop: 10 }}>Postal Code</ThemedText>
-
-                <ThemedTextInput
-                  placeholder="Enter postal code"
-                  keyboardType="numeric"
-                  value={postalCode}
-                  onChangeText={setPostalCode}
-                  style={styles.input}
-                />
+              {/* Suggested Locations */}
+              <ScrollView
+                horizontal
+                contentContainerStyle={{ paddingVertical: 10, paddingHorizontal: 5 }}
+                showsHorizontalScrollIndicator={false}
+              >
+                {suggestedLocation.length > 0 ? (
+                  suggestedLocation.map((loc) => (
+                    <TouchableOpacity
+                      key={loc.id}
+                      onPress={() => {
+                        setStreet(loc.street);
+                        setCity(loc.city);
+                        setProvince(loc.province);
+                        setCountry(loc.country);
+                        setPostalCode(loc.postalCode);
+                        setSelectedLocation(loc);
+                      }}
+                      style={[
+                        styles.locationCard,
+                        {
+                          backgroundColor:
+                            street === loc.street ? theme.selected : theme.background,
+                        },
+                      ]}
+                    >
+                      <ThemedText style={styles.locationText}>{loc.name} ({loc.type})</ThemedText>
+                      <ThemedText style={styles.locationText}>{loc.street}</ThemedText>
+                      <ThemedText style={styles.locationText}>
+                        {loc.city}, {loc.province}, {loc.postalcode}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <ThemedText>No suggested locations found</ThemedText>
+                )}
               </ScrollView>
-              <Checkbox
-                checked={usePreviousLocation}
-                onPress={handleUsePreviousLocation}
-              />
+
               <ThemedText style={{ marginTop: 10, textAlign: "center" }}>Pickup Time</ThemedText>
 
               <TimePicker
@@ -782,7 +782,7 @@ const Pantry = () => {
                     }
                     setUsePreviousLocation(false)
                     // Manual address mode
-                    if (!street || !province || !postalCode || !city || !pickupTime) {
+                    if (!date || !selectedLocation || !pickupTime) {
                       Toast.show({ type: "info", text1: "Please fill in all details", useModal: false });
                       return;
                     }
@@ -851,4 +851,6 @@ const styles = StyleSheet.create({
   dateBox: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 15, width: '100%', alignItems: 'center', marginBottom: 10 },
   input: { width: "100%", margin: 1 },
   dateText: { fontSize: 16, color: '#333' },
+  locationCard: { width: "45%", padding: 10, margin: 4, borderRadius: 5 },
+  locationText: { textAlign: "center" }
 });

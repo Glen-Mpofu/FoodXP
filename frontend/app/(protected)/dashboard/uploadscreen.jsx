@@ -1,4 +1,4 @@
-import { Image, Modal, Platform, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native'
+import { ActivityIndicator, Image, Modal, Platform, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native'
 import React, { useEffect, useState } from 'react'
 import ThemedView from '../../../components/ThemedView'
 import ThemedText from '../../../components/ThemedText'
@@ -37,6 +37,7 @@ const UploadFood = () => {
   const [expiryDate, setExpiryDate] = useState(null);
   const [reviewStep, setReviewStep] = useState(false);
 
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -103,6 +104,7 @@ const UploadFood = () => {
   const scanExpiryImage = async () => {
     try {
       let base64Image = null;
+      setLoading(true)
 
       // ---------- WEB ----------
       if (Platform.OS === "web") {
@@ -172,6 +174,8 @@ const UploadFood = () => {
     } catch (error) {
       console.log("scanExpiryImage error:", error);
       Toast.error("Something went wrong.");
+    } finally {
+      setLoading(false)
     }
   };
 
@@ -229,6 +233,7 @@ const UploadFood = () => {
     }
 
     try {
+      setLoading(true);
       const response = await axios.post(`${API_BASE_URL}/api/classify`, {
         image: photoData,
       });
@@ -241,67 +246,85 @@ const UploadFood = () => {
     } catch (error) {
       console.log("Groq LLM Error:", error.response?.data || error);
       Toast.show({ type: "error", text1: "Image analysis failed" });
+    } finally {
+      setLoading(false); // stop loading
     }
   };
 
   const saveFood = async () => {
-    if (!name.trim()) {
-      Toast.show({ type: "error", text1: "Please enter the food's name" });
-      return; // <-- STOP execution
-    }
+    try {
+      if (!name.trim()) {
+        Toast.show({ type: "error", text1: "Please enter the food's name" });
+        return; // <-- STOP execution
+      }
 
-    if (!amount) {
-      Toast.show({ type: "error", text1: "Please enter the food's amount" });
-      return; // <-- STOP execution
-    }
+      if (!amount) {
+        Toast.show({ type: "error", text1: "Please enter the food's amount" });
+        return; // <-- STOP execution
+      }
 
-    if (!date && storagelocation === "pantry") {
-      Toast.show({ type: "error", text1: "Please select expiration date" });
-      return; // <-- STOP execution
-    }
+      setLoading(true)
 
-    //uploading the image to cloudinary 
-    const { url: url, public_id: public_id } = await uploadToCloudinary(photo)
-    console.log(selectedUnit)
-    const foodData = {
-      name: name.trim(),
-      amount: amount,
-      photo: url,
-      public_id: public_id,
-      token: userToken,
-      ...(storagelocation === "pantry" && { date }),
-      unitOfMeasure: selectedUnit,
-      estimatedShelfLife
-    }
+      //uploading the image to cloudinary 
+      const { url: url, public_id: public_id } = await uploadToCloudinary(photo)
 
-    await axios.post(`${API_BASE_URL}/save${storagelocation}food`, { foodData })
-      .then(async (res) => {
-        if (res.data.status === "ok") {
-          await AsyncStorage.setItem("refreshRecipes", "true");
-          if (storagelocation === "pantry") {
-            await AsyncStorage.setItem("refreshPantry", "true");
+      let finalExpiryDate = expiryDate;
+
+      if (estimatedShelfLife != null && estimatedShelfLife !== "") {
+        const today = new Date();
+
+        const newDate = new Date(today);
+        newDate.setDate(today.getDate() + Number(estimatedShelfLife));
+
+        finalExpiryDate = newDate;
+      }
+
+      console.log(selectedUnit)
+      const foodData = {
+        name: name.trim(),
+        amount: amount,
+        photo: url,
+        public_id: public_id,
+        token: userToken,
+        expiryDate: finalExpiryDate,
+        unitOfMeasure: selectedUnit,
+        estimatedShelfLife
+      }
+
+      await axios.post(`${API_BASE_URL}/save${storagelocation}food`, { foodData })
+        .then(async (res) => {
+          if (res.data.status === "ok") {
+            await AsyncStorage.setItem("refreshRecipes", "true");
+            if (storagelocation === "pantry") {
+              await AsyncStorage.setItem("refreshPantry", "true");
+            } else {
+              await AsyncStorage.setItem("refreshFridge", "true");
+            }
+            Toast.show({ type: "success", text1: res.data.data, })
+
+            onAmountChange("")
+            onNameChange("")
+            setStorageLocation(null)
+            setSelectedUnit("quantity")
+            setEstimatedShelfLife(null)
+            setExpiryDate(null)
+            setPhoto(null);
+            setReviewStep(false);
+            setExpiryScanStep(false);
+            setExpiryScanPhoto(null)
           } else {
-            await AsyncStorage.setItem("refreshFridge", "true");
+            Toast.show({ type: "error", text1: res.data.data, })
           }
-          Toast.show({ type: "success", text1: res.data.data, })
-
-          onAmountChange("")
-          onNameChange("")
-          setStorageLocation(null)
-          setSelectedUnit("quantity")
-          setEstimatedShelfLife(null)
-          setExpiryDate(null)
-          setPhoto(null);
-          setReviewStep(false);
-          setExpiryScanStep(false);
-          setExpiryScanPhoto(null)
-        } else {
-          Toast.show({ type: "error", text1: res.data.data, })
-        }
-      }).catch(err => {
-        console.error("Something went wrong", err)
-        Toast.show({ type: "error", text1: "Something went wrong", useModal: false })
-      })
+        }).catch(err => {
+          console.error("Something went wrong", err)
+          Toast.show({ type: "error", text1: "Something went wrong", useModal: false })
+        })
+    } catch (error) {
+      console.error("Something went wrong", err)
+      Toast.show({ type: "error", text1: "Something went wrong", useModal: false })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -456,6 +479,12 @@ const UploadFood = () => {
             )}
 
           </ThemedView>
+          {loading && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color={theme.camera} />
+              <ThemedText style={{ marginTop: 10 }}>Processing...</ThemedText>
+            </View>
+          )}
         </Modal>
       )}
     </ThemedView>
@@ -470,4 +499,15 @@ const styles = StyleSheet.create({
   uploadContainer: { width: "100%", justifyContent: "center", alignItems: "center", borderRadius: 90 },
   modal: { flex: 1, width: "100%" },
   imagePreview: { width: 300, height: 300, borderRadius: 10, marginVertical: 10 },
+  loadingOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  },
 })

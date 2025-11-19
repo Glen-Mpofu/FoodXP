@@ -10,8 +10,11 @@ import { API_BASE_URL } from "@env"
 import axios from 'axios';
 import ThemedButton from '../../../components/ThemedButton';
 import { Toast } from 'toastify-react-native';
+import { RefreshControl } from 'react-native';
 
 const Recipes = () => {
+  const [refreshing, setRefreshing] = useState(false);
+
   const colorScheme = useColorScheme();
   const theme = Colors[colorScheme] ?? Colors.light;
 
@@ -34,6 +37,24 @@ const Recipes = () => {
   for (let i = 0; i < recipes.length; i += itemsPerRow) {
     rows.push(recipes.slice(i, i + itemsPerRow));
   }
+
+  const onRefresh = async () => {
+    if (!userToken) return;
+
+    setRefreshing(true);
+    try {
+      // Reload suggested recipes
+      await loadSuggestedRecipes(userToken);
+
+      // Reload pantry and fridge foods (optional)
+      await loadPantry(userToken);
+      await loadFridge(userToken);
+    } catch (err) {
+      console.error("Refresh failed:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -117,154 +138,162 @@ const Recipes = () => {
 
 
   return (
-    <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground, width: screenWidth }]}>
-      <ThemedButton style={styles.btn} onPress={openFoodModal}>
-        <ThemedText>Generate Recipes</ThemedText>
-      </ThemedButton>
-      <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ padding: 10, flexGrow: 1 }}>
+    <ScrollView
+      style={{ width: screenWidth, backgroundColor: theme.uiBackground }}
+      contentContainerStyle={{ padding: 10, flexGrow: 1 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
+      <ThemedView style={[styles.container, { backgroundColor: theme.uiBackground, width: screenWidth }]}>
+        <ThemedButton style={styles.btn} onPress={openFoodModal}>
+          <ThemedText>Generate Recipes</ThemedText>
+        </ThemedButton>
+        <ScrollView style={{ width: screenWidth }} contentContainerStyle={{ padding: 10, flexGrow: 1 }}>
 
-        {/* --- AI Recipes --- */}
-        {aiRecipes.length > 0 ? (
-          <View style={{ marginVertical: 20, width: "100%" }}>
-            <ThemedText style={styles.heading}>
-              AI-Generated Recipes
-            </ThemedText>
-            {aiRecipes.map((recipe, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.foodItem,
-                  { backgroundColor: theme.background, marginBottom: 20 } // add spacing between cards
-                ]}
-              >
-                <ThemedText style={{ fontSize: 20, fontWeight: "bold", marginBottom: 8, textAlign: "center" }}>
-                  {recipe.name}
-                </ThemedText>
-                <ThemedText style={{ fontStyle: "italic", marginBottom: 12, textAlign: "center" }}>
-                  {recipe.description}
-                </ThemedText>
-
-                {/* Instructions */}
-                <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.background, marginBottom: 10 }}>
-                  <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Instructions:</ThemedText>
-                  {recipe.instructions.map((step, i) => (
-                    <ThemedText style={{ textAlign: "center", marginBottom: 4 }} key={i}>
-                      {i + 1}) {step}
-                    </ThemedText>
-                  ))}
-                </View>
-
-                {/* Ingredients */}
-                <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.navBackground }}>
-                  <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Ingredients:</ThemedText>
-                  {recipe.ingredients.map((ing, i) => (
-                    <ThemedText style={{ textAlign: "center", marginBottom: 2 }} key={i}>
-                      • {ing.ingredient} ({ing.measure})
-                    </ThemedText>
-                  ))}
-                </View>
-
-                <ThemedText style={{ marginTop: 8, textAlign: "center" }}>
-                  ⏱ {recipe.time} | ⚡ {recipe.difficulty}
-                </ThemedText>
-              </View>
-            ))}
-          </View>
-        ) : (
-          <ThemedView style={styles.emptyContainer}>
-            <ThemedText style={styles.eHeading}>
-              Click Generate Recipes and Select Food Items to get recipes using.
-            </ThemedText>
-          </ThemedView>
-        )}
-
-        {/* --- Suggested Recipes --- */}
-        {suggestedRecipes.length > 0 && (
-          <View style={{ marginVertical: 20, width: "100%" }}>
-            <ThemedText style={styles.heading}>
-              Suggested Recipes (Based on Your Pantry & Fridge)
-            </ThemedText>
-
-            {suggestedRecipes.map((recipe, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.foodItem,
-                  { backgroundColor: theme.background, marginBottom: 20 }
-                ]}
-              >
-                <ThemedText style={{ fontSize: 20, fontWeight: "bold", marginBottom: 8, textAlign: "center" }}>
-                  {recipe.name}
-                </ThemedText>
-
-                <ThemedText style={{ fontStyle: "italic", marginBottom: 12, textAlign: "center" }}>
-                  {recipe.description}
-                </ThemedText>
-
-                {/* Instructions */}
-                <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.background, marginBottom: 10 }}>
-                  <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Instructions:</ThemedText>
-                  {recipe.instructions.map((step, i) => (
-                    <ThemedText key={i} style={{ textAlign: "center", marginBottom: 4 }}>
-                      {i + 1}) {step}
-                    </ThemedText>
-                  ))}
-                </View>
-
-                {/* Ingredients */}
-                <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.navBackground }}>
-                  <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Ingredients:</ThemedText>
-                  {recipe.ingredients.map((ing, i) => (
-                    <ThemedText key={i} style={{ textAlign: "center", marginBottom: 2 }}>
-                      • {ing.ingredient} ({ing.measure})
-                    </ThemedText>
-                  ))}
-                </View>
-
-                <ThemedText style={{ marginTop: 8, textAlign: "center" }}>
-                  ⏱ {recipe.time} | ⚡ {recipe.difficulty}
-                </ThemedText>
-              </View>
-            ))}
-          </View>
-        )}
-
-      </ScrollView>
-
-      {/* --- Modal --- */}
-      <Modal animationType="slide" transparent={true} visible={showFoodModal} onRequestClose={() => setShowFoodModal(false)}>
-        <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
-            <ThemedText style={{ fontSize: 20, marginBottom: 10, alignSelf: "center" }}>Select Ingredients</ThemedText>
-
-            <ScrollView style={{ width: "100%" }}>
-              {[...fridgeFood, ...pantryFood].map((item, index) => (
-                <TouchableOpacity
+          {/* --- AI Recipes --- */}
+          {aiRecipes.length > 0 ? (
+            <View style={{ marginVertical: 20, width: "100%" }}>
+              <ThemedText style={styles.heading}>
+                AI-Generated Recipes
+              </ThemedText>
+              {aiRecipes.map((recipe, index) => (
+                <View
                   key={index}
-                  style={[styles.foodRow, { backgroundColor: theme.cardColor }, selectedFoods.some(f => f.id === item.id) && { backgroundColor: theme.selected, borderWidth: 2, borderColor: "#34c759" }]}
-                  onPress={() => toggleSelect(item)}
+                  style={[
+                    styles.foodItem,
+                    { backgroundColor: theme.background, marginBottom: 20 } // add spacing between cards
+                  ]}
                 >
-                  <Image source={{ uri: item.photo }} style={styles.foodImage} />
-                  <View style={{ marginLeft: 10 }}>
-                    <ThemedText style={styles.foodName}>{item.name}</ThemedText>
-                    <ThemedText>{item.amount} ({item.unitofmeasure})</ThemedText>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  <ThemedText style={{ fontSize: 20, fontWeight: "bold", marginBottom: 8, textAlign: "center" }}>
+                    {recipe.name}
+                  </ThemedText>
+                  <ThemedText style={{ fontStyle: "italic", marginBottom: 12, textAlign: "center" }}>
+                    {recipe.description}
+                  </ThemedText>
 
-            <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 10, width: "100%" }}>
-              <ThemedButton style={{ margin: 10 }} onPress={generateRecipes}>
-                <ThemedText>Generate Recipes</ThemedText>
-              </ThemedButton>
-              <ThemedButton style={{ margin: 10 }} onPress={() => setShowFoodModal(false)}>
-                <ThemedText>Close</ThemedText>
-              </ThemedButton>
+                  {/* Instructions */}
+                  <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.background, marginBottom: 10 }}>
+                    <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Instructions:</ThemedText>
+                    {recipe.instructions.map((step, i) => (
+                      <ThemedText style={{ textAlign: "center", marginBottom: 4 }} key={i}>
+                        {i + 1}) {step}
+                      </ThemedText>
+                    ))}
+                  </View>
+
+                  {/* Ingredients */}
+                  <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.navBackground }}>
+                    <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Ingredients:</ThemedText>
+                    {recipe.ingredients.map((ing, i) => (
+                      <ThemedText style={{ textAlign: "center", marginBottom: 2 }} key={i}>
+                        • {ing.ingredient} ({ing.measure})
+                      </ThemedText>
+                    ))}
+                  </View>
+
+                  <ThemedText style={{ marginTop: 8, textAlign: "center" }}>
+                    ⏱ {recipe.time} | ⚡ {recipe.difficulty}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <ThemedView style={styles.emptyContainer}>
+              <ThemedText style={styles.eHeading}>
+                Click Generate Recipes and Select Food Items to get recipes using.
+              </ThemedText>
+            </ThemedView>
+          )}
+
+          {/* --- Suggested Recipes --- */}
+          {suggestedRecipes.length > 0 && (
+            <View style={{ marginVertical: 20, width: "100%" }}>
+              <ThemedText style={styles.heading}>
+                Suggested Recipes (Based on Your Pantry & Fridge)
+              </ThemedText>
+
+              {suggestedRecipes.map((recipe, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.foodItem,
+                    { backgroundColor: theme.background, marginBottom: 20 }
+                  ]}
+                >
+                  <ThemedText style={{ fontSize: 20, fontWeight: "bold", marginBottom: 8, textAlign: "center" }}>
+                    {recipe.name}
+                  </ThemedText>
+
+                  <ThemedText style={{ fontStyle: "italic", marginBottom: 12, textAlign: "center" }}>
+                    {recipe.description}
+                  </ThemedText>
+
+                  {/* Instructions */}
+                  <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.background, marginBottom: 10 }}>
+                    <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Instructions:</ThemedText>
+                    {recipe.instructions.map((step, i) => (
+                      <ThemedText key={i} style={{ textAlign: "center", marginBottom: 4 }}>
+                        {i + 1}) {step}
+                      </ThemedText>
+                    ))}
+                  </View>
+
+                  {/* Ingredients */}
+                  <View style={{ padding: 10, borderRadius: 8, backgroundColor: theme.navBackground }}>
+                    <ThemedText style={{ fontWeight: "bold", marginBottom: 6, textAlign: "center" }}>Ingredients:</ThemedText>
+                    {recipe.ingredients.map((ing, i) => (
+                      <ThemedText key={i} style={{ textAlign: "center", marginBottom: 2 }}>
+                        • {ing.ingredient} ({ing.measure})
+                      </ThemedText>
+                    ))}
+                  </View>
+
+                  <ThemedText style={{ marginTop: 8, textAlign: "center" }}>
+                    ⏱ {recipe.time} | ⚡ {recipe.difficulty}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          )}
+
+        </ScrollView>
+
+        {/* --- Modal --- */}
+        <Modal animationType="slide" transparent={true} visible={showFoodModal} onRequestClose={() => setShowFoodModal(false)}>
+          <View style={styles.modalContainer}>
+            <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+              <ThemedText style={{ fontSize: 20, marginBottom: 10, alignSelf: "center" }}>Select Ingredients</ThemedText>
+
+              <ScrollView style={{ width: "100%" }}>
+                {[...fridgeFood, ...pantryFood].map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.foodRow, { backgroundColor: theme.cardColor }, selectedFoods.some(f => f.id === item.id) && { backgroundColor: theme.selected, borderWidth: 2, borderColor: "#34c759" }]}
+                    onPress={() => toggleSelect(item)}
+                  >
+                    <Image source={{ uri: item.photo }} style={styles.foodImage} />
+                    <View style={{ marginLeft: 10 }}>
+                      <ThemedText style={styles.foodName}>{item.name}</ThemedText>
+                      <ThemedText>{item.amount} ({item.unitofmeasure})</ThemedText>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 10, width: "100%" }}>
+                <ThemedButton style={{ margin: 10 }} onPress={generateRecipes}>
+                  <ThemedText>Generate Recipes</ThemedText>
+                </ThemedButton>
+                <ThemedButton style={{ margin: 10 }} onPress={() => setShowFoodModal(false)}>
+                  <ThemedText>Close</ThemedText>
+                </ThemedButton>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </ThemedView >
+        </Modal>
+      </ThemedView>
+    </ScrollView>
   );
 };
 

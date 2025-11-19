@@ -1371,6 +1371,344 @@ app.post("/getAiRecipe", async (req, res) => {
     }
 });
 
+app.post('/getRecommendedPickupLocations', async (req, res) => {
+    try {
+        const id = await getIdFromHeader(req);
+
+        const results = await pool.query(
+            `SELECT LATITUDE, LONGITUDE FROM LOCATION WHERE foodie_id = $1`,
+            [id]
+        );
+
+        if (!results.rows[0]) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'User location not found'
+            });
+        }
+
+        const latitude = results.rows[0].latitude;
+        const longitude = results.rows[0].longitude;
+        const radius = 5000;
+        const GOOGLE_API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+
+        // Helper function to get detailed place information
+        async function getPlaceDetails(placeId) {
+            try {
+                const detailsResponse = await axios.get(
+                    `https://maps.googleapis.com/maps/api/place/details/json`,
+                    {
+                        params: {
+                            place_id: placeId,
+                            fields: 'formatted_address,address_components,name,geometry,rating,user_ratings_total',
+                            key: GOOGLE_API_KEY
+                        }
+                    }
+                );
+                return detailsResponse.data.result;
+            } catch (error) {
+                console.error('Error fetching place details:', error);
+                return null;
+            }
+        }
+
+        // Helper function to parse address components
+        function parseAddressComponents(addressComponents) {
+            const addressData = {
+                street: '',
+                city: '',
+                province: '',
+                postalCode: '',
+                country: 'South Africa'
+            };
+
+            if (!addressComponents) return addressData;
+
+            addressComponents.forEach(component => {
+                const types = component.types;
+
+                if (types.includes('street_number')) {
+                    addressData.street = component.long_name + ' ';
+                }
+                if (types.includes('route')) {
+                    addressData.street += component.long_name;
+                }
+                if (types.includes('sublocality') || types.includes('locality')) {
+                    if (!addressData.city) addressData.city = component.long_name;
+                }
+                if (types.includes('administrative_area_level_1')) {
+                    addressData.province = component.long_name;
+                }
+                if (types.includes('postal_code')) {
+                    addressData.postalCode = component.long_name;
+                }
+                if (types.includes('country')) {
+                    addressData.country = component.long_name;
+                }
+            });
+
+            // Clean up street address
+            addressData.street = addressData.street.trim();
+
+            return addressData;
+        }
+
+        // Search for parks
+        const parksResponse = await axios.get(
+            `https://maps.googleapis.com/maps/api/place/nearbysearch/json`,
+            {
+                params: {
+                    location: `${latitude},${longitude}`,
+                    radius: radius,
+                    type: 'park',
+                    key: GOOGLE_API_KEY
+                }
+            }
+        );
+
+        // Search for shopping malls
+        const mallsResponse = await axios.get(
+            `https://maps.googleapis.com/maps/api/place/nearbysearch/json`,
+            {
+                params: {
+                    location: `${latitude},${longitude}`,
+                    radius: radius,
+                    type: 'shopping_mall',
+                    key: GOOGLE_API_KEY
+                }
+            }
+        );
+
+        // Search for community centers
+        const centersResponse = await axios.get(
+            `https://maps.googleapis.com/maps/api/place/nearbysearch/json`,
+            {
+                params: {
+                    location: `${latitude},${longitude}`,
+                    radius: radius,
+                    type: 'community_center',
+                    key: GOOGLE_API_KEY
+                }
+            }
+        );
+
+        // Process parks with detailed info
+        const parks = await Promise.all(
+            parksResponse.data.results.slice(0, 3).map(async (place) => {
+                const details = await getPlaceDetails(place.place_id);
+                const addressData = details ? parseAddressComponents(details.address_components) : {};
+
+                return {
+                    id: place.place_id,
+                    name: place.name,
+                    address: details?.formatted_address || place.vicinity,
+                    street: addressData.street || place.vicinity || '',
+                    city: addressData.city || '',
+                    province: addressData.province || '',
+                    postalCode: addressData.postalCode || '',
+                    country: addressData.country || 'South Africa',
+                    type: 'park',
+                    latitude: place.geometry.location.lat,
+                    longitude: place.geometry.location.lng,
+                    distance: calculateDistance(
+                        latitude,
+                        longitude,
+                        place.geometry.location.lat,
+                        place.geometry.location.lng
+                    ).toFixed(2),
+                    rating: details?.rating || null,
+                    userRatingsTotal: details?.user_ratings_total || 0
+                };
+            })
+        );
+
+        // Process malls with detailed info
+        const malls = await Promise.all(
+            mallsResponse.data.results.slice(0, 2).map(async (place) => {
+                const details = await getPlaceDetails(place.place_id);
+                const addressData = details ? parseAddressComponents(details.address_components) : {};
+
+                return {
+                    id: place.place_id,
+                    name: place.name,
+                    address: details?.formatted_address || place.vicinity,
+                    street: addressData.street || place.vicinity || '',
+                    city: addressData.city || '',
+                    province: addressData.province || '',
+                    postalCode: addressData.postalCode || '',
+                    country: addressData.country || 'South Africa',
+                    type: 'shopping_mall',
+                    latitude: place.geometry.location.lat,
+                    longitude: place.geometry.location.lng,
+                    distance: calculateDistance(
+                        latitude,
+                        longitude,
+                        place.geometry.location.lat,
+                        place.geometry.location.lng
+                    ).toFixed(2),
+                    rating: details?.rating || null,
+                    userRatingsTotal: details?.user_ratings_total || 0
+                };
+            })
+        );
+
+        // Process community centers with detailed info
+        const centers = await Promise.all(
+            centersResponse.data.results.slice(0, 2).map(async (place) => {
+                const details = await getPlaceDetails(place.place_id);
+                const addressData = details ? parseAddressComponents(details.address_components) : {};
+
+                return {
+                    id: place.place_id,
+                    name: place.name,
+                    address: details?.formatted_address || place.vicinity,
+                    street: addressData.street || place.vicinity || '',
+                    city: addressData.city || '',
+                    province: addressData.province || '',
+                    postalCode: addressData.postalCode || '',
+                    country: addressData.country || 'South Africa',
+                    type: 'community_center',
+                    latitude: place.geometry.location.lat,
+                    longitude: place.geometry.location.lng,
+                    distance: calculateDistance(
+                        latitude,
+                        longitude,
+                        place.geometry.location.lat,
+                        place.geometry.location.lng
+                    ).toFixed(2),
+                    rating: details?.rating || null,
+                    userRatingsTotal: details?.user_ratings_total || 0
+                };
+            })
+        );
+
+        // Combine and sort by distance, then rating
+        const allLocations = [...parks, ...malls, ...centers]
+            .filter(loc => loc.street) // Only include locations with street addresses
+            .sort((a, b) => {
+                // Primary sort by distance
+                const distanceDiff = parseFloat(a.distance) - parseFloat(b.distance);
+                if (Math.abs(distanceDiff) > 0.5) return distanceDiff;
+
+                // Secondary sort by rating
+                const ratingDiff = (b.rating || 0) - (a.rating || 0);
+                if (Math.abs(ratingDiff) > 0.5) return ratingDiff;
+
+                // Tertiary sort by number of reviews
+                return b.userRatingsTotal - a.userRatingsTotal;
+            })
+            .slice(0, 6);
+
+        console.log('Recommended locations:', allLocations);
+        for (const loc of allLocations) {
+            try {
+                await pool.query(
+                    `
+                    INSERT INTO SUGGESTED_LOCATION (
+                        ID, latitude, longitude, street, CITY, PROVINCE, COUNTRY, POSTALCODE, DISTANCE, NAME, TYPE
+                    ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+                    ON CONFLICT (ID) DO UPDATE
+                    SET latitude = EXCLUDED.latitude,
+                        longitude = EXCLUDED.longitude,
+                        street = EXCLUDED.street,
+                        city = EXCLUDED.city,
+                        province = EXCLUDED.province,
+                        country = EXCLUDED.country,
+                        postalcode = EXCLUDED.postalcode,
+                        distance = EXCLUDED.distance,
+                        name = EXCLUDED.name,
+                        type = EXCLUDED.type
+                    `,
+                    [
+                        loc.id,
+                        loc.latitude,
+                        loc.longitude,
+                        loc.street,
+                        loc.city,
+                        loc.province,
+                        loc.country,
+                        loc.postalCode,
+                        loc.distance,
+                        loc.name,
+                        loc.type
+                    ]
+                );
+            } catch (error) {
+                console.error(`Failed to save location ${loc.name} (${loc.id})`, error);
+            }
+        }
+        res.json({
+            status: 'ok',
+            locations: allLocations,
+            userLocation: { latitude, longitude }
+        });
+
+    } catch (error) {
+        console.error('Error fetching locations:', error);
+        res.status(500).json({
+            status: 'error',
+            message: 'Failed to fetch recommended locations',
+            error: error.message
+        });
+    }
+});
+
+cron.schedule("0 10,13,18 * * *", async () => {
+    await sendTryRecipes();
+});
+
+async function sendTryRecipes() {
+    try {
+        // 1. Get users who have fridge or pantry items
+        const usersWithItems = await pool.query(`
+            SELECT DISTINCT f.id, pt.token
+            FROM foodie f
+            JOIN push_tokens pt ON pt.foodie_id = f.id
+            LEFT JOIN pantry_food pf ON pf.foodie_id = f.id
+            LEFT JOIN fridge_food ff ON ff.foodie_id = f.id
+            WHERE (pf.id IS NOT NULL OR ff.id IS NOT NULL)
+              AND pt.is_valid = TRUE
+        `);
+
+        if (!usersWithItems.rows.length) return;
+
+        for (let user of usersWithItems.rows) {
+            // 2. Optionally generate suggested recipes for the user
+            // Here you can call your AI endpoint:
+            //const suggested = await axios.get(`${API_BASE_URL}/getSuggestedRecipes`, { headers: { Authorization: `Bearer ${userToken}` } });
+
+            // 3. Send push notification
+            await sendNotification(user.token, "We found some suggested recipes based on your pantry & fridge items!");
+        }
+
+        console.log("Try recipes notifications sent successfully!");
+    } catch (error) {
+        console.error("Error sending try recipes notifications:", error);
+    }
+}
+
+
+async function axiosWithRetry(url, options = {}, delay = 5000) {
+    while (true) {
+        try {
+            const response = await axios(url, options);
+            return response;
+        } catch (err) {
+            console.warn(`Request failed (${err.response?.status}). Retrying in ${delay / 1000}s...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+}
+
+cron.schedule("* * * * *", async () => {
+    try {
+        await sendUpcomingDonationNotifications();
+        console.log("Sending donation notification")
+    } catch (err) {
+        console.error("Error sending scheduled notifications:", err);
+    }
+});
+
 app.get("/getSuggestedRecipes", async (req, res) => {
     try {
         const id = await getIdFromHeader(req);
@@ -1451,62 +1789,6 @@ app.get("/getSuggestedRecipes", async (req, res) => {
     } catch (error) {
         console.error("Suggested Recipes Error:", error.response?.data || error.message);
         res.json({ error: "Failed to generate suggested recipes" });
-    }
-});
-
-cron.schedule("0 10,13,18 * * *", async () => {
-    await sendTryRecipes();
-});
-
-async function sendTryRecipes() {
-    try {
-        // 1. Get users who have fridge or pantry items
-        const usersWithItems = await pool.query(`
-            SELECT DISTINCT f.id, pt.token
-            FROM foodie f
-            JOIN push_tokens pt ON pt.foodie_id = f.id
-            LEFT JOIN pantry_food pf ON pf.foodie_id = f.id
-            LEFT JOIN fridge_food ff ON ff.foodie_id = f.id
-            WHERE (pf.id IS NOT NULL OR ff.id IS NOT NULL)
-              AND pt.is_valid = TRUE
-        `);
-
-        if (!usersWithItems.rows.length) return;
-
-        for (let user of usersWithItems.rows) {
-            // 2. Optionally generate suggested recipes for the user
-            // Here you can call your AI endpoint:
-            // const suggested = await axios.get(`${API_BASE_URL}/getSuggestedRecipes`, { headers: { Authorization: `Bearer ${userToken}` } });
-
-            // 3. Send push notification
-            await sendNotification(user.token, "We found some suggested recipes based on your pantry & fridge items!");
-        }
-
-        console.log("Try recipes notifications sent successfully!");
-    } catch (error) {
-        console.error("Error sending try recipes notifications:", error);
-    }
-}
-
-
-async function axiosWithRetry(url, options = {}, delay = 5000) {
-    while (true) {
-        try {
-            const response = await axios(url, options);
-            return response;
-        } catch (err) {
-            console.warn(`Request failed (${err.response?.status}). Retrying in ${delay / 1000}s...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-        }
-    }
-}
-
-cron.schedule("* * * * *", async () => {
-    try {
-        await sendUpcomingDonationNotifications();
-        console.log("Sending donation notification")
-    } catch (err) {
-        console.error("Error sending scheduled notifications:", err);
     }
 });
 
@@ -1718,10 +2000,8 @@ app.post("/donate", async (req, res) => {
     try {
         const foodie_id = await getIdFromHeader(req);
         const donations = req.body.items;
-        const { street, city, province, postalCode, country, pickupTime } = req.body;
+        const { selectedLocation, pickupTime } = req.body;
         const pickUpDate = req.body.date
-        const prevLoc = req.body.pickup_id;
-        //console.log(req.body)
 
         let pickup_id;
         const dateObj = new Date(pickupTime);
@@ -1737,44 +2017,32 @@ app.post("/donate", async (req, res) => {
         const finalDate = pickUpDate.substring(0, 10)
         //console.log(finalDate)
 
-        // Handle location
-        if (prevLoc === null) {
-            const coords = await forwardGeocode({
-                street,
-                city,
-                province,
-                country
-            });
 
-            if (!coords) {
-                return res.send({ status: "error", data: "Failed to retrieve coordinates" });
-            }
 
-            const r = await pool.query(
-                `
-                    INSERT INTO DONATION_PICKUP(latitude, longitude, city, province, zipcode, country, street, foodie_id, pickupTime, pickUpDate)
-                    VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        const r = await pool.query(
+            `
+                    INSERT INTO DONATION_PICKUP(latitude, longitude, city, province, zipcode, country, street, foodie_id, pickupTime, pickUpDate, name, type)
+                    VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
                     RETURNING id
                 `,
-                [
-                    coords.latitude,
-                    coords.longitude,
-                    city,
-                    province,
-                    postalCode,
-                    country,
-                    street,
-                    foodie_id,
-                    finalTime,
-                    finalDate
-                ]
-            );
+            [
+                selectedLocation.latitude,
+                selectedLocation.longitude,
+                selectedLocation.city,
+                selectedLocation.province,
+                selectedLocation.postalcode,
+                selectedLocation.country,
+                selectedLocation.street,
+                foodie_id,
+                finalTime,
+                finalDate,
+                selectedLocation.name,
+                selectedLocation.type
+            ]
+        );
 
-            console.log("DONATION_PICKUP ADDED");
-            pickup_id = r.rows[0].id;
-        } else {
-            pickup_id = prevLoc;
-        }
+        console.log("DONATION_PICKUP ADDED");
+        pickup_id = r.rows[0].id;
 
         // Insert each donation record
         for (const donation of donations) {
@@ -1843,7 +2111,7 @@ app.get("/getDonations", async (req, res) => {
 
         const userLat = lResult.rows[0].latitude;
         const userLon = lResult.rows[0].longitude;
-        const radiusKm = 10; // 5 km
+        const radiusKm = 50; // 
 
         // Pantry donations within proximity and not accepted
         const pResult = await pool.query(`
@@ -1989,7 +2257,9 @@ app.get("/getMyDonationRequests", async (req, res) => {
                 donor.name AS donor_name,
                 donor.email AS donor_email,
                 donor.phone AS donor_phone,
-                qr_token
+                qr_token,
+                p.name, 
+                p.type
             FROM DONATION_REQUEST dr
             JOIN DONATION d ON dr.donation_id = d.donation_id
             LEFT JOIN FRIDGE_FOOD fr ON d.fridge_food_id = fr.id
@@ -2324,6 +2594,8 @@ app.get("/getRequestsForMe", async (req, res) => {
                 p.longitude AS pickup_longitude,
                 p.pickUpDate AS pickup_date,
                 p.pickUpTime AS pickup_time,
+                p.name,
+                p.type,
           
                 dr.status,
                 qr_token

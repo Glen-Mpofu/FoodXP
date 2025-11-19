@@ -253,7 +253,10 @@ const DonateHub = () => {
                 Pickup Location:
               </ThemedText>
               <ThemedText style={{ fontSize: 13, color: "#555" }}>
-                {item.street}, {item.city}, {item.province}, {item.zipcode}, {item.country}
+                {item.name}, {item.type}
+              </ThemedText>
+              <ThemedText style={{ fontSize: 13, color: "#555" }}>
+                {item.street}, {item.city}, {item.province}, {item.zipcode},
               </ThemedText>
               <ThemedText>
                 Pick Up at {item.pickuptime} on {item.pickupdate}
@@ -369,7 +372,10 @@ const DonateHub = () => {
                           Drop off Location:
                         </ThemedText>
                         <ThemedText style={{ fontSize: 13, color: "#555" }}>
-                          {item.pickup_street}, {item.pickup_city}, {item.pickup_province}, {item.pickup_zipcode}, {item.pickup_country}
+                          {item.name} {item.type}
+                        </ThemedText>
+                        <ThemedText style={{ fontSize: 13, color: "#555" }}>
+                          {item.pickup_street}, {item.pickup_city}, {item.pickup_province}, {item.pickup_zipcode}
                         </ThemedText>
                         <ThemedText>
                           Drop off at {item.pickup_time} on {item.pickup_date}

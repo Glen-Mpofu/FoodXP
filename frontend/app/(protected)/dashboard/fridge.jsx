@@ -90,6 +90,7 @@ const Fridge = () => {
     }
   }
 
+
   // Initialize token and fetch
   useEffect(() => {
     async function init() {
@@ -728,7 +729,7 @@ const Fridge = () => {
                 <ThemedButton
                   style={[styles.btn, { backgroundColor: "#81c995" }]}
                   onPress={async () => {
-                    if (!street || !province || !postalCode || !city || !pickupTime) {
+                    if (!date || !selectedLocation || !pickupTime) {
                       Toast.show({ type: "error", text1: "Please fill in all details", });
                       return;
                     }

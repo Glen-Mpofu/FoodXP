@@ -2153,10 +2153,10 @@ app.get("/getDonations", async (req, res) => {
     JOIN DONATION_PICKUP l ON d.pickup_id = l.id
     JOIN FOODIE fo ON d.foodie_id = fo.id
     LEFT JOIN DONATION_REQUEST dr ON d.donation_id = dr.donation_id AND dr.status = 'Accepted'
-    WHERE fo.id != $3
+    WHERE fo.id != $1
       AND dr.request_id IS NULL
       
-`, [userLat, userLon, id]);
+`, [id]);
 
         // Fridge donations within proximity and not accepted
         const fResult = await pool.query(`
@@ -2167,10 +2167,10 @@ app.get("/getDonations", async (req, res) => {
     JOIN DONATION_PICKUP l ON d.pickup_id = l.id
     JOIN FOODIE fo ON d.foodie_id = fo.id
     LEFT JOIN DONATION_REQUEST dr ON d.donation_id = dr.donation_id AND dr.status = 'Accepted'
-    WHERE fo.id != $3
+    WHERE fo.id != $1
       AND dr.request_id IS NULL
       
-`, [userLat, userLon, id]);
+`, [id]);
 
         const donations = [...pResult.rows, ...fResult.rows];
 

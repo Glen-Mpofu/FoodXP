@@ -2148,13 +2148,6 @@ app.get("/getDonations", async (req, res) => {
         const pResult = await pool.query(`
     SELECT d.donation_id, p.name, d.amount, p.unitOfMeasure, p.photo,
            l.city, l.street, l.province, l.country, l.zipcode, fo.name AS fname, fo.email,
-           (6371 * acos(
-                cos(radians($1)) *
-                cos(radians(l.latitude)) *
-                cos(radians(l.longitude) - radians($2)) +
-                sin(radians($1)) *
-                sin(radians(l.latitude))
-           )) AS distance_km
     FROM DONATION d
     JOIN PANTRY_FOOD p ON d.pantry_food_id = p.id
     JOIN DONATION_PICKUP l ON d.pickup_id = l.id
@@ -2169,13 +2162,6 @@ app.get("/getDonations", async (req, res) => {
         const fResult = await pool.query(`
     SELECT d.donation_id, f.name, d.amount, f.unitOfMeasure, f.photo,
            l.city, l.street, l.province, l.country, l.zipcode, fo.name AS fname, fo.email,
-           (6371 * acos(
-                cos(radians($1)) *
-                cos(radians(l.latitude)) *
-                cos(radians(l.longitude) - radians($2)) +
-                sin(radians($1)) *
-                sin(radians(l.latitude))
-           )) AS distance_km
     FROM DONATION d
     JOIN FRIDGE_FOOD f ON d.fridge_food_id = f.id
     JOIN DONATION_PICKUP l ON d.pickup_id = l.id

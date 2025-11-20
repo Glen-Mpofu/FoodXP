@@ -22,7 +22,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { getCurrentLocation } from '../../../components/locantion';
 import { RefreshControl } from "react-native";
 import QRCode from 'react-native-qrcode-svg';
-import { CameraView, useCameraPermissions, CameraType, BarCodeScanner, Camera } from "expo-camera";
+import { CameraView, useCameraPermissions, CameraType, Camera } from "expo-camera";
 
 const DonateHub = () => {
   const [userToken, setUserToken] = useState(null);

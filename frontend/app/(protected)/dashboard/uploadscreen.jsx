@@ -133,6 +133,9 @@ const UploadFood = () => {
               setDate(new Date());
               Toast.error("Could not detect expiry date. Please enter manually.");
             }
+
+            setExpiryScanStep(false);
+            setReviewStep(true);
           };
           reader.readAsDataURL(file);
         };

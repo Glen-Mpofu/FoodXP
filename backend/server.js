@@ -1700,15 +1700,6 @@ async function axiosWithRetry(url, options = {}, delay = 5000) {
     }
 }
 
-cron.schedule("* * * * *", async () => {
-    try {
-        await sendUpcomingDonationNotifications();
-        console.log("Sending donation notification")
-    } catch (err) {
-        console.error("Error sending scheduled notifications:", err);
-    }
-});
-
 app.get("/getSuggestedRecipes", async (req, res) => {
     try {
         const id = await getIdFromHeader(req);
@@ -1792,82 +1783,103 @@ app.get("/getSuggestedRecipes", async (req, res) => {
     }
 });
 
+cron.schedule("* * * * *", async () => {
+    try {
+        console.log("Checking donation pickup notifications...");
+        await sendUpcomingDonationNotifications();
+    } catch (err) {
+        console.error("Error sending scheduled notifications:", err);
+    }
+});
+
+function convertTo24Hour(timeStr) {
+    if (!timeStr) return null;
+
+    const [time, modifier] = timeStr.trim().split(" ");
+    let [hours, minutes] = time.split(":").map(Number);
+
+    if (modifier === "PM" && hours !== 12) hours += 12;
+    if (modifier === "AM" && hours === 12) hours = 0;
+
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:00`;
+}
+
+function buildPickupDateTime(dateStr, timeStr) {
+    const time24 = convertTo24Hour(timeStr);
+    return new Date(`${dateStr}T${time24}`);
+}
+
+
 async function sendUpcomingDonationNotifications() {
     const now = new Date();
 
-    // Get all upcoming pickups within the next 24 hours
+    // Fetch all accepted donation pickups
     const result = await pool.query(`
         SELECT dp.*, d.foodie_id AS donor_id, dr.requester_id
-FROM DONATION_PICKUP dp
-JOIN DONATION d ON d.pickup_id = dp.id
-JOIN DONATION_REQUEST dr 
-    ON dr.donation_id = d.donation_id 
-    AND dr.status = 'Accepted'
-WHERE 
-(
-    dp.pickUpDate::DATE 
-    + (
-        -- Convert invalid AM/PM times into valid 24h time
-        CASE 
-            WHEN RIGHT(TRIM(dp.pickUpTime), 2) = 'PM' 
-                THEN (LEFT(dp.pickUpTime, 5))::time + INTERVAL '12 hours'
-            WHEN RIGHT(TRIM(dp.pickUpTime), 2) = 'AM' 
-                THEN (LEFT(dp.pickUpTime, 5))::time
-        END
-    )
-) >= NOW()
-AND 
-(
-    dp.pickUpDate::DATE 
-    + (
-        CASE 
-            WHEN RIGHT(TRIM(dp.pickUpTime), 2) = 'PM' 
-                THEN (LEFT(dp.pickUpTime, 5))::time + INTERVAL '12 hours'
-            WHEN RIGHT(TRIM(dp.pickUpTime), 2) = 'AM' 
-                THEN (LEFT(dp.pickUpTime, 5))::time
-        END
-    )
-) <= NOW() + INTERVAL '24 hours';
+        FROM DONATION_PICKUP dp
+        JOIN DONATION d ON d.pickup_id = dp.id
+        JOIN DONATION_REQUEST dr 
+            ON dr.donation_id = d.donation_id 
+            AND dr.status = 'Accepted';
     `);
 
     const pickups = result.rows;
 
     for (const pickup of pickups) {
-        const pickupDateTime = new Date(`${pickup.pickUpDate}T${pickup.pickUpTime}`);
 
+        // Build valid JS datetime
+        const pickupDateTime = buildPickupDateTime(pickup.pickupdate, pickup.pickuptime);
+
+        // Safety: If invalid date, skip
+        if (isNaN(pickupDateTime)) {
+            console.error("Invalid pickup datetime:", pickup.pickupdate, pickup.pickuptime);
+            continue;
+        }
+
+        // Define notification times
         const offsets = [
-            { label: "24 hours before", minutes: 24 * 60 },
+            { label: "24 hours before", minutes: 1440 },
             { label: "1 hour before", minutes: 60 },
             { label: "now", minutes: 0 }
         ];
 
         for (const offset of offsets) {
-            const notifTime = new Date(pickupDateTime.getTime() - offset.minutes * 60 * 1000);
-            const diff = pickupDateTime - now;
 
-            // Only send notifications within 1 minute window
+            // When this notification should fire
+            const notifTime = new Date(pickupDateTime.getTime() - offset.minutes * 60000);
+
+            // If we are within a 1-min window → send notification
             if (Math.abs(notifTime - now) <= 60000) {
-                const message = `Donation pickup for ${pickup.street}, ${pickup.city} is ${offset.label}!`;
 
+                const messageR = `Donation pickup for ${pickup.street}, ${pickup.city} is ${offset.label}!`;
+                const messageD = `Donation dropoff at ${pickup.street}, ${pickup.city} is ${offset.label}!`;
+
+                // ----- Send to Donor -----
                 const donorTokens = await pool.query(
-                    "SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1 AND is_valid = TRUE",
+                    `SELECT token FROM PUSH_TOKENS 
+                     WHERE foodie_id = $1 AND is_valid = TRUE`,
                     [pickup.donor_id]
                 );
+
                 for (const row of donorTokens.rows) {
-                    await sendNotification(row.token, `Donor Alert: ${message}`);
+                    await sendNotification(row.token, `Donation Alert: ${messageR}`);
                 }
 
+                // ----- Send to Requester -----
                 const requesterTokens = await pool.query(
-                    "SELECT token FROM PUSH_TOKENS WHERE foodie_id = $1 AND is_valid = TRUE",
+                    `SELECT token FROM PUSH_TOKENS 
+                     WHERE foodie_id = $1 AND is_valid = TRUE`,
                     [pickup.requester_id]
                 );
+
                 for (const row of requesterTokens.rows) {
-                    await sendNotification(row.token, `Requester Alert: ${message}`);
+                    await sendNotification(row.token, `Donation Alert: ${messageD}`);
                 }
             }
         }
     }
 }
+
 
 //recipes from themealdb
 app.get("/get-recipes", async (req, res) => {
@@ -1999,7 +2011,7 @@ async function forwardGeocode({ street, city, province, country }) {
 app.post("/donate", async (req, res) => {
     try {
         const foodie_id = await getIdFromHeader(req);
-        const donations = req.body.items;
+        const donationsBody = req.body.items;
         const { selectedLocation, pickupTime } = req.body;
         const pickUpDate = req.body.date
 
@@ -2018,13 +2030,33 @@ app.post("/donate", async (req, res) => {
         //console.log(finalDate)
 
 
-
+        //cleaning up items that are about to expire or have expired
+        let donations = []
+        // verify if it hasn't expired yet.
+        for (let index = 0; index < donationsBody.length; index++) {
+            const donation = donationsBody[index];
+            if (donation.from === "pantry") {
+                const d = await pool.query(
+                    `
+                        SELECT *
+                        FROM PANTRY_FOOD
+                        WHERE EXPIRYDATE > NOW()
+                        AND id = $1;                        
+                    `, [donation.id]
+                )
+                if (d.rows.length > 0) {
+                    donations.push(donation)
+                }
+            }
+        }
+        /*console.log("Donations Left")
+        console.log(donations)*/
         const r = await pool.query(
             `
-                    INSERT INTO DONATION_PICKUP(latitude, longitude, city, province, zipcode, country, street, foodie_id, pickupTime, pickUpDate, name, type)
-                    VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-                    RETURNING id
-                `,
+                            INSERT INTO DONATION_PICKUP(latitude, longitude, city, province, zipcode, country, street, foodie_id, pickupTime, pickUpDate, name, type)
+                            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                            RETURNING id
+                        `,
             [
                 selectedLocation.latitude,
                 selectedLocation.longitude,
@@ -2050,15 +2082,15 @@ app.post("/donate", async (req, res) => {
 
             await pool.query(
                 `
-                INSERT INTO DONATION(
-                    foodie_id,
-                    ${isPantry ? "pantry_food_id" : "fridge_food_id"},
-                    pickup_id,
-                    amount,
-                    sourceTable
-                )
-                VALUES($1, $2, $3, $4, $5)
-                `,
+                        INSERT INTO DONATION(
+                            foodie_id,
+                            ${isPantry ? "pantry_food_id" : "fridge_food_id"},
+                            pickup_id,
+                            amount,
+                            sourceTable
+                        )
+                        VALUES($1, $2, $3, $4, $5)
+                        `,
                 [
                     donation.foodie_id,
                     donation.id,
@@ -2507,7 +2539,6 @@ app.post("/claimDonation", async (req, res) => {
         return res.status(500).send({ status: "error", data: err.message });
     }
 });
-
 
 // DELETING THE REJECTED REQUEST
 app.post("/rejectRequest", async (req, res) => {

@@ -110,7 +110,7 @@ const Settings = () => {
   }
 
   async function deleteAccount() {
-    if (value === 'no') {
+    if (value != "yes") {
       closeModal()
       return;
     }

@@ -2121,7 +2121,6 @@ app.get("/getStats", async (req, res) => {
         AND i.donor_id = $1
         GROUP BY donationsMade, donationsReceived
     `, [id])
-    console.log(stats.rows[0])
     res.send({ status: "ok", data: stats.rows[0] })
 })
 
@@ -2376,7 +2375,7 @@ app.post("/claimDonation", async (req, res) => {
         const id = await getIdFromHeader(req);
         const { donation_id, donor_id, requester_id, qr_token, donation } = req.body;
 
-        console.log("Claim body:", req.body);
+        //console.log("Claim body:", req.body);
 
         // 1. Ensure requester is the one scanning
         if (id !== requester_id) {

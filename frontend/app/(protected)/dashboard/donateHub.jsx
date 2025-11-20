@@ -51,7 +51,7 @@ const DonateHub = () => {
         setUserToken(token);
         if (!permission) return;
         if (permission.status !== 'granted') {
-          requestPermission();
+          await requestPermission();
         } else {
           setHasPermission(true);
         }

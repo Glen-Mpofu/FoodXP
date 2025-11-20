@@ -2162,14 +2162,8 @@ app.get("/getDonations", async (req, res) => {
     LEFT JOIN DONATION_REQUEST dr ON d.donation_id = dr.donation_id AND dr.status = 'Accepted'
     WHERE fo.id != $3
       AND dr.request_id IS NULL
-      AND (6371 * acos(
-                cos(radians($1)) *
-                cos(radians(l.latitude)) *
-                cos(radians(l.longitude) - radians($2)) +
-                sin(radians($1)) *
-                sin(radians(l.latitude))
-           )) <= $4
-`, [userLat, userLon, id, radiusKm]);
+      
+`, [userLat, userLon, id]);
 
         // Fridge donations within proximity and not accepted
         const fResult = await pool.query(`
@@ -2189,14 +2183,8 @@ app.get("/getDonations", async (req, res) => {
     LEFT JOIN DONATION_REQUEST dr ON d.donation_id = dr.donation_id AND dr.status = 'Accepted'
     WHERE fo.id != $3
       AND dr.request_id IS NULL
-      AND (6371 * acos(
-                cos(radians($1)) *
-                cos(radians(l.latitude)) *
-                cos(radians(l.longitude) - radians($2)) +
-                sin(radians($1)) *
-                sin(radians(l.latitude))
-           )) <= $4
-`, [userLat, userLon, id, radiusKm]);
+      
+`, [userLat, userLon, id]);
 
         const donations = [...pResult.rows, ...fResult.rows];
 
